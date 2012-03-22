@@ -1,0 +1,2 @@
+ln -s -f config.$1.py config.py
+rm -f config.pyc
