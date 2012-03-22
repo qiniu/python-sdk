@@ -1,8 +1,8 @@
 #
 # OAuth2
 
-CLIENT_ID     = '<ClientId>'
-CLIENT_SECRET = '<ClientSecret>'
+CLIENT_ID     = 'abcd0c7edcdf914228ed8aa7c6cee2f2bc6155e2'
+CLIENT_SECRET = 'fc9ef8b171a74e197b17f85ba23799860ddf3b9c'
 
 REDIRECT_URI           = '<RedirectURL>'
 AUTHORIZATION_ENDPOINT = '<AuthURL>'
