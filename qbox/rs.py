@@ -22,6 +22,14 @@ class Service:
 		url = config.IO_HOST + '/put-auth/'
 		return self.Conn.Call(url)
 
+	def PutAuthWithCb(self, expire, cbUrl):
+		"""
+		 * func PutAuth() => PutAuthRet
+		 * 上传授权（生成一个短期有效的可匿名上传URL）
+		"""
+                url = config.IO_HOST + '/put-auth/' + str(expire) + '/callback/' + urlsafe_b64encode(cbUrl)
+		return self.Conn.Call(url)
+
 	def Get(self, key, attName):
 		"""
 		 * func Get(key string, attName string) => GetRet
