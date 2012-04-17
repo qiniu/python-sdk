@@ -1,4 +1,4 @@
-#coding=utf8
+# -*- encoding: utf-8 -*-
 
 import config
 import simpleoauth2
