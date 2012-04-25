@@ -22,7 +22,7 @@
 - [资源表批量操作接口](#rs-Batch)
 
 
-## OAuthor2.0 认证
+## OAuth 2.0 认证
 
 <p id="acc-appkey"></p>
 
@@ -173,7 +173,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 通过指定的操作行为名称，以及传入的一组 keys，可以达到批量处理的功能。
 
-    resp = rs.Batch(actionName, [keys])
+    resp = rs.Batch(actionName String, keys List)
 
 **示例**
 
