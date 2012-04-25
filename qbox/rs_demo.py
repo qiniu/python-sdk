@@ -42,6 +42,10 @@ print resp
 print '\n===> Display %s contents:' % uniqkey
 print urllib.urlopen(resp['url']).read()
 
+resp = rs.Batch("get", [uniqkey])
+print '\n===> Batch Get %s result:' % uniqkey
+print resp
+
 action='delete'
 if action == 'delete':
 	resp = rs.Delete(uniqkey)
