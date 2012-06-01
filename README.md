@@ -145,7 +145,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 调用资源表对象的 Unpublish() 方法可取消该资源表内所有文件的静态外链。
 
-    resp = rs.unPublish(config.DEMO_DOMAIN + '/' + tblName)
+    resp = rs.Unpublish(config.DEMO_DOMAIN + '/' + tblName)
 
 
 <p id="rs-Delete"></p>
