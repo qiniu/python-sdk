@@ -136,8 +136,11 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 使用七牛云存储提供的资源发布功能，您可以将一个资源表里边的所有文件以静态链接可访问的方式公开发布到您自己的域名下。
 要公开发布一个资源表里边的所有文件，只需调用改资源表对象的 Publish() 方法并传入 域名 作为参数即可。如下示例：
 
-    resp = rs.Publish(config.DEMO_DOMAIN + '/' + tblName)
+    resp = rs.Publish(YOUR_DOMAIN)
 
+注意：需要到您的域名管理中心将 YOUR_DOMAIN CNAME 到 iovip.qbox.me
+
+如果还没有您自己的域名，可将 YOUR_DOMAIN 改成 iovip.qbox.me/tblName 供临时测试使用。
 
 <p id="rs-Unpublish"></p>
 
@@ -145,7 +148,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 调用资源表对象的 Unpublish() 方法可取消该资源表内所有文件的静态外链。
 
-    resp = rs.Unpublish(config.DEMO_DOMAIN + '/' + tblName)
+    resp = rs.Unpublish(YOUR_DOMAIN)
 
 
 <p id="rs-Delete"></p>
