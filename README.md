@@ -1,6 +1,3 @@
----
-title: Python 2.x SDK | 七牛云存储
----
 
 # Python 2.x SDK 使用指南
 
