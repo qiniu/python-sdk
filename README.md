@@ -1,16 +1,20 @@
+---
+title: Python 2.x SDK | 七牛云存储
+---
 
-# 七牛云存储 Python 2.x SDK 使用指南
+# Python 2.x SDK 使用指南
+
 
 此 SDK 适用于 Python 2.x 版本
 
-**OAuth2.0认证**
+**OAuth2.0 认证**
 
-1. [应用接入](#acc-appkey)
+- [应用接入](#acc-appkey)
 - [登录授权](#acc-login)
 
 **云存储接口**
 
-1. [新建资源表](#rs-NewService)
+- [新建资源表](#rs-NewService)
 - [获得上传授权](#rs-PutAuth)
 - [上传文件](#rs-PutFile)
 - [获取已上传文件信息](#rs-Stat)
@@ -20,11 +24,12 @@
 - [删除已上传的文件](#rs-Delete)
 - [删除整张资源表](#rs-Drop)
 - [资源表批量操作接口](#rs-Batch)
-
+- [批量下载](#rs-BatchGet)
+- [批量删除](#rs-BatchDelete)
 
 ## OAuth 2.0 认证
 
-<p id="acc-appkey"></p>
+<a name="acc-appkey"></a>
 
 ### 1. 应用接入
 
@@ -39,7 +44,7 @@
 
 然后，您可以根据实际情况修改 config.py 文件里边的 **CLIENT_ID** 和 **CLIENT_SECRET** 的值（SDK中缺省值可供您试用阶段调试，无需修改）。
 
-<p id="acc-login"></p>
+<a name="acc-login"></a>
 
 ### 2. 登录授权
 
@@ -57,7 +62,7 @@ expires_in 是 access_token 的有效期。
 
 ## 云存储接口
 
-<p id="rs-NewService"></p>
+<a name="rs-NewService"></a>
 
 ### 1. 新建资源表
 
@@ -67,7 +72,7 @@ expires_in 是 access_token 的有效期。
     rs = qboxrs.Service(client, tblName)
 
 
-<p id="rs-PutAuth"></p>
+<a name="rs-PutAuth"></a>
 
 ### 2. 获得上传授权
 
@@ -79,16 +84,18 @@ expires_in 是 access_token 的有效期。
 
 如果请求成功，putAuthRet 会包含 url 和 expires_in 两个字段。url 字段对应的值为匿名上传的临时URL，expires_in 对应的值则是该临时URL的有效期。
 
-<p name="rs-PutFile"></p>
+<a name="rs-PutFile"></a>
 
 ### 3. 上传文件
 
 一旦建立好资源表和取得上传授权，就可以开始上传文件了。只需调用sdk提供的 PutFile() 方法即可。示例代码如下：
 
-    resp = rscli.PutFile(resp['url'], tblName, key, '', __file__, 'CustomData', {'key': key})
+    resp = rscli.PutFile(resp['url'], tblName, key, mimeType, filePath, 'CustomData', {'key': key}, True)
+
+最后一个参数值为 `True` 表示针对该文件上传启用 crc32 数据校验，该值默认是 `False` 。
 
 
-<p id="rs-Stat"></p>
+<a name="rs-Stat"></a>
 
 ### 4. 获取已上传文件信息
 
@@ -105,7 +112,7 @@ expires_in 是 access_token 的有效期。
     mimeType: <MimeType>
 
 
-<p id="rs-Get"></p>
+<a name="rs-Get"></a>
 
 ### 5. 下载文件
 
@@ -129,7 +136,7 @@ expires_in 是 access_token 的有效期。
 
 GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
-<p id="rs-Publish"></p>
+<a name="rs-Publish"></a>
 
 ### 6. 发布公开资源
 
@@ -142,7 +149,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 如果还没有您自己的域名，可将 YOUR_DOMAIN 改成 iovip.qbox.me/tblName 供临时测试使用。
 
-<p id="rs-Unpublish"></p>
+<a name="rs-Unpublish"></a>
 
 ### 7. 取消资源发布
 
@@ -150,8 +157,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
     resp = rs.Unpublish(YOUR_DOMAIN)
 
-
-<p id="rs-Delete"></p>
+<a name="rs-Delete"></a>
 
 ### 8. 删除已上传的文件
 
@@ -159,8 +165,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
     resp = rs.Delete(key)
 
-
-<p id="rs-Drop"></p>
+<a name="rs-Drop"></a>
 
 ### 9. 删除整张资源表
 
@@ -170,13 +175,13 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
     resp = rs.Drop()
 
 
-<p id="rs-Batch"></p>
+<a name="rs-Batch"></a>
 
 ### 10. 资源表批量操作接口
 
 通过指定的操作行为名称，以及传入的一组 keys，可以达到批量处理的功能。
 
-    resp = rs.Batch(actionName String, keys List)
+    resp = rs.Batch(actionNameString, keysList)
 
 **示例**
 
@@ -205,4 +210,65 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
         data: <Data> 或 error: <ErrorMessage>
     }
 
-当部分 keys 执行失败时，返回 298（PartialOK）。
+当只有部分 keys 执行成功时，返回 298（PartialOK）。
+
+
+<a name="rs-BatchGet"></a>
+
+### 11. 批量下载
+
+使用资源表对象的 `BatchGet` 方法可以批量取得下载链接：
+
+    resp = rs.BatchGet(keysList)
+
+**示例**
+
+批量获取下载链接：
+
+    resp = rs.BatchGet([key1, key2, key3, ..., keyN])
+
+**响应**
+
+    200 OK [
+        <Result1>, <Result2>, ...
+    ]
+    298 Partial OK [
+        <Result1>, <Result2>, ...
+    ]
+    <Result> 是 {
+        code: <HttpCode>,
+        data: <Data> 或 error: <ErrorMessage>
+    }
+
+当只有部分 keys 执行成功时，返回 298（PartialOK）。
+
+
+<a name="rs-BatchDelete"></a>
+
+### 12. 批量删除
+
+使用资源表对象的 `BatchDelete` 方法可以批量删除指定文件：
+
+    resp = rs.BatchDelete(keysList)
+
+**示例**
+
+批量删除指定文件：
+
+    resp = rs.BatchDelete([key1, key2, key3, ..., keyN])
+
+**响应**
+
+    200 OK [
+        <Result1>, <Result2>, ...
+    ]
+    298 Partial OK [
+        <Result1>, <Result2>, ...
+    ]
+    <Result> 是 {
+        code: <HttpCode>,
+        data: <Data> 或 error: <ErrorMessage>
+    }
+
+当只有部分 keys 执行成功时，返回 298（PartialOK）。
+
