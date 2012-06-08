@@ -19,7 +19,7 @@ resp = rs.PutAuth()
 print '\n===> PutAuth %s result:' % uniqkey
 print resp
 
-resp = rscli.PutFile(resp['url'], tblName, uniqkey, '', __file__, 'CustomData', {'key': uniqkey})
+resp = rscli.PutFile(resp['url'], tblName, uniqkey, '', __file__, 'CustomData', {'key': uniqkey}, True)
 print '\n===> PutFile %s result:' % uniqkey
 print resp
 

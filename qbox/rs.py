@@ -93,3 +93,17 @@ class Service:
         url = config.RS_HOST + '/batch?' + opstr
         return self.Conn.Call(url)
 
+    def BatchGet(self, keys):
+        """
+         * func BatchGet(keys list) => Entries
+         * 批量下载
+        """
+        return self.Batch("get", keys)
+
+    def BatchDelete(self, keys):
+        """
+         * func BatchDelete(keys list) => Entries
+         * 批量删除
+        """
+        return self.Batch("delete", keys)
+
