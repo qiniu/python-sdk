@@ -5,46 +5,51 @@ import simpleoauth2
 import rs as qboxrs
 import rscli
 import config
+import time
 
 client = simpleoauth2.Client()
 client.ExchangeByPassword('test@qbox.net', 'test')
 
 tblName = 'tblName'
-key = 'rs_demo.py'
+uniqkey = 'test-file-uniqkey-%f' % time.time()
 
 rs = qboxrs.Service(client, tblName)
 
 resp = rs.PutAuth()
-print '\n===> PutAuth %s result:' % key
+print '\n===> PutAuth %s result:' % uniqkey
 print resp
 
-resp = rscli.PutFile(resp['url'], tblName, key, '', __file__, 'CustomData', {'key': key})
-print '\n===> PutFile %s result:' % key
+resp = rscli.PutFile(resp['url'], tblName, uniqkey, '', __file__, 'CustomData', {'key': uniqkey}, True)
+print '\n===> PutFile %s result:' % uniqkey
 print resp
 
 resp = rs.Publish(config.DEMO_DOMAIN + '/' + tblName)
 print '\n===> Publish result:'
 print resp
 
-resp = rs.Stat(key)
-print '\n===> Stat %s result:' % key
+resp = rs.Stat(uniqkey)
+print '\n===> Stat %s result:' % uniqkey
 print resp
 
-resp = rs.Get(key, key)
-print '\n===> Get %s result:' % key
+resp = rs.Get(uniqkey, uniqkey)
+print '\n===> Get %s result:' % uniqkey
 print resp
 
-resp = rs.GetIfNotModified(key, key, resp['hash'])
-print '\n===> GetIfNotModified %s result:' % key
+resp = rs.GetIfNotModified(uniqkey, uniqkey, resp['hash'])
+print '\n===> GetIfNotModified %s result:' % uniqkey
 print resp
 
-print '\n===> Display %s contents:' % key
+print '\n===> Display %s contents:' % uniqkey
 print urllib.urlopen(resp['url']).read()
 
-action=''
+resp = rs.Batch("get", [uniqkey])
+print '\n===> Batch Get %s result:' % uniqkey
+print resp
+
+action='delete'
 if action == 'delete':
-	resp = rs.Delete(key)
-	print '\n===> Delete %s result:' % key
+	resp = rs.Delete(uniqkey)
+	print '\n===> Delete %s result:' % uniqkey
 	print resp
 elif action == 'drop':
 	resp = rs.Drop()
