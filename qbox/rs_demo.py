@@ -2,15 +2,17 @@
 
 import urllib
 import simpleoauth2
+import digestoauth 
 import rs as qboxrs
 import rscli
 import config
 
-client = simpleoauth2.Client()
-client.ExchangeByPassword('test@qbox.net', 'test')
+#client = simpleoauth2.Client()
+#client.ExchangeByPassword('test@qbox.net', 'test')
+client = digestoauth.Client()
 
-tblName = 'tblName'
-key = 'rs_demo.py'
+tblName = 'tblName4'
+key = 'rs_demo.py4'
 
 rs = qboxrs.Service(client, tblName)
 

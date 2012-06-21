@@ -2,6 +2,7 @@
 
 import config
 import simpleoauth2
+import digestoauth
 from base64 import urlsafe_b64encode
 
 class Service:
