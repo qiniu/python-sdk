@@ -22,7 +22,7 @@ class Error(Exception):
 
 class Client(object):
 
-  def Call(self, url, _retries=0, _max_retries=1):
+  def Call(self, url):
     headers = {}
 
     digest = self.CheckSum(url)
@@ -36,7 +36,7 @@ class Client(object):
       raise Error('DigestOauthRequest.Call failed. Error was: %s %s' % (code, content))
     return json.loads(content)
 
-  def CallNoRet(self, url, _retries=0, _max_retries=1):
+  def CallNoRet(self, url):
     headers = {}
     digest = self.CheckSum(url)
     token = "%s:%s" % (config.KEY,digest)
