@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
 import urllib
-import simpleoauth2
 import digestoauth 
 import rs as qboxrs
 import rscli
 import config
+
+config.ACCESS_KEY = '<Please apply your access key>'
+config.SECRET_KEY = '<Dont send your secret key to anyone>'
+
+DEMO_DOMAIN = 'iovip.qbox.me/bucket'
 
 client = digestoauth.Client()
 
@@ -26,7 +30,7 @@ resp = rscli.PutFile(resp['url'], bucket, key, '', __file__, 'CustomData', {'key
 print '\n===> PutFile %s result:' % key
 print resp
 
-resp = rs.Publish(config.DEMO_DOMAIN + '/' + bucket)
+resp = rs.Publish(DEMO_DOMAIN)
 print '\n===> Publish result:'
 print resp
 
@@ -45,13 +49,7 @@ print resp
 print '\n===> Display %s contents:' % key
 print urllib.urlopen(resp['url']).read()
 
-action=''
-if action == 'delete':
-	resp = rs.Delete(key)
-	print '\n===> Delete %s result:' % key
-	print resp
-elif action == 'drop':
-	resp = rs.Drop()
-	print '\n===> Drop table result:'
-	print resp
+resp = rs.Delete(key)
+print '\n===> Delete %s result:' % key
+print resp
 
