@@ -4,12 +4,12 @@ import urllib
 import urllib2
 from base64 import urlsafe_b64encode
 
-def PutFile(url, tblName, key, mimeType, localFile, customMeta = '', callbackParams = ''):
+def PutFile(url, bucket, key, mimeType, localFile, customMeta = '', callbackParams = ''):
 
 	if mimeType == '':
 		mimeType = 'application/octet-stream'
 
-	entryURI = tblName + ':' + key
+	entryURI = bucket + ':' + key
 	action = '/rs-put/' + urlsafe_b64encode(entryURI) + '/mimeType/' + urlsafe_b64encode(mimeType)
 	if customMeta != '':
 		action += '/meta/' + urlsafe_b64encode(customMeta)
