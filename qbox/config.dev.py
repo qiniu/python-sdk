@@ -1,8 +1,8 @@
 #
 # OAuth2
 
-CLIENT_ID     = '<ClientId>'
-CLIENT_SECRET = '<ClientSecret>'
+ACCESS_KEY ="Please apply your access key"
+SECRET_KEY ="Dont send your secret key to anyone"
 
 REDIRECT_URI           = '<RedirectURL>'
 AUTHORIZATION_ENDPOINT = '<AuthURL>'
