@@ -5,19 +5,17 @@ import simpleoauth2
 import rs as qboxrs
 import rscli
 
-client = simpleoauth2.Client()
-client.ExchangeByPassword('test@qbox.net', 'test')
-
-tblName = 'tblName'
+client = digestoauth.Client()
+bucket = 'bucket'
 key = '2.jpg'
 
-rs = qboxrs.Service(client, tblName)
+rs = qboxrs.Service(client, bucket)
 
 resp = rs.PutAuth()
 print '\n===> PutAuth %s result:' % key
 print resp
 
-resp = rscli.PutFile(str(resp['url']), tblName, key, '', key)
+resp = rscli.PutFile(str(resp['url']), bucket, key, '', key)
 print '\n===> PutFile %s result:' % key
 print resp
 

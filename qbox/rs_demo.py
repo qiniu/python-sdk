@@ -7,24 +7,26 @@ import rs as qboxrs
 import rscli
 import config
 
-#client = simpleoauth2.Client()
-#client.ExchangeByPassword('test@qbox.net', 'test')
 client = digestoauth.Client()
 
-tblName = 'tblName4'
-key = 'rs_demo.py4'
+bucket = 'bucket'
+key = 'rs_demo.py'
 
-rs = qboxrs.Service(client, tblName)
+rs = qboxrs.Service(client, bucket)
+
+resp = rs.Drop()
+print '\n===> Drop %s result:' % key
+print resp
 
 resp = rs.PutAuth()
 print '\n===> PutAuth %s result:' % key
 print resp
 
-resp = rscli.PutFile(resp['url'], tblName, key, '', __file__, 'CustomData', {'key': key})
+resp = rscli.PutFile(resp['url'], bucket, key, '', __file__, 'CustomData', {'key': key})
 print '\n===> PutFile %s result:' % key
 print resp
 
-resp = rs.Publish(config.DEMO_DOMAIN + '/' + tblName)
+resp = rs.Publish(config.DEMO_DOMAIN + '/' + bucket)
 print '\n===> Publish result:'
 print resp
 

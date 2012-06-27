@@ -27,7 +27,7 @@ class Client(object):
     token: OAuth 2.0 token.
   """
 
-  def __init__(self, auth_url=config.AUTHORIZATION_ENDPOINT, token_url=config.TOKEN_ENDPOINT, client_id=config.CLIENT_ID, client_secret=config.CLIENT_SECRET):
+  def __init__(self, auth_url=config.AUTHORIZATION_ENDPOINT, token_url=config.TOKEN_ENDPOINT, client_id="a75604760c4da4caaa456c0c5895c061c3065c5a", client_secret="75df554a39f58accb7eb293b550fa59618674b7d"):
     self.auth_url = auth_url
     self.token_url = token_url
     self.client_id = client_id

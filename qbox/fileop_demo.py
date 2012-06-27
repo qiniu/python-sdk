@@ -5,13 +5,12 @@ import simpleoauth2
 import fileop
 import rs as qboxrs
 
-client = simpleoauth2.Client()
-client.ExchangeByPassword('test@qbox.net', 'test')
+client = digestoauth.Client()
 
-tblName = 'tblName'
+bucket = 'bucket'
 key = '2.jpg'
 
-rs = qboxrs.Service(client, tblName)
+rs = qboxrs.Service(client, bucket)
 
 resp = rs.Get(key, key)
 print '\n===> Get %s result:' % key

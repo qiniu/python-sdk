@@ -26,7 +26,7 @@ class Client(object):
     headers = {}
 
     digest = self.CheckSum(url)
-    token = "%s:%s" % (config.KEY,digest)
+    token = "%s:%s" % (config.ACCESS_KEY,digest)
     headers['Authorization'] = 'QBox %s' % (token)
     resp, content = httplib2.Http('').request(url, 'POST', '', headers=headers)
     
@@ -39,7 +39,7 @@ class Client(object):
   def CallNoRet(self, url):
     headers = {}
     digest = self.CheckSum(url)
-    token = "%s:%s" % (config.KEY,digest)
+    token = "%s:%s" % (config.ACCESS_KEY,digest)
     headers['Authorization'] = 'QBox %s' % (token)
     resp, content = httplib2.Http('').request(url, 'POST', '', headers=headers)
 
@@ -59,5 +59,5 @@ class Client(object):
 
     if params != None:
       pass
-    hashed = hmac.new(config.SECRET,data,sha1)
+    hashed = hmac.new(config.SECRET_KEY,data,sha1)
     return urlsafe_b64encode(hashed.digest()) 

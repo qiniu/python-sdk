@@ -11,9 +11,9 @@ class Service:
 	 * QBox 资源存储(键值对)。基本特性为：每个账户可创建多个表，每个表包含多个键值对(Key-Value对)，Key是任意的字符串，Value是一个文件。
 	"""
 
-	def __init__(self, conn, tblName = ''):
+	def __init__(self, conn, bucket = ''):
 		self.Conn = conn
-		self.TableName = tblName
+		self.TableName = bucket
 
 	def PutAuth(self):
 		"""
