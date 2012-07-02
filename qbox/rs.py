@@ -21,12 +21,12 @@ class Service:
 		url = config.IO_HOST + '/put-auth/'
 		return self.Conn.Call(url)
 
-	def PutAuthWithCb(self, expire, cbUrl):
+	def PutAuthEx(self, expires, cbUrl):
 		"""
-		 * func PutAuth() => PutAuthRet
+		 * func PutAuthEx(expires, callbackUrl) => PutAuthRet
 		 * 上传授权（生成一个短期有效的可匿名上传URL）
 		"""
-                url = config.IO_HOST + '/put-auth/' + str(expire) + '/callback/' + urlsafe_b64encode(cbUrl)
+                url = config.IO_HOST + '/put-auth/' + str(expires) + '/callback/' + urlsafe_b64encode(cbUrl)
 		return self.Conn.Call(url)
 
 	def Get(self, key, attName):
