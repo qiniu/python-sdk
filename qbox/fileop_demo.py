@@ -23,14 +23,14 @@ print "\n===> ImageInfo of %s:" % key
 print urllib.urlopen(urlImageInfo).read()
 
 urlImageSource = resp['url']
-opts = {
+opts = {	
 	"thumbnail":"!120x120r",
-    "gravity":"center",
-    "crop":"!120x120a0a0",
-    "quality":85,
-    "rotate":45,
-    "format":"jpg",
-    "auto_orient":True
+   	"gravity":"center",
+   	"crop":"!120x120a0a0",
+    	"quality":85,
+    	"rotate":45,
+    	"format":"jpg",
+    	"auto_orient":True
 }
 
 mogrifyPreviewURL = fileop.ImageMogrifyPreviewURL(urlImageSource, opts)

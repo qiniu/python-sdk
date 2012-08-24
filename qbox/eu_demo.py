@@ -21,11 +21,11 @@ rs.SetStyle("gmiddle", "imageView/0/w/256/h/256/watermark/1")
 rs.SetStyle("glarge", "imageView/0/w/512/h/512/wartermark/1")
 
 wm = eu.Service(client)
-template = {"text":"hello",
-			"dx":1,
-			"dy":19,
-			"bucket":bucket
-		}	
+template = {	"text":"hello",
+	    	"dx":1,
+		"dy":19,
+		"bucket":bucket
+	}	
 wm.SetWatermark(customer, template)
 
 uptoken = uptoken.UploadToken(bucket, 3600, "", "", customer).generate_token()
