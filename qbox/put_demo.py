@@ -4,22 +4,21 @@ import urllib
 import simpleoauth2
 import rs as qboxrs
 import rscli
+import digestoauth
+import uptoken
 
 client = digestoauth.Client()
 bucket = 'bucket'
-key = '2.jpg'
+key = 'demo.jpg'
+customer = 'boy'
 
 rs = qboxrs.Service(client, bucket)
 
-resp = rs.PutAuth()
-print '\n===> PutAuth %s result:' % key
-print resp
-
-resp = rscli.PutFile(str(resp['url']), bucket, key, '', key)
-print '\n===> PutFile %s result:' % key
+uptoken = uptoken.UploadToken(bucket, 3600, "", "", customer).generate_token()
+resp = rscli.UploadFile(bucket, key, 'image/jpg', '/home/ygao/demo.jpg', '', '', uptoken)
+print '\n===> UploadFile %s result:' % key
 print resp
 
 resp = rs.Stat(key)
 print '\n===> Stat %s result:' % key
 print resp
-

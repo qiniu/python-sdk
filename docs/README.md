@@ -19,15 +19,26 @@ SDK下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/
 - [新建资源表](#rs-NewService)
 - [获得上传授权](#rs-PutAuth)
 - [上传文件](#rs-PutFile)
+    - [获取用于上传文件的临时授权凭证](#token)
+    - [服务端上传文件](#putfile)
+    - [客户端直传文件](#enputfile)
 - [获取已上传文件信息](#rs-Stat)
 - [下载文件](#rs-Get)
 - [发布公开资源](#rs-Publish)
 - [取消资源发布](#rs-Unpublish)
 - [删除已上传的文件](#rs-Delete)
-- [删除整张资源表](#rs-Drop)
+- [资源表管理](#rs-buckets)
+    - [创建一张新资源表](#rs-Mkbucket)
+    - [列出所有资源表](#rs-Buckets)
+    - [删除整张资源表](#rs-Drop)
 - [资源表批量操作接口](#rs-Batch)
-- [批量下载](#rs-BatchGet)
-- [批量删除](#rs-BatchDelete)
+    - [批量下载](#rs-BatchGet)
+    - [批量删除](#rs-BatchDelete)
+
+**图像处理接口**
+
+
+
 
 ## 应用接入
 
@@ -63,32 +74,20 @@ SDK下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/
 
 <a name="rs-NewService"></a>
 
-### 1. 新建资源表
+### 1. 初始化并新建资源表
 
 新建资源表的意义在于，您可以将所有上传的资源分布式加密存储在七牛云存储服务端后还能保持相应的完整映射索引。
 
 新建一份资源表，您只需在登录授权后实例化一个 digestoauth.Client() 即可，代码如下：
 
-	client = digestoauth.Client()
+    client = digestoauth.Client()
     bucket = 'bucket'
     rs = qboxrs.Service(client, bucket)
 
 
-<a name="rs-PutAuth"></a>
-
-### 2. 获得上传授权
-
-建完资源表，在上传文件并和该资源表建立关联之前，还需要取得上传授权。所谓上传授权，就是获得一个可匿名直传的且离客户端应用程序最近的一个云存储节点的临时有效URL。
-要取得上传授权，只需调用已经实例化好的资源表对象的 PutAuth() 方法。实例代码如下：
-
-    resp = rs.PutAuth()
-
-
-如果请求成功，putAuthRet 会包含 url 和 expires_in 两个字段。url 字段对应的值为匿名上传的临时URL，expires_in 对应的值则是该临时URL的有效期。
-
 <a name="rs-PutFile"></a>
 
-### 3. 上传文件
+### 2. 上传文件
 
 一旦建立好资源表和取得上传授权，就可以开始上传文件了。只需调用sdk提供的 PutFile() 方法即可。示例代码如下：
 
@@ -96,10 +95,73 @@ SDK下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/
 
 最后一个参数值为 `True` 表示针对该文件上传启用 crc32 数据校验，该值默认是 `False` 。
 
+<a name="token"></a>
+
+####(1).获取用于上传文件的临时授权凭证
+
+要上传一个文件，首先需要调用 SDK 提供的 generate_token 函数来获取一个经过授权用于临时匿名上传的 uploadtoken——经过数字签名的一组数据信息，该 uploadtoken 作为文件上传流中 multipart/form-data 的一部分进行传输。
+
+生成uptoken如下：
+
+    import uptoken
+    tokenObj = uptoken.UploadToken(bucket, 3600, "", "", "enduser")
+    uploadtoken = tokenObj.generate_token()
+
+UploadToken 初始化各字段如下：
+
+    scope              => target_bucket,
+    expires_in         => expires_in_seconds,
+    callback_url       => callback_url,
+    callback_bodytype => callback_body_type,
+    customer           => end_user_id,
+
+含义：
+    
+   scope : 必须，字符串类型（String），设定文件要上传到的目标 bucket。
+
+   expires_in : 可选，数字类型，用于设置上传 URL 的有效期，单位：秒，缺省为 3600 秒，即 1 小时后该上传链接不再有效（但该上传URL在其生成之后的59分59秒都是可用的）。
+
+   callback_url : 可选，字符串类型（String），用于设置文件上传成功后，七牛云存储服务端要回调客户方的业务服务器地址。
+
+   callback_bodytype : 可选，字符串类型（String），用于设置文件上传成功后，七牛云存储服务端向客户方的业务服务器发送回调请求的 Content-Type。
+
+   customer : 可选，字符串类型（String），客户方终端用户（End User）的ID，该字段可以用来标示一个文件的属主，这在一些特殊场景下（比如给终端用户上传的图片打上名字水印）非常有用。
+
+<a name="putfile"></a>
+
+####(2).服务端上传文件
+
+PutFile() 方法可在客户方的业务服务器上直接往七牛云存储上传文件。该函数规格如下：
+    
+    import rscli
+    resp = rscli.PutFile(bucket, key, 'image/jpg', '~/test.jpg', '', '', uploadtoken)
+
+PutFile() 参数如下：
+
+    bucket             => bucket_name,
+    key		=> record_id,
+    mimeType	=> file_mime_type,
+    localFile	=> file_path,
+    customMeta	=> custom_meta,
+    callbackParams 	=> callback_params,
+    upToken		=> uploadtoken,
+
+<a name="enputfile"></a>
+
+####(3).客户端直传文件
+
+客户端上传流程和服务端上传类似，差别在于：客户端直传文件所需的 `upload_token` 可以选择在客户方的业务服务器端生成，也可以选择在客户方的客户端程序里边生成。选择前者，可以和客户方的业务揉合得更紧密和安全些，比如防伪造请求。
+
+简单来讲，客户端上传流程也分为两步：
+
+1. 获取 `upload_token`（[用于上传文件的临时授权凭证](#generate-upload-token)）
+2. 将该 `upload_token` 作为文件上传流 `multipart/form-data` 中的一部分实现上传操作
+
+如果您的网络程序是从云端（服务端程序）到终端（手持设备应用）的架构模型，且终端用户有使用您移动端App上传文件（比如照片或视频）的需求，可以把您服务器得到的此 `upload_token` 返回给手持设备端的App，然后您的移动 App 可以使用 [七牛云存储 Objective-SDK （iOS）](http://docs.qiniutek.com/v2/sdk/objc/) 或 [七牛云存储 Android-SDK](http://docs.qiniutek.com/v2/sdk/android/) 的相关上传函数或参照 [七牛云存储API之文件上传](http://docs.qiniutek.com/v2/api/io/#upload) 直传文件。这样，您的终端用户即可把数据（比如图片或视频）直接上传到七牛云存储服务器上无须经由您的服务端中转，而且在上传之前，七牛云存储做了智能加速，终端用户上传数据始终是离他物理距离最近的存储节点。当终端用户上传成功后，七牛云存储服务端会向您指定的 `callback_url` 发送回调数据。如果 `callback_url` 所在的服务处理完毕后输出 `JSON` 格式的数据，七牛云存储服务端会将该回调请求所得的响应信息原封不动地返回给终端应用程序。
 
 <a name="rs-Stat"></a>
 
-### 4. 获取已上传文件信息
+### 3. 获取已上传文件信息
 
 您可以调用资源表对象的 Stat() 方法并传入一个 Key（类似ID）来获取指定文件的相关信息。
 
@@ -116,7 +178,7 @@ SDK下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/
 
 <a name="rs-Get"></a>
 
-### 5. 下载文件
+### 4. 下载文件
 
 要下载一个文件，首先需要取得下载授权，所谓下载授权，就是取得一个临时合法有效的下载链接，只需调用资源表对象的 Get() 方法并传入相应的 文件ID 和下载要保存的文件名 作为参数即可。示例代码如下：
 
@@ -140,7 +202,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-Publish"></a>
 
-### 6. 发布公开资源
+### 5. 发布公开资源
 
 使用七牛云存储提供的资源发布功能，您可以将一个资源表里边的所有文件以静态链接可访问的方式公开发布到您自己的域名下。
 要公开发布一个资源表里边的所有文件，只需调用改资源表对象的 Publish() 方法并传入 域名 作为参数即可。如下示例：
@@ -153,7 +215,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-Unpublish"></a>
 
-### 7. 取消资源发布
+### 6. 取消资源发布
 
 调用资源表对象的 Unpublish() 方法可取消该资源表内所有文件的静态外链。
 
@@ -161,25 +223,46 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-Delete"></a>
 
-### 8. 删除已上传的文件
+### 7. 删除已上传的文件
 
 要删除指定的文件，只需调用资源表对象的 Delete() 方法并传入 文件ID（key）作为参数即可。如下示例代码：
 
     resp = rs.Delete(key)
 
+<a name="rs-buckets">
+
+### 8.资源表管理
+
+<a name="rs-Mkbucket"></a>
+
+#### (1).创建一张新资源表
+
+可以通过 SDK 提供的 `Mkbucket` 函数创建一个 bucket（资源表）。
+
+    resp = rs.Mkbucket()
+
+<a name="rs-Buckets"></a>
+
+#### (2).列出所有资源表
+
+可以通过 SDK 提供的 `Buckets` 列出所有 bucket（资源表）。
+
+    resp = rs.Buckets()
+
 <a name="rs-Drop"></a>
 
-### 9. 删除整张资源表
+
+#### (3). 删除整张资源表
 
 要删除整个资源表及该表里边的所有文件，可以调用资源表对象的 Drop() 方法。
-需慎重，这会删除整个表及其所有文件
+需慎重，这会删除整个表及其所有文件。
 
     resp = rs.Drop()
 
 
 <a name="rs-Batch"></a>
 
-### 10. 资源表批量操作接口
+### 9. 资源表批量操作接口
 
 通过指定的操作行为名称，以及传入的一组 keys，可以达到批量处理的功能。
 
@@ -217,7 +300,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-BatchGet"></a>
 
-### 11. 批量下载
+#### (1). 批量下载
 
 使用资源表对象的 `BatchGet` 方法可以批量取得下载链接：
 
@@ -247,7 +330,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-BatchDelete"></a>
 
-### 12. 批量删除
+#### (2). 批量删除
 
 使用资源表对象的 `BatchDelete` 方法可以批量删除指定文件：
 
