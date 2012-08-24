@@ -5,7 +5,7 @@ import fileop
 from base64 import urlsafe_b64encode
 
 class Service:
-        """
+	"""
 	 * QBox Resource Storage (Key-Value) Service
 	 * QBox 资源存储(键值对)。基本特性为：每个账户可创建多个表，每个表包含多个键值对(Key-Value对)，Key是任意的字符串，Value是一个文件。
 	"""
@@ -27,7 +27,7 @@ class Service:
 		 * func PutAuthEx(expires, callbackUrl) => PutAuthRet
 		 * 上传授权（生成一个短期有效的可匿名上传URL）
 		"""
-	        url = config.IO_HOST + '/put-auth/' + str(expires) + '/callback/' + urlsafe_b64encode(cbUrl)
+		url = config.IO_HOST + '/put-auth/' + str(expires) + '/callback/' + urlsafe_b64encode(cbUrl)
 		return self.Conn.Call(url)
 
 	def Get(self, key, attName):
