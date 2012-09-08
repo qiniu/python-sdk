@@ -1,15 +1,19 @@
 #!/usr/bin/env python
 
+import config
 import digestoauth
 import rscli
 import rs as qboxrs
 import uptoken
 import eu
 
-bucket = 'book'
-key = 'demo.jpg'
-customer = 'boy'
-demo_domain = 'book.dn.qbox.me'
+config.ACCESS_KEY = '<Please apply your access key>'
+config.SECRET_KEY = '<Dont send your secret key to anyone>'
+
+bucket = 'test_photos'
+key = 'test.jpg'
+customer = 'end_user_id'
+demo_domain = 'test_photos1.dn.qbox.me'
 
 client = digestoauth.Client()
 rs = qboxrs.Service(client, bucket)
@@ -21,14 +25,23 @@ rs.SetStyle("gmiddle", "imageView/0/w/256/h/256/watermark/1")
 rs.SetStyle("glarge", "imageView/0/w/512/h/512/wartermark/1")
 
 wm = eu.Service(client)
-template = {	"text":"hello",
-	    	"dx":1,
-		"dy":19,
-		"bucket":bucket
-	}	
-wm.SetWatermark(customer, template)
+template = {"text":"hello", "dx":1, "dy":19, "bucket":bucket}
+resp = wm.SetWatermark(customer, template)
+print '\n===> SetWatermark %s result:' % customer
+print resp
 
-uptoken = uptoken.UploadToken(bucket, 3600, "", "", customer).generate_token()
-resp = rscli.UploadFile(bucket, key, 'image/jpg', '/home/ygao/demo.jpg', '', '', uptoken)
+tokenObj = uptoken.UploadToken(bucket, 3600, "", "", customer)
+uploadToken = tokenObj.generate_token()
+print "Upload Token is: %s" % uploadToken
 
-rs.Publish(demo_domain)
+resp = rscli.UploadFile(bucket, key, 'image/jpg', key, '', '', uploadToken)
+print '\n===> UploadFile %s result:' % key
+print resp
+
+resp = rs.Publish(demo_domain)
+print '\n===> Publish Domain %s result:' % demo_domain
+print resp
+
+resp = rs.Unpublish(demo_domain)
+print '\n===> Unpublish Domain %s result:' % demo_domain
+print resp

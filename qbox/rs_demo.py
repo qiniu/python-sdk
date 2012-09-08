@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
+import config
 import urllib
-import digestoauth 
+import digestoauth
 import rs as qboxrs
 import rscli
 import config
@@ -10,21 +11,24 @@ import uptoken
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
 
-DEMO_DOMAIN = 'book.dn.qbox.me'
+DEMO_DOMAIN = 'test_photos2.dn.qbox.me'
 
-client = digestoauth.Client()
+bucket = 'test_photos'
+newbucket = "new_test_bucket"
+key = 'test.jpg'
+customer = 'end_user_id'
 
-bucket = 'bucket'
-newbucket = "newbucket"
-key = 'demo.jpg'
-customer = "boy"
+tokenObj = uptoken.UploadToken(bucket, 3600, "", "", customer)
+uploadToken = tokenObj.generate_token()
+print "Upload Token is: %s" % uploadToken
 
-rs = qboxrs.Service(client, bucket)
-
-uptoken = uptoken.UploadToken(bucket, 3600, "", "", customer).generate_token()
-resp = rscli.UploadFile(bucket, key, 'image/jpg', '/home/ygao/demo.jpg', '', '', uptoken)
+resp = rscli.UploadFile(bucket, key, 'image/jpg', key, '', '', uploadToken)
 print '\n===> UploadFile %s result:' % key
 print resp
+
+
+client = digestoauth.Client()
+rs = qboxrs.Service(client, bucket)
 
 resp = rs.Publish(DEMO_DOMAIN)
 print '\n===> Publish result:'
@@ -42,8 +46,8 @@ resp = rs.GetIfNotModified(key, key, resp['hash'])
 print '\n===> GetIfNotModified %s result:' % key
 print resp
 
-print '\n===> Display %s contents:' % key
-print urllib.urlopen(resp['url']).read()
+# print '\n===> Display %s contents:' % key
+# print urllib.urlopen(resp['url']).read()
 
 resp = rs.Delete(key)
 print '\n===> Delete %s result:' % key
@@ -59,4 +63,8 @@ print resp
 
 resp = rs.Drop(newbucket)
 print '\n===> Drop %s result:' % newbucket
+print resp
+
+resp = rs.Unpublish(DEMO_DOMAIN)
+print '\n===> Unpublish Domain %s result:' % DEMO_DOMAIN
 print resp

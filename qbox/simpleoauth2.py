@@ -1,3 +1,5 @@
+# -*- encoding: utf-8 -*-
+
 """A simple client library to work with OAuth 2.0 APIs."""
 
 __author__ = 'stevenle08@gmail.com (Steven Le); xushiwei@qbox.net'
