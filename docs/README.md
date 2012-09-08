@@ -7,7 +7,9 @@ title: Python 2.x SDK | 七牛云存储
 
 此 SDK 适用于 Python 2.x 版本
 
-SDK下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags)
+SDK 下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags)
+
+SDK 使用依赖Python第三方HTTP CLient -- [httplib2](http://code.google.com/p/httplib2/)
 
 **应用接入**
 
@@ -49,7 +51,7 @@ SDK下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/
 要接入七牛云存储，您需要拥有一对有效的 Access Key 和 Secret Key 用来进行签名认证。可以通过如下步骤获得：
 
 1. [开通七牛开发者帐号](https://dev.qiniutek.com/signup)
-2. [登录七牛开发者自助平台，查看 Access Key 和 Secret Key](https://dev.qiniutek.com/account/keys) 
+2. [登录七牛开发者自助平台，查看 Access Key 和 Secret Key](https://dev.qiniutek.com/account/keys)
 
 <a name="acc-login"></a>
 
@@ -57,17 +59,13 @@ SDK下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/
 
 首先，到 [https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags) 下载SDK源码。
 
-然后，您可以解压 SDK 包后进入到 qbox/ 目录，选择和修改应用接入所需要使用的配置文件。在 qbox/ 目录中，您可以看到已经存在的1个配置文件，config.pro.py，对应七牛云存储正式线上环境。您可以根据实际需要以此为模板新建或者链接一个名为 config.py 的文件即可，例如：
+然后，您可以解压 SDK 包后将其放入您项目工程相应的目录中。在引入 SDK 里边的文件后，您需要修改下配置项：
 
-    cd ./qbox
-    ln -s config.pro.py config.py # 或 cp config.pro.py config.py
+    import config
 
-然后，您可以根据实际情况修改 config.py 文件里边的密钥信息（Access Key 和 Secret Key）.
-找到并修改如下两行代码：
+    config.ACCESS_KEY = '<Please apply your access key>'
+    config.SECRET_KEY = '<Dont send your secret key to anyone>'
 
-	ACCESS_KEY ="Please apply your access key"
-	SECRET_KEY ="Dont send your secret key to anyone"
-    
 在完成 Access Key 和 Secret Key 配置后，您就可以正常使用该 SDK 提供的功能了，这些功能接下来会一一介绍。
 
 ## 云存储接口
@@ -97,67 +95,82 @@ SDK下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/
 
 <a name="token"></a>
 
-####(1).获取用于上传文件的临时授权凭证
+#### (1). 获取用于上传文件的临时授权凭证
 
 要上传一个文件，首先需要调用 SDK 提供的 generate_token 函数来获取一个经过授权用于临时匿名上传的 uploadtoken——经过数字签名的一组数据信息，该 uploadtoken 作为文件上传流中 multipart/form-data 的一部分进行传输。
 
 生成uptoken如下：
 
     import uptoken
-    tokenObj = uptoken.UploadToken(bucket, 3600, "", "", "enduser")
+    tokenObj = uptoken.UploadToken(scope, expires_in, callback_url, callback_bodytype, customer)
     uploadtoken = tokenObj.generate_token()
 
-UploadToken 初始化各字段如下：
+UploadToken 初始化各参数含义如下：
 
-    scope              => target_bucket,
-    expires_in         => expires_in_seconds,
-    callback_url       => callback_url,
-    callback_bodytype => callback_body_type,
-    customer           => end_user_id,
+**scope**
+: 必须，字符串类型（String），设定文件要上传到的目标 bucket。
 
-含义：
-    
-   scope : 必须，字符串类型（String），设定文件要上传到的目标 bucket。
+**expires_in**
+: 可选，数字类型，用于设置上传 URL 的有效期，单位：秒，缺省为 3600 秒，即 1 小时后该上传链接不再有效（但该上传URL在其生成之后的59分59秒都是可用的）。
 
-   expires_in : 可选，数字类型，用于设置上传 URL 的有效期，单位：秒，缺省为 3600 秒，即 1 小时后该上传链接不再有效（但该上传URL在其生成之后的59分59秒都是可用的）。
+**callback_url**
+: 可选，字符串类型（String），用于设置文件上传成功后，七牛云存储服务端要回调客户方的业务服务器地址。
 
-   callback_url : 可选，字符串类型（String），用于设置文件上传成功后，七牛云存储服务端要回调客户方的业务服务器地址。
+**callback_bodytype**
+: 可选，字符串类型（String），用于设置文件上传成功后，七牛云存储服务端向客户方的业务服务器发送回调请求的 Content-Type。
 
-   callback_bodytype : 可选，字符串类型（String），用于设置文件上传成功后，七牛云存储服务端向客户方的业务服务器发送回调请求的 Content-Type。
+**customer**
+: 可选，字符串类型（String），客户方终端用户（End User）的ID，该字段可以用来标示一个文件的属主，这在一些特殊场景下（比如给终端用户上传的图片打上名字水印）非常有用。
 
-   customer : 可选，字符串类型（String），客户方终端用户（End User）的ID，该字段可以用来标示一个文件的属主，这在一些特殊场景下（比如给终端用户上传的图片打上名字水印）非常有用。
 
 <a name="putfile"></a>
 
-####(2).服务端上传文件
+#### (2). 服务端上传文件
 
 PutFile() 方法可在客户方的业务服务器上直接往七牛云存储上传文件。该函数规格如下：
-    
+
     import rscli
-    resp = rscli.PutFile(bucket, key, 'image/jpg', '~/test.jpg', '', '', uploadtoken)
+    resp = rscli.UploadFile(bucket, key, mimeType, localFile, customMeta, callbackParams, uploadToken)
 
-PutFile() 参数如下：
+PutFile() 参数含义如下：
 
-    bucket             => bucket_name,
-    key		=> record_id,
-    mimeType	=> file_mime_type,
-    localFile	=> file_path,
-    customMeta	=> custom_meta,
-    callbackParams 	=> callback_params,
-    upToken		=> uploadtoken,
+    bucket          // 要上传到的目标 bucket 名称
+    key		        // 设置文件唯一标识
+    mimeType	    // 资源类型，文件的 MIME TYPE，比如 jpg 图片可以是 'image/jpg'
+    localFile	    // 本地文件路径，最好是完整的绝对路径
+    customMeta	    // 自定义描述信息
+    callbackParams 	// 回调参数，格式: "k1=v1&k2=v2&k3=v3..."
+    uploadToken		// 此次上传的授权凭证
 
 <a name="enputfile"></a>
 
-####(3).客户端直传文件
+#### (3). 客户端直传文件
 
 客户端上传流程和服务端上传类似，差别在于：客户端直传文件所需的 `upload_token` 可以选择在客户方的业务服务器端生成，也可以选择在客户方的客户端程序里边生成。选择前者，可以和客户方的业务揉合得更紧密和安全些，比如防伪造请求。
 
 简单来讲，客户端上传流程也分为两步：
 
-1. 获取 `upload_token`（[用于上传文件的临时授权凭证](#generate-upload-token)）
-2. 将该 `upload_token` 作为文件上传流 `multipart/form-data` 中的一部分实现上传操作
+1. 生成 `uploadToken`（[用于上传文件的临时授权凭证](#generate-upload-token)）
+2. 将该 `uploadToken` 作为文件上传流 `multipart/form-data` 中的一部分实现上传操作
 
-如果您的网络程序是从云端（服务端程序）到终端（手持设备应用）的架构模型，且终端用户有使用您移动端App上传文件（比如照片或视频）的需求，可以把您服务器得到的此 `upload_token` 返回给手持设备端的App，然后您的移动 App 可以使用 [七牛云存储 Objective-SDK （iOS）](http://docs.qiniutek.com/v2/sdk/objc/) 或 [七牛云存储 Android-SDK](http://docs.qiniutek.com/v2/sdk/android/) 的相关上传函数或参照 [七牛云存储API之文件上传](http://docs.qiniutek.com/v2/api/io/#upload) 直传文件。这样，您的终端用户即可把数据（比如图片或视频）直接上传到七牛云存储服务器上无须经由您的服务端中转，而且在上传之前，七牛云存储做了智能加速，终端用户上传数据始终是离他物理距离最近的存储节点。当终端用户上传成功后，七牛云存储服务端会向您指定的 `callback_url` 发送回调数据。如果 `callback_url` 所在的服务处理完毕后输出 `JSON` 格式的数据，七牛云存储服务端会将该回调请求所得的响应信息原封不动地返回给终端应用程序。
+如果您的网络程序是从云端（服务端程序）到终端（手持设备应用）的架构模型，且终端用户有使用您移动端App上传文件（比如照片或视频）的需求，可以把您服务器得到的此 `upload_token` 返回给手持设备端的App，然后您的移动 App 可以使用 [七牛云存储 Objective-SDK （iOS）](http://docs.qiniutek.com/v3/sdk/objc/) 或 [七牛云存储 Android-SDK](http://docs.qiniutek.com/v3/sdk/android/) 的相关上传函数或参照 [七牛云存储API之文件上传](http://docs.qiniutek.com/v3/api/io/#upload) 直传文件。这样，您的终端用户即可把数据（比如图片或视频）直接上传到七牛云存储服务器上无须经由您的服务端中转，而且在上传之前，七牛云存储做了智能加速，终端用户上传数据始终是离他物理距离最近的存储节点。当终端用户上传成功后，七牛云存储服务端会向您指定的 `callback_url` 发送回调数据。如果 `callback_url` 所在的服务处理完毕后输出 `JSON` 格式的数据，七牛云存储服务端会将该回调请求所得的响应信息原封不动地返回给终端应用程序。
+
+#### (4). 示例——网页直传文件
+
+网页上传文件，需要满足如下 HTML Form 规格：
+
+    <form method="post" enctype="multipart/form-data" action="http://up.qbox.me/upload">
+      <input type="hidden" name="action" value="/rs-put/{urlsafe_b64encode({bucket}:{key})}" />
+      <input type="hidden" name="params" value="bucket={bucket}&key={key}&k1=v1&k2=v2&k3=v3&..." />
+      <input type="hidden" name="auth" value="{uploadToken}" />
+      <input type="file" name="file" />
+      <input type="hidden" name="return_url" value="http://DOMAIN/PATH?QUERY_STRING" />
+      <input type="submit" value="Upload File" />
+    </form>
+
+如上表单结构，其中 `return_url` 字段非必须。倘若有入 `return_url` 字段，七牛云存储会在文件上传成功后执行301跳转，跳转的 URL 即 `return_url` 指定的文本值。七牛云存储执行 301 跳转不影响回调请求的进行，若生成 `uploadToken` 的过程中有指定 `callback_url` 参数，那么回调同样会执行，回调请求POST发送的参数即上述 HTML Form 结构中 `params` 字段指定的值。
+
+以上 HTML Form 结构只满足单个文件上传，大多数时候我们在网页中会用到批量上传，比如使用 `SWFUpload` 或 `jQuery-Ajax-File-Upload` 批量上传组件。使用这些批量上传组件，只需在文件上传前的虚拟Form中动态插入如上 HTML Form 结构中相应的字段即可，`return_url` 除外。关于网页批直传文件的更多细节，您可以向我们的技术支持工程师获得更详细的帮助。
 
 <a name="rs-Stat"></a>
 
@@ -182,7 +195,7 @@ PutFile() 参数如下：
 
 要下载一个文件，首先需要取得下载授权，所谓下载授权，就是取得一个临时合法有效的下载链接，只需调用资源表对象的 Get() 方法并传入相应的 文件ID 和下载要保存的文件名 作为参数即可。示例代码如下：
 
-    resp = rs.Get(key, key)
+    resp = rs.Get(key, saveAsFriendlyName)
 
 
 注意，这并不会直接将文件下载并命名为一个 example.jpg 的文件。当请求执行成功，Get() 方法返回的 getRet 变量将会包含如下字段：
@@ -196,7 +209,7 @@ PutFile() 参数如下：
 
 这里所说的断点续传指断点续下载，所谓断点续下载，就是已经下载的部分不用下载，只下载基于某个“游标”之后的那部分文件内容。相对于资源表对象的 Get() 方法，调用断点续下载方法 GetIfNotModified() 需额外再传入一个 $baseVersion 的参数作为下载的内容起点。示例代码如下：
 
-    resp = rs.GetIfNotModified(key, key, resp['hash'])
+    resp = rs.GetIfNotModified(key, saveAsFriendlyName, resp['hash'])
 
 GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
@@ -209,9 +222,9 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
     resp = rs.Publish(YOUR_DOMAIN)
 
-注意：需要到您的域名管理中心将 YOUR_DOMAIN CNAME 到 iovip.qbox.me
+注意：需要到您的域名管理中心将 `YOUR_DOMAIN` CNAME 到 iovip.qbox.me
 
-如果还没有您自己的域名，可将 YOUR_DOMAIN 改成 iovip.qbox.me/bucket 供临时测试使用。
+如果还没有您自己的域名，可将 YOUR_DOMAIN 改成 `<bucketName>.dn.qbox.me` 供临时测试使用。
 
 <a name="rs-Unpublish"></a>
 

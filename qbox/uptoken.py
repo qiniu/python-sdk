@@ -19,7 +19,7 @@ class UploadToken(object):
             'expires_in':expires_in,
             'callback_url':callback_url,
             'callback_bodytype':callback_bodytype,
-            'customer':customer            
+            'customer':customer
         }
 
     def set(self, key, val):
@@ -32,21 +32,18 @@ class UploadToken(object):
         return val
 
     def generate_signature(self):
-        params = {  "scope": self.get("scope"), 
-                    "deadline": int(time.time()+self.get("expires_in"))
-                }
-
+        params = {"scope": self.get("scope"), "deadline": int(time.time()+self.get("expires_in"))}
         callback_url = self.get("callback_url")
         if (callback_url != ""):
             params["callbackUrl"] = callback_url
 
-        callback_bodytype = self.get("callback_bodytype")    
+        callback_bodytype = self.get("callback_bodytype")
         if (callback_bodytype != ""):
             params["callbackBodyType"] = callback_bodytype
-        
+
         customer = self.get("customer")
         if (customer != ""):
-            params["customer"] = customer    
+            params["customer"] = customer
 
         return urlsafe_b64encode(json.dumps(params))
 

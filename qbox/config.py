@@ -1,6 +1,4 @@
 #
-# OAuth2
-
 ACCESS_KEY = '<Please apply your access key>'
 SECRET_KEY = '<Dont send your secret key to anyone>'
 
