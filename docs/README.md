@@ -81,8 +81,10 @@ TODO
 
     resp = rs.Mkbucket(BucketName)
 
+**参数**
+
 **BucketName**
-: 必填，字符串（String）类型，空间名称，不能还有特殊字符。　
+: 必填，字符串（String）类型，空间名称，不能含有特殊字符。　
 
 <a name="rs-PutFile"></a>
 
