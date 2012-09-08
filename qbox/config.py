@@ -14,6 +14,7 @@ TOKEN_ENDPOINT         = 'https://acc.qbox.me/oauth2/token'
 PUT_TIMEOUT = 300000 # 300s = 5m
 
 IO_HOST = 'http://iovip.qbox.me'
-FS_HOST = 'https://fs.qbox.me'
+UP_HOST = 'http://up.qbox.me'
 RS_HOST = 'http://rs.qbox.me:10100'
-
+EU_HOST = 'http://eu.qbox.me'
+PUB_HOST = 'http://pu.qbox.me:10200'

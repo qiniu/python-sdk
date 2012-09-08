@@ -6,6 +6,7 @@ __author__ = 'stevenle08@gmail.com (Steven Le); xushiwei@qbox.net'
 import config
 import httplib2
 import hmac
+import urllib
 from urlparse import urlparse
 from hashlib import sha1
 from base64 import urlsafe_b64encode
@@ -28,13 +29,14 @@ class Client(object):
     digest = self.CheckSum(url)
     token = "%s:%s" % (config.ACCESS_KEY,digest)
     headers['Authorization'] = 'QBox %s' % (token)
-    resp, content = httplib2.Http('').request(url, 'POST', '', headers=headers)
-    
+    resp, content = httplib2.Http('').request(url, 'POST', '', headers=headers)    
 
     code = resp['status']
     if code != '200':
       raise Error('DigestOauthRequest.Call failed. Error was: %s %s' % (code, content))
-    return json.loads(content)
+    if len(content) != 0:
+      return json.loads(content)
+    return True
 
   def CallNoRet(self, url):
     headers = {}
@@ -58,6 +60,28 @@ class Client(object):
     data = ''.join([data,"\n"])
 
     if params != None:
-      pass
+      data = ''.join([data,params])
+
     hashed = hmac.new(config.SECRET_KEY,data,sha1)
     return urlsafe_b64encode(hashed.digest()) 
+
+  def CallWithForm(self, url, params):
+    headers = {}
+
+    msg = urllib.urlencode(params)
+
+    digest = self.CheckSum(url, msg)
+    token = "%s:%s" % (config.ACCESS_KEY,digest)
+
+    headers['Authorization'] = 'QBox %s' % (token)
+    headers["Content-Type"] = "application/x-www-form-urlencoded"
+
+    resp, content = httplib2.Http('').request(url, 'POST', msg, headers=headers)    
+
+    code = resp['status']
+    if code != '200':
+      raise Error('DigestOauthRequest.Call failed. Error was: %s %s' % (code, content))
+
+    if len(content) != 0:
+      return json.loads(content)
+    return True

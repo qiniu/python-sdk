@@ -4,11 +4,13 @@ import urllib
 import simpleoauth2
 import fileop
 import rs as qboxrs
+import digestoauth
 
 client = digestoauth.Client()
 
-bucket = 'bucket'
-key = '2.jpg'
+bucket = 'book'
+key = 'test.jpg'
+targetKey = 'cropped-' + key
 
 rs = qboxrs.Service(client, bucket)
 
@@ -17,16 +19,25 @@ print '\n===> Get %s result:' % key
 print resp
 
 urlImageInfo = fileop.ImageInfoURL(resp['url'])
-
-print "\n===> ImageInfo of %s:\n" % key
+print "\n===> ImageInfo of %s:" % key
 print urllib.urlopen(urlImageInfo).read()
-print
 
-urlImagePreview = fileop.Image90x90URL(resp['url'])
+urlImageSource = resp['url']
+opts = {	
+	"thumbnail":"!120x120r",
+   	"gravity":"center",
+   	"crop":"!120x120a0a0",
+    	"quality":85,
+    	"rotate":45,
+    	"format":"jpg",
+    	"auto_orient":True
+}
 
-print "\n===> ImagePreview of %s:\n" % key
-f = open("2.preview.jpg", "w")
-f.write(urllib.urlopen(urlImagePreview).read())
-f.close()
-print
+mogrifyPreviewURL = fileop.ImageMogrifyPreviewURL(urlImageSource, opts)
+print "\n===> ImageMogrifyPreviewURL result:"
+print mogrifyPreviewURL
 
+imgrs = qboxrs.Service(client, "test_thumbnails_bucket")
+resp = imgrs.ImageMogrifyAs(targetKey, urlImageSource, opts)
+print "\n===> ImageMogrifyAs %s result:" % targetKey
+print resp
