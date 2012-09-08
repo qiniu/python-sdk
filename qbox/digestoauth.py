@@ -1,3 +1,5 @@
+# -*- encoding: utf-8 -*-
+
 """A simple client library to work with Digest Oauth APIs."""
 
 __author__ = 'stevenle08@gmail.com (Steven Le); xushiwei@qbox.net'
@@ -29,7 +31,7 @@ class Client(object):
     digest = self.CheckSum(url)
     token = "%s:%s" % (config.ACCESS_KEY,digest)
     headers['Authorization'] = 'QBox %s' % (token)
-    resp, content = httplib2.Http('').request(url, 'POST', '', headers=headers)    
+    resp, content = httplib2.Http('').request(url, 'POST', '', headers=headers)
 
     code = resp['status']
     if code != '200':
@@ -63,7 +65,7 @@ class Client(object):
       data = ''.join([data,params])
 
     hashed = hmac.new(config.SECRET_KEY,data,sha1)
-    return urlsafe_b64encode(hashed.digest()) 
+    return urlsafe_b64encode(hashed.digest())
 
   def CallWithForm(self, url, params):
     headers = {}
@@ -76,7 +78,7 @@ class Client(object):
     headers['Authorization'] = 'QBox %s' % (token)
     headers["Content-Type"] = "application/x-www-form-urlencoded"
 
-    resp, content = httplib2.Http('').request(url, 'POST', msg, headers=headers)    
+    resp, content = httplib2.Http('').request(url, 'POST', msg, headers=headers)
 
     code = resp['status']
     if code != '200':

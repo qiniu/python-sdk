@@ -1,4 +1,4 @@
-# Qiniu Resource (Cloud) Storage SDK for Python 
+# Qiniu Resource (Cloud) Storage SDK for Python
 
 # 关于
 
@@ -8,6 +8,10 @@
 ## 安装
 
 请到 [ https://github.com/qiniu/python-sdk/tags]( https://github.com/qiniu/python-sdk/tags) 下载最新版本的SDK源代码，然后将该SDK压缩包解压后放置到您相应的工程目录中。
+
+## 依赖
+
+- [httplib2](http://code.google.com/p/httplib2/)
 
 ## 使用
 
