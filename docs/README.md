@@ -9,7 +9,7 @@ title: Python 2.x SDK | 七牛云存储
 
 SDK 下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags)
 
-SDK 使用依赖Python第三方HTTP CLient -- [httplib2](http://code.google.com/p/httplib2/)
+SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2/>
 
 **应用接入**
 
@@ -134,13 +134,13 @@ PutFile() 方法可在客户方的业务服务器上直接往七牛云存储上�
 
 PutFile() 参数含义如下：
 
-    bucket          // 要上传到的目标 bucket 名称
-    key		        // 设置文件唯一标识
-    mimeType	    // 资源类型，文件的 MIME TYPE，比如 jpg 图片可以是 'image/jpg'
-    localFile	    // 本地文件路径，最好是完整的绝对路径
-    customMeta	    // 自定义描述信息
-    callbackParams 	// 回调参数，格式: "k1=v1&k2=v2&k3=v3..."
-    uploadToken		// 此次上传的授权凭证
+    bucket          # 要上传到的目标 bucket 名称
+    key		        # 设置文件唯一标识
+    mimeType	    # 资源类型，文件的 MIME TYPE，比如 jpg 图片可以是 'image/jpg'
+    localFile	    # 本地文件路径，最好是完整的绝对路径
+    customMeta	    # 自定义描述信息
+    callbackParams 	# 回调参数，格式: "k1=v1&k2=v2&k3=v3..."
+    uploadToken		# 此次上传的授权凭证
 
 <a name="enputfile"></a>
 
