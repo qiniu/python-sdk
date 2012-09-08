@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import config
 import urllib
 import simpleoauth2
 import rs as qboxrs

@@ -18,19 +18,19 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 
 **云存储接口**
 
-- [新建资源表](#rs-NewService)
-- [获得上传授权](#rs-PutAuth)
+- [新建存储空间（Bucket）](#rs-Mkbucket)
 - [上传文件](#rs-PutFile)
     - [获取用于上传文件的临时授权凭证](#token)
     - [服务端上传文件](#putfile)
     - [客户端直传文件](#enputfile)
+        - [网页直传文件](#web-upload-fie)
+- [初始化空间（Bucket）对象](#rs-NewService)
 - [获取已上传文件信息](#rs-Stat)
 - [下载文件](#rs-Get)
 - [发布公开资源](#rs-Publish)
 - [取消资源发布](#rs-Unpublish)
 - [删除已上传的文件](#rs-Delete)
 - [资源表管理](#rs-buckets)
-    - [创建一张新资源表](#rs-Mkbucket)
     - [列出所有资源表](#rs-Buckets)
     - [删除整张资源表](#rs-Drop)
 - [资源表批量操作接口](#rs-Batch)
@@ -39,6 +39,7 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 
 **图像处理接口**
 
+TODO
 
 
 
@@ -70,32 +71,26 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 
 ## 云存储接口
 
-<a name="rs-NewService"></a>
+<a name="rs-Mkbucket"></a>
 
-### 1. 初始化并新建资源表
+### 1. 新建存储空间（Bucket）
 
-新建资源表的意义在于，您可以将所有上传的资源分布式加密存储在七牛云存储服务端后还能保持相应的完整映射索引。
+新建存储空间（Bucket）的意义在于，您可以将所有上传的资源分布式加密存储在七牛云存储服务端后还能保持相应的完整映射索引。
 
-新建一份资源表，您只需在登录授权后实例化一个 digestoauth.Client() 即可，代码如下：
+可以通过 SDK 提供的 `Mkbucket` 函数创建一个 Bucket 。
 
-    client = digestoauth.Client()
-    bucket = 'bucket'
-    rs = qboxrs.Service(client, bucket)
+    resp = rs.Mkbucket(BucketName)
 
+**BucketName**
+: 必填，字符串（String）类型，空间名称，不能还有特殊字符。　
 
 <a name="rs-PutFile"></a>
 
 ### 2. 上传文件
 
-一旦建立好资源表和取得上传授权，就可以开始上传文件了。只需调用sdk提供的 PutFile() 方法即可。示例代码如下：
-
-    resp = rscli.PutFile(resp['url'], bucket, key, mimeType, filePath, 'CustomData', {'key': key}, True)
-
-最后一个参数值为 `True` 表示针对该文件上传启用 crc32 数据校验，该值默认是 `False` 。
-
 <a name="token"></a>
 
-#### (1). 获取用于上传文件的临时授权凭证
+#### 2.1 获取用于上传文件的临时授权凭证
 
 要上传一个文件，首先需要调用 SDK 提供的 generate_token 函数来获取一个经过授权用于临时匿名上传的 uploadtoken——经过数字签名的一组数据信息，该 uploadtoken 作为文件上传流中 multipart/form-data 的一部分进行传输。
 
@@ -125,7 +120,7 @@ UploadToken 初始化各参数含义如下：
 
 <a name="putfile"></a>
 
-#### (2). 服务端上传文件
+#### 2.2 服务端上传文件
 
 PutFile() 方法可在客户方的业务服务器上直接往七牛云存储上传文件。该函数规格如下：
 
@@ -144,7 +139,7 @@ PutFile() 参数含义如下：
 
 <a name="enputfile"></a>
 
-#### (3). 客户端直传文件
+#### 2.3 客户端直传文件
 
 客户端上传流程和服务端上传类似，差别在于：客户端直传文件所需的 `upload_token` 可以选择在客户方的业务服务器端生成，也可以选择在客户方的客户端程序里边生成。选择前者，可以和客户方的业务揉合得更紧密和安全些，比如防伪造请求。
 
@@ -155,7 +150,9 @@ PutFile() 参数含义如下：
 
 如果您的网络程序是从云端（服务端程序）到终端（手持设备应用）的架构模型，且终端用户有使用您移动端App上传文件（比如照片或视频）的需求，可以把您服务器得到的此 `upload_token` 返回给手持设备端的App，然后您的移动 App 可以使用 [七牛云存储 Objective-SDK （iOS）](http://docs.qiniutek.com/v3/sdk/objc/) 或 [七牛云存储 Android-SDK](http://docs.qiniutek.com/v3/sdk/android/) 的相关上传函数或参照 [七牛云存储API之文件上传](http://docs.qiniutek.com/v3/api/io/#upload) 直传文件。这样，您的终端用户即可把数据（比如图片或视频）直接上传到七牛云存储服务器上无须经由您的服务端中转，而且在上传之前，七牛云存储做了智能加速，终端用户上传数据始终是离他物理距离最近的存储节点。当终端用户上传成功后，七牛云存储服务端会向您指定的 `callback_url` 发送回调数据。如果 `callback_url` 所在的服务处理完毕后输出 `JSON` 格式的数据，七牛云存储服务端会将该回调请求所得的响应信息原封不动地返回给终端应用程序。
 
-#### (4). 示例——网页直传文件
+<a name="web-upload-fie"></a>
+
+#### 2.3.1 网页直传文件
 
 网页上传文件，需要满足如下 HTML Form 规格：
 
@@ -172,9 +169,20 @@ PutFile() 参数含义如下：
 
 以上 HTML Form 结构只满足单个文件上传，大多数时候我们在网页中会用到批量上传，比如使用 `SWFUpload` 或 `jQuery-Ajax-File-Upload` 批量上传组件。使用这些批量上传组件，只需在文件上传前的虚拟Form中动态插入如上 HTML Form 结构中相应的字段即可，`return_url` 除外。关于网页批直传文件的更多细节，您可以向我们的技术支持工程师获得更详细的帮助。
 
+<a name="rs-NewService"></a>
+
+### 3. 初始化空间（Bucket）对象
+
+初始化空间（Bucket）对象后，后续可以在该空间对象的基础上对该空间进行各种操作。　
+
+    client = digestoauth.Client()
+    bucket = 'bucket_name'
+    rs = qboxrs.Service(client, bucket)
+
+
 <a name="rs-Stat"></a>
 
-### 3. 获取已上传文件信息
+### 4. 获取已上传文件信息
 
 您可以调用资源表对象的 Stat() 方法并传入一个 Key（类似ID）来获取指定文件的相关信息。
 
@@ -191,7 +199,7 @@ PutFile() 参数含义如下：
 
 <a name="rs-Get"></a>
 
-### 4. 下载文件
+### 5. 下载文件
 
 要下载一个文件，首先需要取得下载授权，所谓下载授权，就是取得一个临时合法有效的下载链接，只需调用资源表对象的 Get() 方法并传入相应的 文件ID 和下载要保存的文件名 作为参数即可。示例代码如下：
 
@@ -215,7 +223,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-Publish"></a>
 
-### 5. 发布公开资源
+### 6. 发布公开资源
 
 使用七牛云存储提供的资源发布功能，您可以将一个资源表里边的所有文件以静态链接可访问的方式公开发布到您自己的域名下。
 要公开发布一个资源表里边的所有文件，只需调用改资源表对象的 Publish() 方法并传入 域名 作为参数即可。如下示例：
@@ -228,7 +236,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-Unpublish"></a>
 
-### 6. 取消资源发布
+### 7. 取消资源发布
 
 调用资源表对象的 Unpublish() 方法可取消该资源表内所有文件的静态外链。
 
@@ -236,27 +244,19 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-Delete"></a>
 
-### 7. 删除已上传的文件
+### 8. 删除已上传的文件
 
 要删除指定的文件，只需调用资源表对象的 Delete() 方法并传入 文件ID（key）作为参数即可。如下示例代码：
 
     resp = rs.Delete(key)
 
-<a name="rs-buckets">
+<a name="rs-buckets"></a>
 
-### 8.资源表管理
-
-<a name="rs-Mkbucket"></a>
-
-#### (1).创建一张新资源表
-
-可以通过 SDK 提供的 `Mkbucket` 函数创建一个 bucket（资源表）。
-
-    resp = rs.Mkbucket()
+### 9. 资源表管理
 
 <a name="rs-Buckets"></a>
 
-#### (2).列出所有资源表
+#### 9.1 列出所有资源表
 
 可以通过 SDK 提供的 `Buckets` 列出所有 bucket（资源表）。
 
@@ -265,7 +265,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 <a name="rs-Drop"></a>
 
 
-#### (3). 删除整张资源表
+#### 9.2 删除整张资源表
 
 要删除整个资源表及该表里边的所有文件，可以调用资源表对象的 Drop() 方法。
 需慎重，这会删除整个表及其所有文件。
@@ -275,7 +275,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-Batch"></a>
 
-### 9. 资源表批量操作接口
+### 10. 资源表批量操作接口
 
 通过指定的操作行为名称，以及传入的一组 keys，可以达到批量处理的功能。
 
@@ -313,7 +313,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-BatchGet"></a>
 
-#### (1). 批量下载
+#### 10.1 批量下载
 
 使用资源表对象的 `BatchGet` 方法可以批量取得下载链接：
 
@@ -343,7 +343,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 <a name="rs-BatchDelete"></a>
 
-#### (2). 批量删除
+#### 10.2 批量删除
 
 使用资源表对象的 `BatchDelete` 方法可以批量删除指定文件：
 

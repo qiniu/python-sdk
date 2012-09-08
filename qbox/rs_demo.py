@@ -8,8 +8,8 @@ import rscli
 import config
 import uptoken
 
-#config.ACCESS_KEY = '<Please apply your access key>'
-#config.SECRET_KEY = '<Dont send your secret key to anyone>'
+config.ACCESS_KEY = '<Please apply your access key>'
+config.SECRET_KEY = '<Dont send your secret key to anyone>'
 
 DEMO_DOMAIN = 'test_photos2.dn.qbox.me'
 

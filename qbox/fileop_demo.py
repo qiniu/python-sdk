@@ -39,9 +39,9 @@ print urllib.urlopen(urlImageInfo).read()
 
 urlImageSource = resp['url']
 opts = {
-	"thumbnail":"!120x120r",
-   	"gravity":"center",
-   	"crop":"!120x120a0a0",
+    "thumbnail":"!120x120r",
+    "gravity":"center",
+    "crop":"!120x120a0a0",
     "quality":85,
     "rotate":45,
     "format":"jpg",
