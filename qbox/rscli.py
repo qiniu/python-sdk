@@ -5,15 +5,24 @@ import urllib
 import urllib2
 from base64 import urlsafe_b64encode
 import config
+import zlib
 
-def PutFile(url, bucket, key, mimeType, localFile, customMeta = '', callbackParams = ''):
+
+def _crc32checksum(localFile):
+    with open(localFile, 'rb') as fh:
+        return zlib.crc32(fh.read())
+
+
+def PutFile(url, bucket, key, mimeType, localFile, customMeta='', callbackParams='', enable_crc32_check=False):
     if mimeType == '':
         mimeType = 'application/octet-stream'
     entryURI = bucket + ':' + key
     action = '/rs-put/' + urlsafe_b64encode(entryURI) + '/mimeType/' + urlsafe_b64encode(mimeType)
     if customMeta != '':
         action += '/meta/' + urlsafe_b64encode(customMeta)
-    params = {'file' : file(localFile, 'rb'), 'action': action}
+    if enable_crc32_check:
+        action += '/crc32/' + str(_crc32checksum(localFile))
+    params = {'file': file(localFile, 'rb'), 'action': action}
     if callbackParams != '':
         if isinstance(callbackParams, dict):
             callbackParams = urllib.urlencode(callbackParams)
@@ -21,14 +30,17 @@ def PutFile(url, bucket, key, mimeType, localFile, customMeta = '', callbackPara
     opener = urllib2.build_opener(MultipartPostHandler.MultipartPostHandler)
     return opener.open(url, params).read()
 
-def UploadFile(bucket, key, mimeType, localFile, customMeta = '', callbackParams = '', upToken = ''):
+
+def UploadFile(bucket, key, mimeType, localFile, customMeta='', callbackParams='', upToken='', enable_crc32_check=False):
     if mimeType == '':
         mimeType = 'application/octet-stream'
     entryURI = bucket + ':' + key
     action = '/rs-put/' + urlsafe_b64encode(entryURI) + '/mimeType/' + urlsafe_b64encode(mimeType)
     if customMeta != '':
         action += '/meta/' + urlsafe_b64encode(customMeta)
-    params = {'action': action, 'file' : file(localFile, 'rb')}
+    if enable_crc32_check:
+        action += '/crc32/' + str(_crc32checksum(localFile))
+    params = {'action': action, 'file': file(localFile, 'rb')}
     if callbackParams != '':
         if isinstance(callbackParams, dict):
             callbackParams = urllib.urlencode(callbackParams)
