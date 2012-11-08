@@ -22,6 +22,7 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 - [上传文件](#rs-PutFile)
     - [获取用于上传文件的临时授权凭证](#token)
     - [服务端上传文件](#putfile)
+        - [断点续上传](#resumable-Put)
     - [客户端直传文件](#enputfile)
         - [网页直传文件](#web-upload-fie)
 - [初始化空间（Bucket）对象](#rs-NewService)
@@ -39,8 +40,9 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 
 **图像处理接口**
 
-TODO
-
+- [查看图片属性信息](#image_info)
+- [查看图片EXIF信息](#image_exif)
+- [高级图像处理（缩略、裁剪、旋转、转化）](#image_mogrify_preview_url)
 
 
 ## 应用接入
@@ -127,17 +129,52 @@ UploadToken 初始化各参数含义如下：
 PutFile() 方法可在客户方的业务服务器上直接往七牛云存储上传文件。该函数规格如下：
 
     import rscli
-    resp = rscli.UploadFile(bucket, key, mimeType, localFile, customMeta, callbackParams, uploadToken)
+    resp = rscli.UploadFile(bucket, key, mimeType, localFile, customMeta, callbackParams, uploadToken, enable_crc32_check)
 
 PutFile() 参数含义如下：
 
-    bucket          # 要上传到的目标 bucket 名称
-    key		        # 设置文件唯一标识
-    mimeType	    # 资源类型，文件的 MIME TYPE，比如 jpg 图片可以是 'image/jpg'
-    localFile	    # 本地文件路径，最好是完整的绝对路径
-    customMeta	    # 自定义描述信息
-    callbackParams 	# 回调参数，格式: "k1=v1&k2=v2&k3=v3..."
-    uploadToken		# 此次上传的授权凭证
+    bucket              # 要上传到的目标 bucket 名称
+    key		            # 设置文件唯一标识
+    mimeType	        # 资源类型，文件的 MIME TYPE，比如 jpg 图片可以是 'image/jpg'
+    localFile	        # 本地文件路径，最好是完整的绝对路径
+    customMeta	        # 自定义描述信息，默认为''
+    callbackParams     	# 回调参数，格式: "k1=v1&k2=v2&k3=v3...",默认为''
+    uploadToken        	# 此次上传的授权凭证，默认为''
+    enable_crc32_check  # 是否进行crc校验，默认为False
+
+若上传成功：
+
+返回如下 Hash：
+
+    {"hash"=>"FgHk-_iqpnZji6PsNr4ghsK5qEwR"}
+
+<a name="resumable-Put"></a>
+
+#### 2.2.1 断点续上传
+
+ResumablePut() 方法支持断点续上传。默认情况下，SDK 会按 4MB 大小对文件进行分块上传。该函数规格如下：
+
+    import up
+    up.ResumablePutFile(uploadToken, bucketName, key, mimeType, inputFilePath, customMeta, customId, callBackParams, progressFilePath):
+
+ResumablePut() 参数含义如下:
+
+    uploadToken         # 此次上传的授权凭证
+    bucketName          # 要上传到的目标 bucket 名称
+    key                 # 设置文件唯一标识
+    mimeType            # 资源类型，文件的 MIME TYPE，比如 jpg 图片可以是 'image/jpg'
+    inputFilePath       # 本地文件路径，最好是完整的绝对路径
+    customMeta          # 自定义描述信息，默认为''
+    customId            # 终端用户Id，默认为None
+    callbackParams      # 回调参数，格式: "k1=v1&k2=v2&k3=v3...",默认为''
+    progressFilePath    # 指定上传进度记录文件，若不指定，则sdk会在上传文件同一目录新建一个
+
+若上传成功：
+
+callRet.ok()为True，返回如下 Hash：
+    
+    {"hash"=>"FgHk-_iqpnZji6PsNr4ghsK5qEwR"}
+
 
 <a name="enputfile"></a>
 
@@ -371,4 +408,97 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
     }
 
 当只有部分 keys 执行成功时，返回 298（PartialOK）。
+
+
+## 图像处理接口
+
+<a name="image_info"></a>
+
+### 查看图片属性信息
+
+    fileop.ImageInfoURL(url)
+
+使用 SDK 提供的 fileop.ImageInfoURL(url) 方法，可以基于一张存储于七牛云存储服务器上的图片，获取该张图片的属性信息。
+
+**参数**
+
+url
+: 必须，字符串类型（str），图片的下载链接，需是 rs.Get（或rs.Batch）函数返回值中 `url` 字段的值，或者是 publish后的链接。且文件本身必须是图片。
+
+**返回值**
+
+返回一个 url，访问该url可得到该张图片的属性信息。如果该 url 请求失败，则返回400；否则，返回如下一个 `Hash` 类型的结构：
+
+    {
+        "format"     => "jpeg",
+        "width"      => 640,
+        "height"     => 425,
+        "colorModel" => "ycbcr"
+    }
+
+format
+: 原始图片类型
+
+width
+: 原始图片宽度，单位像素
+
+height
+: 原始图片高度，单位像素
+
+colorModel
+: 原始图片着色模式
+
+<a name="image_exif"></a>
+
+### 查看图片EXIF信息
+
+    fileop.ExifURL(url)
+
+使用 SDK 提供的 fileop.ExifURL(url) 方法，可以基于一张存储于七牛云存储服务器上的原始图片图片，取到该图片的  EXIF 信息。
+
+**参数**
+
+url
+: 必须，字符串类型（str），图片的下载链接，需是 rs.Get（或rs.Batch）函数返回值中 `url` 字段的值，或者是 publish后的链接。且文件本身必须是图片。
+
+
+**返回值**
+
+返回一个url，访问该url可得到该张图片的 EXIF信息，如果参数 url 所代表的图片没有 EXIF 信息，返回 400。否则，返回一个包含 EXIF 信息的 Hash 结构。
+
+
+<a name="image_mogrify_preview_url"></a>
+
+### 高级图像处理（缩略、裁剪、旋转、转化）
+
+    fileop.ImageMogrifyPreviewURL(src_img_url, opts)
+
+fileop.ImageMogrifyPreviewURL(src_img_url, opts) 方法支持将一个存储在七牛云存储的图片进行缩略、裁剪、旋转和格式转化处理，该方法返回一个可以直接预览缩略图的URL。
+
+**参数**
+
+src_img_url
+: 必须，字符串类型（str），图片的下载链接，需是 rs.Get（或rs.Batch）函数返回值中 `url` 字段的值，或者是 publish后的链接。且文件本身必须是图片。
+
+opts
+: 必须，Hash Map 格式的图像处理参数。
+
+opts 对象具体的规格如下：
+
+    mogrify_options = {
+        "thumbnail" : <ImageSizeGeometry>,
+        "gravity" : <GravityType>, ="NorthWest", "North", "NorthEast", "West", "Center", "East", "SouthWest", "South", "SouthEast"
+        "crop" : <ImageSizeAndOffsetGeometry>,
+        "quality" : <ImageQuality>,
+        "rotate" : <RotateDegree>,
+        "format" : <DestinationImageFormat>, ="jpg", "gif", "png", "tif", etc.
+        "auto_orient" : <TrueOrFalse>
+    }
+
+`Qiniu::RS.image_mogrify_preview_url()` 方法是对七牛云存储图像处理高级接口的完整包装，关于 `mogrify_options` 参数里边的具体含义和使用方式，可以参考文档：[图像处理高级接口](/v3/api/foimg/#fo-imageMogr)。
+
+**返回值**
+
+返回一个可以预览最终缩略图的URL，str 类型。
+
 
