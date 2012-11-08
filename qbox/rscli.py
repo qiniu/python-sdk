@@ -5,12 +5,12 @@ import urllib
 import urllib2
 from base64 import urlsafe_b64encode
 import config
-import zlib
+import utils
 
 
 def __crc32checksum(localFile):
     with file(localFile, 'rb') as fh:
-        return zlib.crc32(fh.read()) & 0xFFFFFFFF
+        return utils.crc32(fh.read())
 
 
 def PutFile(url, bucket, key, mimeType, localFile, customMeta='', callbackParams='', enable_crc32_check=False):

@@ -17,11 +17,10 @@ print "Upload Token is: %s" % uploadToken
 
 upService = up.UpService(up.Client(uploadToken))
 
-callRet = up.resumablePutFile(upService, bucket, key, 'image/jpeg', key)
+callRet = up.ResumablePutFile(upService, bucket, key, 'image/jpeg', key)
 
 resp = None
 if callRet != None and callRet.ok():
     resp = callRet.content
 print '\n===> resumablePutFile %s result:' % key
 print resp
-

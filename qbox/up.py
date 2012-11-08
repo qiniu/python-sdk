@@ -2,10 +2,10 @@
 
 from abc import ABCMeta, abstractmethod
 import base64
-import zlib
 import httplib2
-import config
 import os
+import config
+import utils
 
 try:
     import json
@@ -13,10 +13,6 @@ except ImportError:
     import simplejson as json
 
 INVALID_CTX = 701  # 无效的上下文，断点续传校验失败
-
-
-def __crc32(body):
-    return zlib.crc32(body) & 0xFFFFFFFF
 
 
 class Error(Exception):
@@ -153,17 +149,18 @@ class UpService(object):
                 if not ret.ok():
                     return ret
 
-                if ret.crc32 != __crc32(body):
+                if ret.crc32 != utils.crc32(body):
                     ret.code = 400
                     return ret
+
             except Exception, e:
                 return ResumablePutRet(CallRet(599, str(e)))
+            else:
+                blockProgress.ctx = ret.ctx
+                blockProgress.offset = bodyLength
+                blockProgress.restSize = blockSize - bodyLength
 
-            blockProgress.ctx = ret.ctx
-            blockProgress.offset = bodyLength
-            blockProgress.restSize = blockSize - bodyLength
-
-            blockProgressNotifier.notify(blockIndex, blockProgress=blockProgress)
+                blockProgressNotifier.notify(blockIndex, blockProgress=blockProgress)
 
         elif blockProgress.offset + blockProgress.restSize != blockSize:
             return ResumablePutRet(CallRet(400, 'Invalid arg. File length does not match'))
@@ -183,7 +180,7 @@ class UpService(object):
 
                     ret = self.putBlock(blockSize, blockProgress.ctx, blockProgress.offset, body, bodyLength)
                     if ret.ok():
-                        if ret.crc32 == __crc32(body):
+                        if ret.crc32 == utils.crc32(body):
                             blockProgress.ctx = ret.ctx
                             blockProgress.offset += bodyLength
                             blockProgress.restSize -= bodyLength
@@ -314,10 +311,10 @@ class __ResumableNotifier(BlockProgressNotifier, ProgressNotifier):
                 print e
 
 
-def resumablePutFile(upService,
+def ResumablePutFile(upService,
                     bucketName, key, mimeType,
                     inputFilePath,
-                    customMeta=None, customId=None, callBackParams=None, progressFilePath=None):
+                    customMeta='', customId=None, callBackParams='', progressFilePath=None):
     callRet = None
     try:
         with open(inputFilePath, 'r') as f:
@@ -332,7 +329,7 @@ def resumablePutFile(upService,
             try:
                 __readProgress(progressFilePath, checksums, blockProgresses, blockCount)
             except IOError, e:
-                print e
+                pass
 
             with __ResumableNotifier(progressFilePath) as notif:
                 callRet = __resumablePutFile(upService,
