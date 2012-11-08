@@ -15,9 +15,7 @@ tokenObj = uptoken.UploadToken(bucket, 3600)
 uploadToken = tokenObj.generate_token()
 print "Upload Token is: %s" % uploadToken
 
-upService = up.UpService(up.Client(uploadToken))
-
-callRet = up.ResumablePutFile(upService, bucket, key, 'image/jpeg', key)
+callRet = up.ResumablePutFile(uploadToken, bucket, key, 'image/jpeg', key)
 
 resp = None
 if callRet != None and callRet.ok():

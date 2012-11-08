@@ -311,10 +311,12 @@ class __ResumableNotifier(BlockProgressNotifier, ProgressNotifier):
                 print e
 
 
-def ResumablePutFile(upService,
+def ResumablePutFile(uploadToken,
                     bucketName, key, mimeType,
                     inputFilePath,
                     customMeta='', customId=None, callBackParams='', progressFilePath=None):
+
+    upService = UpService(Client(uploadToken))
     callRet = None
     try:
         with open(inputFilePath, 'r') as f:
