@@ -12,7 +12,7 @@ try:
 except ImportError:
     import simplejson as json
 
-InvalidCtx = 701  # 无效的上下文，断点续传校验失败
+INVALID_CTX = 701  # 无效的上下文，断点续传校验失败
 
 
 def __crc32(body):
@@ -192,7 +192,7 @@ class UpService(object):
                             break
                         else:
                             ret.code, ret.content = 400, 'crc32 check failed.'
-                    elif ret.code == 701:
+                    elif ret.code == INVALID_CTX:
                         # error occurs, We should roll back to the latest block that uploaded successfully,
                         # and put the whole block that currently failed from the first chunk again.
                         # For convenient, we just fabricate a progress with empty context.
