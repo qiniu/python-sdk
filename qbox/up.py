@@ -315,6 +315,20 @@ def ResumablePutFile(uploadToken,
                     bucketName, key, mimeType,
                     inputFilePath,
                     customMeta='', customId=None, callBackParams='', progressFilePath=None):
+    """
+    参数说明：
+        uploadToken         此次上传的授权凭证
+        bucketName          要上传到的目标 bucket 名称
+        key                 设置文件唯一标识
+        mimeType            资源类型，文件的 MIME TYPE，比如 jpg 图片可以是 'image/jpg'
+        inputFilePath       本地文件路径，最好是完整的绝对路径
+        customMeta          自定义描述信息，默认为''
+        customId            终端用户Id，默认为None
+        callbackParams      回调参数，格式: "k1=v1&k2=v2&k3=v3...",默认为''
+        progressFilePath    指定上传进度记录文件，若不指定，则sdk会在上传文件同一目录新建一个
+    返回值：
+        {"hash":"FgHk-_iqpnZji6PsNr4ghsK5qEwR"}
+    """
 
     upService = UpService(Client(uploadToken))
     callRet = None
@@ -343,7 +357,10 @@ def ResumablePutFile(uploadToken,
     except Exception, e:
         print e
 
-    return callRet
+    ret = None
+    if callRet != None and callRet.ok():
+        ret = callRet.content
+    return ret
 
 
 def __readProgress(filePath, checksums, blockProgresses, blockCount):  # IOError

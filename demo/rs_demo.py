@@ -1,20 +1,21 @@
 #!/usr/bin/env python
-
-import config
-import urllib
-import digestoauth
-import rs as qboxrs
-import rscli
-import config
-import uptoken
+import sys
+sys.path.append('..')
+from qbox import digestoauth
+from qbox import rs as qboxrs
+from qbox import rscli
+from qbox import config
+from qbox import uptoken
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
+config.ACCESS_KEY = 'hkmdGuWjK9IX9gjDVFfUN0TspZKnd3rvmuwXbku-'
+config.SECRET_KEY = 'eg_qu6vkqkYQnEFmCBfVtyp0cwwQq6h1tKBq7wkt'
 
-DEMO_DOMAIN = 'test_photos2.dn.qbox.me'
+DEMO_DOMAIN = 'test_photos3.dn.qbox.me'
 
 bucket = 'test_photos'
-newbucket = "new_test_bucket"
+newbucket = "new_test_bucket3"
 key = 'test.jpg'
 customer = 'end_user_id'
 

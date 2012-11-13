@@ -7,9 +7,18 @@ title: Python 2.x SDK | 七牛云存储
 
 此 SDK 适用于 Python 2.x 版本
 
-SDK 下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags)
+**安装**
 
-SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2/>
+```
+pip install qiniu-rs
+```
+
+或
+
+```
+easy_install qiniu-rs
+```
+
 
 **应用接入**
 
@@ -60,11 +69,9 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 
 ### 2. 签名认证
 
-首先，到 [https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags) 下载SDK源码。
+您需要在您的app中初始化如下配置项：
 
-然后，您可以解压 SDK 包后将其放入您项目工程相应的目录中。在引入 SDK 里边的文件后，您需要修改下配置项：
-
-    import config
+    from qbox import config
 
     config.ACCESS_KEY = '<Please apply your access key>'
     config.SECRET_KEY = '<Dont send your secret key to anyone>'
@@ -81,6 +88,7 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 
 可以通过 SDK 提供的 `Mkbucket` 函数创建一个 Bucket 。
 
+    from qbox import rs
     resp = rs.Mkbucket(BucketName)
 
 **参数**
@@ -100,7 +108,7 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 
 生成uptoken如下：
 
-    import uptoken
+    from qbox import uptoken
     tokenObj = uptoken.UploadToken(scope, expires_in, callback_url, callback_bodytype, customer)
     uploadtoken = tokenObj.generate_token()
 
@@ -128,7 +136,7 @@ UploadToken 初始化各参数含义如下：
 
 PutFile() 方法可在客户方的业务服务器上直接往七牛云存储上传文件。该函数规格如下：
 
-    import rscli
+    from qbox import rscli
     resp = rscli.UploadFile(bucket, key, mimeType, localFile, customMeta, callbackParams, uploadToken, enable_crc32_check)
 
 PutFile() 参数含义如下：
@@ -154,8 +162,8 @@ PutFile() 参数含义如下：
 
 ResumablePut() 方法支持断点续上传。默认情况下，SDK 会按 4MB 大小对文件进行分块上传。该函数规格如下：
 
-    import up
-    up.ResumablePutFile(uploadToken, bucketName, key, mimeType, inputFilePath, customMeta, customId, callBackParams, progressFilePath):
+    from qbox import up
+    resp = up.ResumablePutFile(uploadToken, bucketName, key, mimeType, inputFilePath, customMeta, customId, callBackParams, progressFilePath):
 
 ResumablePut() 参数含义如下:
 
@@ -171,9 +179,9 @@ ResumablePut() 参数含义如下:
 
 若上传成功：
 
-callRet.ok()为True，返回如下 Hash：
-    
-    {"hash"=>"FgHk-_iqpnZji6PsNr4ghsK5qEwR"}
+若resp不为空，返回如下 Hash：
+
+    {"hash":"FgHk-_iqpnZji6PsNr4ghsK5qEwR"}
 
 
 <a name="enputfile"></a>
@@ -213,6 +221,9 @@ callRet.ok()为True，返回如下 Hash：
 ### 3. 初始化空间（Bucket）对象
 
 初始化空间（Bucket）对象后，后续可以在该空间对象的基础上对该空间进行各种操作。　
+
+    from qbox import rs as qboxrs
+    from qbox import digestoauth
 
     client = digestoauth.Client()
     bucket = 'bucket_name'
@@ -411,6 +422,10 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 
 ## 图像处理接口
+
+### 导入fileop
+
+    from qbox import fileop
 
 <a name="image_info"></a>
 
