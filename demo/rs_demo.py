@@ -9,8 +9,6 @@ from qbox import uptoken
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
-config.ACCESS_KEY = 'hkmdGuWjK9IX9gjDVFfUN0TspZKnd3rvmuwXbku-'
-config.SECRET_KEY = 'eg_qu6vkqkYQnEFmCBfVtyp0cwwQq6h1tKBq7wkt'
 
 DEMO_DOMAIN = 'test_photos3.dn.qbox.me'
 
