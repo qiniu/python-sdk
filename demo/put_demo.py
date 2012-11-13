@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-import config
-import urllib
-import simpleoauth2
-import rs as qboxrs
-import rscli
-import digestoauth
-import uptoken
+from qbox import config
+from qbox import rs as qboxrs
+from qbox import rscli
+from qbox import digestoauth
+from qbox import uptoken
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
