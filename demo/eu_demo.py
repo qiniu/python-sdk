@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-import config
-import digestoauth
-import rscli
-import rs as qboxrs
-import uptoken
-import eu
+from qbox import config
+from qbox import digestoauth
+from qbox import rscli
+from qbox import rs as qboxrs
+from qbox import uptoken
+from qbox import eu
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
@@ -25,7 +25,7 @@ rs.SetStyle("gmiddle", "imageView/0/w/256/h/256/watermark/1")
 rs.SetStyle("glarge", "imageView/0/w/512/h/512/wartermark/1")
 
 wm = eu.Service(client)
-template = {"text":"hello", "dx":1, "dy":19, "bucket":bucket}
+template = {"text": "hello", "dx": 1, "dy": 19, "bucket": bucket}
 resp = wm.SetWatermark(customer, template)
 print '\n===> SetWatermark %s result:' % customer
 print resp

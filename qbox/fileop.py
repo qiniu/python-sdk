@@ -26,6 +26,12 @@ def ImageInfoURL(url):
     """
     return url + '/imageInfo'
 
+def ExifURL(url):
+    """
+     * func ExifURL(url string) => (urlExif string)
+    """
+    return url + '/exif'
+
 def Image90x90URL(url):
     url2 = url + '/imageMogr/auto-orient/thumbnail/!90x90r/gravity/center/crop/90x90'
     print url2

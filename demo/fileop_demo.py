@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
-import config
+from qbox import config
 import urllib
-import simpleoauth2
-import fileop
-import rs as qboxrs
-import digestoauth
-import uptoken
-import rscli
+from qbox import fileop
+from qbox import rs as qboxrs
+from qbox import digestoauth
+from qbox import uptoken
+from qbox import rscli
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
@@ -39,13 +38,13 @@ print urllib.urlopen(urlImageInfo).read()
 
 urlImageSource = resp['url']
 opts = {
-    "thumbnail":"!120x120r",
-    "gravity":"center",
-    "crop":"!120x120a0a0",
-    "quality":85,
-    "rotate":45,
-    "format":"jpg",
-    "auto_orient":True
+    "thumbnail": "!120x120r",
+    "gravity": "center",
+    "crop": "!120x120a0a0",
+    "quality": 85,
+    "rotate": 45,
+    "format": "jpg",
+    "auto_orient": True,
 }
 
 mogrifyPreviewURL = fileop.ImageMogrifyPreviewURL(urlImageSource, opts)
