@@ -32,21 +32,22 @@ class Client(object):
     def __init__(self, upToken):
         self.upToken = upToken
 
-    def CallWithString(self, url, bodyString, bodyLength, _from=0):
+    def CallWithString(self, url, bodyString, bodyLength, _from=0, ContentType='application/octet-stream'):
         s = bodyString[_from: _from + bodyLength]
         headers = {}
         headers['Authorization'] = 'UpToken %s' % (self.upToken)
-        headers['Content-Type'] = 'application/octet-stream'
+        headers['Content-Type'] = ContentType
         headers['Content-Length'] = str(bodyLength)
         print '#################'
         print str(url)
         print headers
-        print '#################'
         try:
             resp, content = httplib2.Http('').request(str(url), 'POST', body=s, headers=headers)
         except Exception, e:
             return CallRet(599, str(e))
 
+        print resp, content
+        print '#################'
         code = resp['status']
         return CallRet(int(code), content)
 
@@ -71,60 +72,59 @@ class ProgressNotifier(object):
 
 class BlockProgress(object):
     def __init__(self):
-        self.ctx, self.offset, self.restSize = None, None, None
+        self.ctx, self.offset, self.restSize, self.host = None, None, None, ""
 
 
 class ResumablePutRet(CallRet):
     def __init__(self, callRet):
         CallRet.__init__(self, callRet.code, callRet.content)
-        if callRet.ok() and callRet.content != None and callRet.content != '':
-            self.ctx, self.checksum, self.crc32 = self.__unmarshal(callRet.content)
+        if callRet.ok() and callRet.content:
+            self.ctx, self.checksum, self.crc32, self.host = self.__unmarshal(callRet.content)
 
     def __unmarshal(self, content):
         m = json.loads(content)
-        return (str(m.get('ctx')), str(m.get('checksum')), int(m.get('crc32')))
+        return (str(m.get('ctx')), str(m.get('checksum')), int(m.get('crc32')), str(m.get('host')))
 
 
 class UpService(object):
     def __init__(self, client):
         self.conn = client
+        self.host = ""
+        self.ctxList = []
 
     def makeBlock(self, blockSize, body, bodyLength):
-        '''
-        @param long blockSize
-        @param file body
-        @param long bodyLength
-        @return
-        '''
         url = config.UP_HOST + '/mkblk/' + str(blockSize)
         callRet = self.conn.CallWithString(url, body, bodyLength)
-        return ResumablePutRet(callRet)
+        ret = ResumablePutRet(callRet)
+        if ret and ret.ok():
+            self.host = ret.host
+            self.ctxList.append(ret.ctx)
+        return ret
 
     def putBlock(self, blockSize, ctx, offset, body, bodyLength):
-        '''
-        put the chunk data into the
-        @param blockSize
-        @param ctx
-        @param offset
-        @param body
-        @param bodyLength
-        '''
-        url = config.UP_HOST + '/bput/' + ctx + '/' + str(offset)
+        url = self.host + '/bput/' + ctx + '/' + str(offset)
         callRet = self.conn.CallWithString(url, body, bodyLength)
-        return ResumablePutRet(callRet)
+        ret = ResumablePutRet(callRet)
+        if ret and ret.ok():
+            self.ctxList.append(ret.ctx)
+        return ret
 
-    def makeFile(self, entryURI, fsize, params, callbackParams, checksums):
+    def makeFile(self, entryURI, fsize, params, callbackParams):
 
-        if callbackParams != None and callbackParams != '':
+        if callbackParams:
             params += "/params/" + base64.urlsafe_b64encode(callbackParams)
 
-        url = config.UP_HOST + '/rs-mkfile/' + base64.urlsafe_b64encode(entryURI) + '/fsize/' + str(fsize) + params
+        url = self.host + '/rs-mkfile/' + base64.urlsafe_b64encode(entryURI) + '/fsize/' + str(fsize) + params
 
-        body = ''
-        for k, c in enumerate(checksums):
-            body += base64.urlsafe_b64decode(c)
 
-        callRet = self.conn.CallWithString(url, body, len(body))
+        blockCtxList = []
+        countPerBlock = config.BLOCK_SIZE / config.PUT_CHUNK_SIZE
+        for k, v in enumerate(self.ctxList):
+            if (k + 1) % countPerBlock == 0 or k == len(self.ctxList) - 1:
+                blockCtxList.append(v)
+        body = ','.join(blockCtxList)
+
+        callRet = self.conn.CallWithString(url, body, len(body), ContentType='text/plain')
         return callRet
 
     def blockCount(self, fsize):
@@ -133,7 +133,7 @@ class UpService(object):
     def resumablePutBlock(self, localFile, blockIndex, blockSize, chunkSize, retryTimes, blockProgress, blockProgressNotifier):
         ret = None
 
-        if blockProgress.ctx == None or blockProgress.ctx == '':
+        if not blockProgress.ctx:
             bodyLength = blockSize
             if blockSize > chunkSize:
                 bodyLength = chunkSize
@@ -159,6 +159,7 @@ class UpService(object):
                 blockProgress.ctx = ret.ctx
                 blockProgress.offset = bodyLength
                 blockProgress.restSize = blockSize - bodyLength
+                blockProgress.host = ret.host
 
                 blockProgressNotifier.notify(blockIndex, blockProgress=blockProgress)
 
@@ -184,6 +185,7 @@ class UpService(object):
                             blockProgress.ctx = ret.ctx
                             blockProgress.offset += bodyLength
                             blockProgress.restSize -= bodyLength
+                            blockProgress.host = ret.host
                             blockProgressNotifier.notify(blockIndex, blockProgress=blockProgress)
                             succeed = True
                             break
@@ -203,7 +205,7 @@ class UpService(object):
             if not succeed:
                 break
 
-        if ret == None:
+        if not ret:
             ret = ResumablePutRet(CallRet(400, None))
 
         return ret
@@ -216,13 +218,13 @@ class UpService(object):
             return ResumablePutRet(CallRet(400, 'Invalid arg. Unexpected block count.'))
 
         for i in range(blockCount):
-            if checksums[i] == None or checksums[i] == '':
+            if not checksums[i]:
                 blockIndex = i
                 blockSize = config.BLOCK_SIZE
                 if blockIndex == blockCount - 1:
                     blockSize = fsize - config.BLOCK_SIZE * blockIndex
 
-                if blockProgresses[i] == None:
+                if not blockProgresses[i]:
                     blockProgresses[i] = BlockProgress()
 
                 ret = self.resumablePutBlock(localFile,
@@ -253,19 +255,19 @@ def __resumablePutFile(upService,
     if not ret.ok():
         return ret
 
-    if mimeType == None or mimeType == '':
+    if not mimeType:
         mimeType = 'application/octet-stream'
 
     params = '/mimeType/' + base64.urlsafe_b64encode(mimeType)
 
-    if customMeta != None and customMeta != '':
+    if customMeta:
         params += '/meta/' + base64.urlsafe_b64decode(customMeta)
 
     if customerId != None:
         params += '/customer/' + str(customerId)
 
     entryURI = bucketName + ':' + key
-    callRet = upService.makeFile(entryURI, fsize, params, callbackParams, checksums)
+    callRet = upService.makeFile(entryURI, fsize, params, callbackParams)
     return callRet
 
 
@@ -283,22 +285,23 @@ class __ResumableNotifier(BlockProgressNotifier, ProgressNotifier):
         self.fh.write(s)
 
     def notify(self, blockIdx, checksum=None, blockProgress=None):
-        if checksum == None and blockProgress == None:
-            raise Error('checksum == None and blockProgress == None')
+        if not checksum and not blockProgress:
+            raise Error('notify: checksum and blockProgress are unavalible.')
 
-        if checksum != None:
+        if checksum:
             doc = {"block": blockIdx, "checksum": checksum}
             try:
                 s = json.dumps(doc)
                 self.write(s + '\r\n')
             except Exception, e:
-                print e
+                print 'notify', e
 
-        if blockProgress != None:
+        if blockProgress:
             m = {
                 "ctx": blockProgress.ctx,
                 "offset": blockProgress.offset,
-                "restSize": blockProgress.restSize
+                "restSize": blockProgress.restSize,
+                "host": blockProgress.host,
             }
             doc = {
                 "block": blockIdx,
@@ -308,7 +311,7 @@ class __ResumableNotifier(BlockProgressNotifier, ProgressNotifier):
                 s = json.dumps(doc)
                 self.write(s + '\r\n')
             except Exception, e:
-                print e
+                print 'notify', e
 
 
 def ResumablePutFile(uploadToken,
@@ -336,14 +339,17 @@ def ResumablePutFile(uploadToken,
         with open(inputFilePath, 'r') as f:
             fsize = os.path.getsize(inputFilePath)
             blockCount = upService.blockCount(fsize)
-            if progressFilePath == None or progressFilePath == '':
+            if not progressFilePath:
                 progressFilePath = inputFilePath + '.progress' + str(fsize)
             print 'fsize = ', fsize
             checksums = [None for i in range(blockCount)]
             blockProgresses = [None for i in range(blockCount)]
 
             try:
-                __readProgress(progressFilePath, checksums, blockProgresses, blockCount)
+                host, ctxList = __readProgress(progressFilePath, checksums, blockProgresses, blockCount)
+                if host:
+                    upService.host = host
+                upService.ctxList = ctxList
             except IOError, e:
                 pass
 
@@ -355,15 +361,17 @@ def ResumablePutFile(uploadToken,
                                             f, fsize,
                                             customMeta, customId, callBackParams)
     except Exception, e:
-        print e
+        print 'ResumablePutFile', e
 
     ret = None
-    if callRet != None and callRet.ok():
+    if callRet and callRet.ok():
         ret = callRet.content
     return ret
 
 
 def __readProgress(filePath, checksums, blockProgresses, blockCount):  # IOError
+    host = ""
+    ctxList = []
     with open(filePath) as fi:
         while True:
             line = fi.readline()
@@ -372,7 +380,7 @@ def __readProgress(filePath, checksums, blockProgresses, blockCount):  # IOError
 
             m = json.loads(line)
             block = m.get('block')
-            if block == None:
+            if not block:
                 break
 
             blockIdx = int(block)
@@ -380,17 +388,23 @@ def __readProgress(filePath, checksums, blockProgresses, blockCount):  # IOError
                 break
 
             checksum = m.get('checksum')
-            if checksum != None:
+            if checksum:
                 checksums[blockIdx] = str(checksum)
                 continue
 
             blockProgress = m.get('progress')
-            if blockProgress != None:
+            if blockProgress:
                 bp = BlockProgress()
                 bp.ctx = blockProgress.get('ctx')
                 bp.offset = blockProgress.get('offset')
                 bp.restSize = blockProgress.get('restSize')
+                bp.host = blockProgress.get('host')
                 blockProgresses[blockIdx] = bp
+                if not host:
+                    host = bp.host
+                if bp.ctx:
+                    ctxList.append(bp.ctx)
                 continue
-
             break
+
+    return host, ctxList

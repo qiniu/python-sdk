@@ -1,9 +1,6 @@
 .DS_Store
 *.swp
 *.pyc
-*.jpg
-MANIFEST
-mytmp
 
 *.py[cod]
 
@@ -40,3 +37,10 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+#####################################
+MANIFEST
+*.jpg
+*.jpg.*
+mytmp
+my_up_demo.py
