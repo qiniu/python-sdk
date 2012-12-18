@@ -96,7 +96,7 @@ class UpService(object):
         url = config.UP_HOST + '/mkblk/' + str(blockSize)
         callRet = self.conn.CallWithString(url, body, bodyLength)
         ret = ResumablePutRet(callRet)
-        if ret.ok():
+        if ret and ret.ok():
             self.host = ret.host
             self.ctxList.append(ret.ctx)
         return ret
@@ -105,7 +105,7 @@ class UpService(object):
         url = self.host + '/bput/' + ctx + '/' + str(offset)
         callRet = self.conn.CallWithString(url, body, bodyLength)
         ret = ResumablePutRet(callRet)
-        if ret.ok():
+        if ret and ret.ok():
             self.ctxList.append(ret.ctx)
         return ret
 
@@ -335,33 +335,33 @@ def ResumablePutFile(uploadToken,
 
     upService = UpService(Client(uploadToken))
     callRet = None
-    # try:
-    with open(inputFilePath, 'r') as f:
-        fsize = os.path.getsize(inputFilePath)
-        blockCount = upService.blockCount(fsize)
-        if not progressFilePath:
-            progressFilePath = inputFilePath + '.progress' + str(fsize)
-        print 'fsize = ', fsize
-        checksums = [None for i in range(blockCount)]
-        blockProgresses = [None for i in range(blockCount)]
+    try:
+        with open(inputFilePath, 'r') as f:
+            fsize = os.path.getsize(inputFilePath)
+            blockCount = upService.blockCount(fsize)
+            if not progressFilePath:
+                progressFilePath = inputFilePath + '.progress' + str(fsize)
+            print 'fsize = ', fsize
+            checksums = [None for i in range(blockCount)]
+            blockProgresses = [None for i in range(blockCount)]
 
-        try:
-            host, ctxList = __readProgress(progressFilePath, checksums, blockProgresses, blockCount)
-            if host:
-                upService.host = host
-            upService.ctxList = ctxList
-        except IOError, e:
-            pass
+            try:
+                host, ctxList = __readProgress(progressFilePath, checksums, blockProgresses, blockCount)
+                if host:
+                    upService.host = host
+                upService.ctxList = ctxList
+            except IOError, e:
+                pass
 
-        with __ResumableNotifier(progressFilePath) as notif:
-            callRet = __resumablePutFile(upService,
-                                        checksums, blockProgresses,
-                                        notif, notif,
-                                        bucketName, key, mimeType,
-                                        f, fsize,
-                                        customMeta, customId, callBackParams)
-    # except Exception, e:
-    #     print 'ResumablePutFile', e
+            with __ResumableNotifier(progressFilePath) as notif:
+                callRet = __resumablePutFile(upService,
+                                            checksums, blockProgresses,
+                                            notif, notif,
+                                            bucketName, key, mimeType,
+                                            f, fsize,
+                                            customMeta, customId, callBackParams)
+    except Exception, e:
+        print 'ResumablePutFile', e
 
     ret = None
     if callRet and callRet.ok():
