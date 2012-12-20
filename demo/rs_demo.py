@@ -1,20 +1,17 @@
 #!/usr/bin/env python
-
-import config
-import urllib
-import digestoauth
-import rs as qboxrs
-import rscli
-import config
-import uptoken
+from qiniu import digestoauth
+from qiniu import rs as qiniurs
+from qiniu import rscli
+from qiniu import config
+from qiniu import uptoken
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
 
-DEMO_DOMAIN = 'test_photos2.dn.qbox.me'
+DEMO_DOMAIN = 'test_photos3.dn.qbox.me'
 
 bucket = 'test_photos'
-newbucket = "new_test_bucket"
+newbucket = "new_test_bucket3"
 key = 'test.jpg'
 customer = 'end_user_id'
 
@@ -28,7 +25,7 @@ print resp
 
 
 client = digestoauth.Client()
-rs = qboxrs.Service(client, bucket)
+rs = qiniurs.Service(client, bucket)
 
 resp = rs.Publish(DEMO_DOMAIN)
 print '\n===> Publish result:'

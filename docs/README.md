@@ -7,9 +7,18 @@ title: Python 2.x SDK | 七牛云存储
 
 此 SDK 适用于 Python 2.x 版本
 
-SDK 下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags)
+**安装**
 
-SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2/>
+```
+pip install qiniu
+```
+
+或
+
+```
+easy_install qiniu
+```
+
 
 **应用接入**
 
@@ -58,11 +67,9 @@ TODO
 
 ### 2. 签名认证
 
-首先，到 [https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags) 下载SDK源码。
+您需要在您的app中初始化如下配置项：
 
-然后，您可以解压 SDK 包后将其放入您项目工程相应的目录中。在引入 SDK 里边的文件后，您需要修改下配置项：
-
-    import config
+    from qiniu import config
 
     config.ACCESS_KEY = '<Please apply your access key>'
     config.SECRET_KEY = '<Dont send your secret key to anyone>'
@@ -79,6 +86,7 @@ TODO
 
 可以通过 SDK 提供的 `Mkbucket` 函数创建一个 Bucket 。
 
+    from qiniu import rs
     resp = rs.Mkbucket(BucketName)
 
 **参数**
@@ -98,7 +106,7 @@ TODO
 
 生成uptoken如下：
 
-    import uptoken
+    from qiniu import uptoken
     tokenObj = uptoken.UploadToken(scope, expires_in, callback_url, callback_bodytype, customer)
     uploadtoken = tokenObj.generate_token()
 
@@ -177,9 +185,12 @@ PutFile() 参数含义如下：
 
 初始化空间（Bucket）对象后，后续可以在该空间对象的基础上对该空间进行各种操作。　
 
+    from qiniu import rs as qiniurs
+    from qiniu import digestoauth
+
     client = digestoauth.Client()
     bucket = 'bucket_name'
-    rs = qboxrs.Service(client, bucket)
+    rs = qiniurs.Service(client, bucket)
 
 
 <a name="rs-Stat"></a>
