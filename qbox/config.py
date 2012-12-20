@@ -15,3 +15,8 @@ UP_HOST  = 'http://up.qbox.me'
 RS_HOST  = 'http://rs.qbox.me:10100'
 EU_HOST  = 'http://eu.qbox.me'
 PUB_HOST = 'http://pu.qbox.me:10200'
+
+BLOCK_BITS = 22
+BLOCK_SIZE = 4194304
+PUT_CHUNK_SIZE = 262144
+PUT_RETRY_TIMES = 3
