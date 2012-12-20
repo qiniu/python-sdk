@@ -10,13 +10,13 @@ title: Python 2.x SDK | 七牛云存储
 **安装**
 
 ```
-pip install qiniu-rs
+pip install qiniu
 ```
 
 或
 
 ```
-easy_install qiniu-rs
+easy_install qiniu
 ```
 
 
@@ -69,7 +69,7 @@ TODO
 
 您需要在您的app中初始化如下配置项：
 
-    from qbox import config
+    from qiniu import config
 
     config.ACCESS_KEY = '<Please apply your access key>'
     config.SECRET_KEY = '<Dont send your secret key to anyone>'
@@ -86,7 +86,7 @@ TODO
 
 可以通过 SDK 提供的 `Mkbucket` 函数创建一个 Bucket 。
 
-    from qbox import rs
+    from qiniu import rs
     resp = rs.Mkbucket(BucketName)
 
 **参数**
@@ -106,7 +106,7 @@ TODO
 
 生成uptoken如下：
 
-    from qbox import uptoken
+    from qiniu import uptoken
     tokenObj = uptoken.UploadToken(scope, expires_in, callback_url, callback_bodytype, customer)
     uploadtoken = tokenObj.generate_token()
 
@@ -185,12 +185,12 @@ PutFile() 参数含义如下：
 
 初始化空间（Bucket）对象后，后续可以在该空间对象的基础上对该空间进行各种操作。　
 
-    from qbox import rs as qboxrs
-    from qbox import digestoauth
+    from qiniu import rs as qiniurs
+    from qiniu import digestoauth
 
     client = digestoauth.Client()
     bucket = 'bucket_name'
-    rs = qboxrs.Service(client, bucket)
+    rs = qiniurs.Service(client, bucket)
 
 
 <a name="rs-Stat"></a>

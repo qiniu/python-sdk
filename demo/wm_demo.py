@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from qbox import config
-from qbox import digestoauth
-from qbox import eu
+from qiniu import config
+from qiniu import digestoauth
+from qiniu import eu
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'

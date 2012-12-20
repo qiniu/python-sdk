@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from qbox import config
-from qbox import rs as qboxrs
-from qbox import rscli
-from qbox import digestoauth
-from qbox import uptoken
+from qiniu import config
+from qiniu import rs as qiniurs
+from qiniu import rscli
+from qiniu import digestoauth
+from qiniu import uptoken
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
@@ -23,7 +23,7 @@ print '\n===> UploadFile %s result:' % key
 print resp
 
 client = digestoauth.Client()
-rs = qboxrs.Service(client, bucket)
+rs = qiniurs.Service(client, bucket)
 
 resp = rs.Stat(key)
 print '\n===> Stat %s result:' % key

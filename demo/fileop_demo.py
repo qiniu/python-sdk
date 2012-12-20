@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-from qbox import config
+from qiniu import config
 import urllib
-from qbox import fileop
-from qbox import rs as qboxrs
-from qbox import digestoauth
-from qbox import uptoken
-from qbox import rscli
+from qiniu import fileop
+from qiniu import rs as qiniurs
+from qiniu import digestoauth
+from qiniu import uptoken
+from qiniu import rscli
 
 config.ACCESS_KEY = '<Please apply your access key>'
 config.SECRET_KEY = '<Dont send your secret key to anyone>'
@@ -26,7 +26,7 @@ print resp
 
 
 client = digestoauth.Client()
-rs = qboxrs.Service(client, bucket)
+rs = qiniurs.Service(client, bucket)
 
 resp = rs.Get(key, key)
 print '\n===> Get %s result:' % key
@@ -51,7 +51,7 @@ mogrifyPreviewURL = fileop.ImageMogrifyPreviewURL(urlImageSource, opts)
 print "\n===> ImageMogrifyPreviewURL result:"
 print mogrifyPreviewURL
 
-imgrs = qboxrs.Service(client, "test_thumbnails_bucket")
+imgrs = qiniurs.Service(client, "test_thumbnails_bucket")
 resp = imgrs.ImageMogrifyAs(targetKey, urlImageSource, opts)
 print "\n===> ImageMogrifyAs %s result:" % targetKey
 print resp

@@ -3,11 +3,11 @@
 
 from setuptools import setup
 
-PACKAGE = 'qbox'
-NAME = 'qiniu-rs'
+PACKAGE = 'qiniu'
+NAME = 'qiniu'
 DESCRIPTION = 'Qiniu Resource (Cloud) Storage SDK for Python 2.X.'
-LONG_DESCRIPTION = 'see:\n https://github.com/qiniu/python-sdk\nhttp://docs.qiniutek.com/v3/sdk/python/\n'
-AUTHOR = 'qiniu'
+LONG_DESCRIPTION = 'see:\nhttps://github.com/qiniu/python-sdk\nhttp://docs.qiniutek.com/v3/sdk/python/\n'
+AUTHOR = 'Shanghai Qiniu Information Technologies Co., Ltd.'
 AUTHOR_EMAIL = 'support@qiniutek.com'
 URL = 'https://github.com/qiniu/python-sdk'
 VERSION = __import__(PACKAGE).__version__
@@ -22,7 +22,7 @@ setup(
     author_email=AUTHOR_EMAIL,
     license='MIT',
     url=URL,
-    packages=['qbox'],
+    packages=['qiniu'],
     platforms='any',
     install_requires=['httplib2>=0.7.6'],
     classifiers=[
