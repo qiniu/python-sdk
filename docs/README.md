@@ -21,9 +21,8 @@ SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2
 - [新建存储空间（Bucket）](#rs-Mkbucket)
 - [上传文件](#rs-PutFile)
     - [获取用于上传文件的临时授权凭证](#token)
-    - [服务端上传文件](#putfile)
-    - [客户端直传文件](#enputfile)
-        - [网页直传文件](#web-upload-fie)
+    - [服务端/PC 端上传文件](#uploadfile)
+    - [移动端直传文件](#enputfile)
 - [初始化空间（Bucket）对象](#rs-NewService)
 - [获取已上传文件信息](#rs-Stat)
 - [下载文件](#rs-Get)
@@ -120,11 +119,11 @@ UploadToken 初始化各参数含义如下：
 : 可选，字符串类型（String），客户方终端用户（End User）的ID，该字段可以用来标示一个文件的属主，这在一些特殊场景下（比如给终端用户上传的图片打上名字水印）非常有用。
 
 
-<a name="putfile"></a>
+<a name="uploadfile"></a>
 
-#### 2.2 服务端上传文件
+#### 2.2 服务端/PC 端上传文件
 
-PutFile() 方法可在客户方的业务服务器上直接往七牛云存储上传文件。该函数规格如下：
+UploadFile() 方法可在客户方的业务服务器上直接往七牛云存储上传文件。该函数规格如下：
 
     import rscli
     resp = rscli.UploadFile(bucket, key, mimeType, localFile, customMeta, callbackParams, uploadToken)
@@ -141,7 +140,7 @@ PutFile() 参数含义如下：
 
 <a name="enputfile"></a>
 
-#### 2.3 客户端直传文件
+#### 2.3 移动端直传文件
 
 客户端上传流程和服务端上传类似，差别在于：客户端直传文件所需的 `upload_token` 可以选择在客户方的业务服务器端生成，也可以选择在客户方的客户端程序里边生成。选择前者，可以和客户方的业务揉合得更紧密和安全些，比如防伪造请求。
 
@@ -151,25 +150,6 @@ PutFile() 参数含义如下：
 2. 将该 `uploadToken` 作为文件上传流 `multipart/form-data` 中的一部分实现上传操作
 
 如果您的网络程序是从云端（服务端程序）到终端（手持设备应用）的架构模型，且终端用户有使用您移动端App上传文件（比如照片或视频）的需求，可以把您服务器得到的此 `upload_token` 返回给手持设备端的App，然后您的移动 App 可以使用 [七牛云存储 Objective-SDK （iOS）](http://docs.qiniutek.com/v3/sdk/objc/) 或 [七牛云存储 Android-SDK](http://docs.qiniutek.com/v3/sdk/android/) 的相关上传函数或参照 [七牛云存储API之文件上传](http://docs.qiniutek.com/v3/api/io/#upload) 直传文件。这样，您的终端用户即可把数据（比如图片或视频）直接上传到七牛云存储服务器上无须经由您的服务端中转，而且在上传之前，七牛云存储做了智能加速，终端用户上传数据始终是离他物理距离最近的存储节点。当终端用户上传成功后，七牛云存储服务端会向您指定的 `callback_url` 发送回调数据。如果 `callback_url` 所在的服务处理完毕后输出 `JSON` 格式的数据，七牛云存储服务端会将该回调请求所得的响应信息原封不动地返回给终端应用程序。
-
-<a name="web-upload-fie"></a>
-
-#### 2.3.1 网页直传文件
-
-网页上传文件，需要满足如下 HTML Form 规格：
-
-    <form method="post" enctype="multipart/form-data" action="http://up.qbox.me/upload">
-      <input type="hidden" name="action" value="/rs-put/{urlsafe_b64encode({bucket}:{key})}" />
-      <input type="hidden" name="params" value="bucket={bucket}&key={key}&k1=v1&k2=v2&k3=v3&..." />
-      <input type="hidden" name="auth" value="{uploadToken}" />
-      <input type="file" name="file" />
-      <input type="hidden" name="return_url" value="http://DOMAIN/PATH?QUERY_STRING" />
-      <input type="submit" value="Upload File" />
-    </form>
-
-如上表单结构，其中 `return_url` 字段非必须。倘若有入 `return_url` 字段，七牛云存储会在文件上传成功后执行301跳转，跳转的 URL 即 `return_url` 指定的文本值。七牛云存储执行 301 跳转不影响回调请求的进行，若生成 `uploadToken` 的过程中有指定 `callback_url` 参数，那么回调同样会执行，回调请求POST发送的参数即上述 HTML Form 结构中 `params` 字段指定的值。
-
-以上 HTML Form 结构只满足单个文件上传，大多数时候我们在网页中会用到批量上传，比如使用 `SWFUpload` 或 `jQuery-Ajax-File-Upload` 批量上传组件。使用这些批量上传组件，只需在文件上传前的虚拟Form中动态插入如上 HTML Form 结构中相应的字段即可，`return_url` 除外。关于网页批直传文件的更多细节，您可以向我们的技术支持工程师获得更详细的帮助。
 
 <a name="rs-NewService"></a>
 
