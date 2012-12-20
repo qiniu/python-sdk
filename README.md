@@ -9,13 +9,13 @@
 
 
 ```
-pip install qiniu-rs
+pip install qiniu
 ```
 
 或
 
 ```
-easy_install qiniu-rs
+easy_install qiniu
 ```
 
 
