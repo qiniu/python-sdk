@@ -374,17 +374,6 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
         data: <Data> 或 error: <ErrorMessage>
     }
 
-当只有部分 keys 执行成功时，返回 298（PartialOK）。
-
-要删除整个资源表及该表里边的所有文件，可以调用资源表对象的 Drop() 方法。
-需慎重，这会删除整个表及其所有文件。
-
-    resp = rs.Drop()
-
-要删除指定的文件，只需调用资源表对象的 Delete() 方法并传入 文件ID（key）作为参数即可。如下示例代码：
-
-    resp = rs.Delete(key)
-
 <a name="cloud-processing"></a>
 
 ### 云处理
