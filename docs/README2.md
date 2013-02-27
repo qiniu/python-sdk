@@ -318,23 +318,6 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 **响应**
 
-    200 OK [
-        <Result1>, <Result2>, ...
-    ]
-    298 Partial OK [
-        <Result1>, <Result2>, ...
-    ]
-    <Result> 是 {
-        code: <HttpCode>,
-        data: <Data> 或 error: <ErrorMessage>
-    }
-
-当只有部分 keys 执行成功时，返回 298（PartialOK）。
-
-使用资源表对象的 `BatchGet` 方法可以批量取得下载链接：
-
-    resp = rs.BatchGet(keysList)
-
 **示例**
 
 批量获取下载链接：
@@ -444,7 +427,7 @@ GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
 
 ## 许可证
 
-Copyright (c) 2012 qiniutek.com
+Copyright (c) 2012 - 2013 qiniutek.com
 
 基于 MIT 协议发布:
 
