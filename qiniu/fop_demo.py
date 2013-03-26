@@ -12,12 +12,12 @@ class TestFop(unittest.TestCase):
 		ie = fop.ImageExif()
 		ret, err = ie.call(pic)
 		assert err is None
-		self.assertIsNotNone(ret)
+		assert ret is not None
 		
 		# error
 		ret, err = ie.call(noexist_pic)
-		self.assertIsNotNone(err)
-		assert err is None
+		assert err is not None
+		assert ret is None
 
 	def test_imageView(self):
 		iv = fop.ImageView()
@@ -34,11 +34,11 @@ class TestFop(unittest.TestCase):
 		ii = fop.ImageInfo()
 		ret, err = ii.call(pic)
 		assert err is None
-		self.assertIsNotNone(ret)
+		assert ret is not None
 		
 		# error
 		ret, err = ii.call(noexist_pic)
-		self.assertIsNotNone(err)
+		assert err is not None
 
 	def test_imageMogr(self):
 		im = fop.ImageMogr()

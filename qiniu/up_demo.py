@@ -59,7 +59,7 @@ class TestUp(unittest.TestCase):
 
 		ret, err = u.put_file(filepath, action, params)
 		assert err is None
-		self.assertIsNotNone(ret)
+		assert ret is not None
 
 if __name__ == "__main__":
 	unittest.main()
