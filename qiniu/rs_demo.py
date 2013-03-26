@@ -21,11 +21,11 @@ class TestRs(unittest.TestCase):
 	def test_stat(self):
 		ret, err = r.stat(bucket_name, key)
 		assert err is None
-		self.assertIsNotNone(ret)
+		assert ret is not None
 		
 		# error
 		_, err = r.stat(bucket_name, noexist_key)
-		self.assertIsNotNone(err)
+		assert err is not None
 	
 	def test_delete_move_copy(self):
 		ret, err = r.copy(bucket_name, key, bucket_name, key2)
@@ -39,10 +39,10 @@ class TestRs(unittest.TestCase):
 		
 		# error
 		_, err = r.delete(bucket_name, key2)
-		self.assertIsNotNone(err)
+		assert err is not None
 		
 		_, err = r.delete(bucket_name, key3)
-		self.assertIsNotNone(err)
+		assert err is not None
 
 	def test_batch_stat(self):
 		entries = [
