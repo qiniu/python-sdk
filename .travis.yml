@@ -11,4 +11,5 @@ before_script:
   - export QINIU_NOEXIST_PIC="http://cheneya.qiniudn.com/$QINIU_NOEXIST_PIC_KEY"
   - export QINIU_BUCKET_NAME="a"
 script:
-  - cd qiniu/ && python *_demo.py
+  - cd qiniu/
+  - for file in `ls *_demo.py`; do python $file; done;
