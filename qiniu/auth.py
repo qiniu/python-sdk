@@ -36,13 +36,20 @@ class Client(object):
 		return ret, None
 
 	def call_with_multipart(self, path, fields=None, files=None):
+		"""
+		 *  fields => [(key, value)]
+		 *  files => [(key, filename, mimeType, value)]
+		"""
 		content_type, body = self.encode_multipart_formdata(fields, files)
 		self.set_header("Content-Type", content_type)
 		self.set_header("Content-Length", len(body))
 		return self.call_with(path, body)
 
 	def call_with_form(self, path, ops):
-		self.set_header("Content-Type", "application/x-www-form-urlencoded")
+		"""
+		 * ops => {"key": value/list()}
+		"""
+		
 		body = []
 		for i in ops:
 			if isinstance(ops[i], (list, tuple)):
@@ -51,7 +58,11 @@ class Client(object):
 				data = ops[i]
 			
 			body.append('%s=%s' % (i, data))
-		return self.call_with(path, '&'.join(body))
+		body = '&'.join(body)
+		
+		self.set_header("Content-Type", "application/x-www-form-urlencoded")
+		self.set_header("Content-Length", len(body))
+		return self.call_with(path, body)
 
 	def set_header(self, field, value):
 		self._header[field] = value
@@ -65,6 +76,11 @@ class Client(object):
 		 *  files => [(key, filename, mimeType, value)]
 		 *  return content_type, body
 		"""
+		if files is None:
+			files = []
+		if fields is None:
+			fields = []
+
 		BOUNDARY = '----------ThIs_Is_tHe_bouNdaRY_$'
 		CRLF = '\r\n'
 		L = []
@@ -75,7 +91,8 @@ class Client(object):
 			L.append(value)
 		for (key, filename, mimeType, value) in files:
 			L.append('--' + BOUNDARY)
-			L.append('Content-Disposition: form-data; name="%s"; filename="%s"' % (key, filename))
+			disposition = "Content-Disposition: form-data;"
+			L.append('%s name="%s"; filename="%s"' % (disposition, key, filename))
 			L.append('Content-Type: %s' % mimeType)
 			L.append('')
 			L.append(value)
@@ -92,11 +109,3 @@ def sign(secret, data):
 def sign_json(access, secret, data):
 	data = urlsafe_b64encode(json.dumps(data, separators=(',',':')))
 	return '%s:%s:%s' % (access, sign(secret, data), data)
-
-if __name__ == "__main__":
-	ACCESS_KEY = "tGf47MBl1LyT9uaNv-NZV4XZe7sKxOIa9RE2Lp8B"
-	SECRET_KEY = "zhbiA6gcQMEi22uZ8CBGvmbnD2sR8SO-5S8qlLCG"
-	a = dict(a="b")
-	print sign_json(ACCESS_KEY, SECRET_KEY, a)
-	help(Client)
-	

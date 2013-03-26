@@ -4,10 +4,6 @@ from urlparse import urlparse
 
 import auth
 
-def setup():
-	pass
-
-
 class Client(auth.Client):
 	def __init__(self):
 		super(Client, self).__init__(config.RS_HOST)
@@ -31,7 +27,3 @@ class Client(auth.Client):
 		digest = self.make_signal(path, body)
 		self.set_header("Authorization", "QBox %s:%s" % (config.ACCESS_KEY, digest))
 		return super(Client, self).round_tripper(method, path, body)
-
-
-if __name__ == "__main__":
-	c = Client()

@@ -47,6 +47,8 @@ class PutPolicy(object):
 class GetPolicy(object):
 	scope = None
 	expires = 3600
+	def __init__(self, scope):
+		self.scope = scope
 	
 	def token(self):
 		token = dict(
@@ -54,12 +56,3 @@ class GetPolicy(object):
 			E = self.expires + int(time.time())
 		)
 		return auth.sign_json(config.ACCESS_KEY, config.SECRET_KEY, token)
-
-if __name__ == "__main__":
-	config.ACCESS_KEY = "tGf47MBl1LyT9uaNv-NZV4XZe7sKxOIa9RE2Lp8B"
-	config.SECRET_KEY = "zhbiA6gcQMEi22uZ8CBGvmbnD2sR8SO-5S8qlLCG"
-
-	p = PutPolicy("a")
-	# eyJzY29wZSI6ImEiLCJkZWFkbGluZSI6MTExMjIyMn0=
-	print p.token()
-	# tGf47MBl1LyT9uaNv-NZV4XZe7sKxOIa9RE2Lp8B:B6-2V-iikhegLkra9IvKnm8j3DE=:eyJzY29wZSI6ImEiLCJkZWFkbGluZSI6MTM2NDI2NDk5MX0=

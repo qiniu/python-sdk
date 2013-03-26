@@ -37,16 +37,18 @@ class Rs(object):
 			ops.append(uri_delete(entry.bucket, entry.key))
 		return self.batch(ops)
 
-	def batch_move(self, entryies):
+	def batch_move(self, entries):
 		ops = []
 		for entry in entries:
-			ops.append(uri_move(entry.bucket, entry.key))
+			ops.append(uri_move(entry.src.bucket, entry.src.key, 
+				entry.dest.bucket, entry.dest.key))
 		return self.batch(ops)
 
-	def batch_copy(self, entryies):
+	def batch_copy(self, entries):
 		ops = []
 		for entry in entries:
-			ops.append(uri_copy(entry.bucket, entry.key))
+			ops.append(uri_copy(entry.src.bucket, entry.src.key, 
+				entry.dest.bucket, entry.dest.key))
 		return self.batch(ops)
 
 class EntryPath(object):
@@ -78,17 +80,3 @@ def uri_copy(bucket_src, key_src, bucket_dest, key_dest):
 	src = urlsafe_b64encode("%s:%s" % (bucket_src, key_src))
 	dest = urlsafe_b64encode("%s:%s" % (bucket_dest, key_dest))
 	return "/copy/%s/%s" % (src, dest)
-
-if __name__ == "__main__":
-	config.ACCESS_KEY = "tGf47MBl1LyT9uaNv-NZV4XZe7sKxOIa9RE2Lp8B"
-	config.SECRET_KEY = "zhbiA6gcQMEi22uZ8CBGvmbnD2sR8SO-5S8qlLCG"
-	rs = Rs()
-	entries = [
-		EntryPath("a", "ffdfd_9"),
-		EntryPath("a", "hello_jpg"),
-	]
-	ret, err = rs.batch_stat(entries)
-	if not err is None:
-		print 'error:', err
-		exit()
-	print ret

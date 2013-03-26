@@ -5,5 +5,8 @@ python:
 before_script:
   - export QINIU_ACCESS_KEY="tGf47MBl1LyT9uaNv-NZV4XZe7sKxOIa9RE2Lp8B"
   - export QINIU_SECRET_KEY="zhbiA6gcQMEi22uZ8CBGvmbnD2sR8SO-5S8qlLCG"
-  - export QINIU_TEST_PIC_1="http://cheneya.qiniudn.com/hello_jpg"
-  - export QINIU_NOEXIST_PIC="http://cheneya.qiniudn.com/no_exist"
+  - export QINIU_PIC_KEY="hello_jpg"
+  - export QINIU_NOEXIST_PIC_KEY="no_exist"
+  - export QINIU_TEST_PIC_1="http://cheneya.qiniudn.com/$QINIU_PIC_KEY"
+  - export QINIU_NOEXIST_PIC="http://cheneya.qiniudn.com/$QINIU_NOEXIST_PIC_KEY"
+  - export QINIU_BUCKET_NAME="a"
