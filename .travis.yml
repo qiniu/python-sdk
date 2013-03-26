@@ -10,3 +10,5 @@ before_script:
   - export QINIU_TEST_PIC_1="http://cheneya.qiniudn.com/$QINIU_PIC_KEY"
   - export QINIU_NOEXIST_PIC="http://cheneya.qiniudn.com/$QINIU_NOEXIST_PIC_KEY"
   - export QINIU_BUCKET_NAME="a"
+script:
+  - cd qiniu/ && python *_demo.py
