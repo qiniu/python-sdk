@@ -20,7 +20,7 @@ class TestClient(unittest.TestCase):
 		
 		def tripper(client, method, path, body):
 			self.assertEqual(path, "/hello")
-			self.assertIsNone(body)
+			assert err is None
 		
 		round_tripper = tripper
 		client.call("/hello")

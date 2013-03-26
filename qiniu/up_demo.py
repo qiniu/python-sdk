@@ -46,7 +46,7 @@ class TestUp(unittest.TestCase):
 		params = "op=3"
 		data = "hello bubby!"
 		ret, err = u.put(filename, action, params, data)
-		self.assertIsNone(err)
+		assert err is None
 
 	def test_put_file(self):
 		u = up.Up(policy.token())
@@ -58,7 +58,7 @@ class TestUp(unittest.TestCase):
 		params = "op=3"
 
 		ret, err = u.put_file(filepath, action, params)
-		self.assertIsNone(err)
+		assert err is None
 		self.assertIsNotNone(ret)
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ r = rs.Rs()
 class TestRs(unittest.TestCase):
 	def test_stat(self):
 		ret, err = r.stat(bucket_name, key)
-		self.assertIsNone(err)
+		assert err is None
 		self.assertIsNotNone(ret)
 		
 		# error
@@ -29,13 +29,13 @@ class TestRs(unittest.TestCase):
 	
 	def test_delete_move_copy(self):
 		ret, err = r.copy(bucket_name, key, bucket_name, key2)
-		self.assertIsNone(err)
+		assert err is None
 		
 		ret, err = r.move(bucket_name, key2, bucket_name, key3)
-		self.assertIsNone(err)
+		assert err is None
 		
 		ret, err = r.delete(bucket_name, key3)
-		self.assertIsNone(err)
+		assert err is None
 		
 		# error
 		_, err = r.delete(bucket_name, key2)
@@ -50,7 +50,7 @@ class TestRs(unittest.TestCase):
 			rs.EntryPath(bucket_name, key2),
 		]
 		ret, err = r.batch_stat(entries)
-		self.assertIsNone(err)
+		assert err is None
 		self.assertEqual(ret[0]["code"], 200)
 		self.assertEqual(ret[1]["code"], 612)
 
@@ -67,16 +67,16 @@ class TestRs(unittest.TestCase):
 			rs.EntryPathPair(e1, e3),
 		]
 		ret, err = r.batch_copy(entries)
-		self.assertIsNone(err)
+		assert err is None
 		self.assertEqual(ret[0]["code"], 200)
 		self.assertEqual(ret[1]["code"], 200)
 		
 		ret, err = r.batch_move([rs.EntryPathPair(e2, e4)])
-		self.assertIsNone(err)
+		assert err is None
 		self.assertEqual(ret[0]["code"], 200)
 		
 		ret, err = r.batch_delete([e3, e4])
-		self.assertIsNone(err)
+		assert err is None
 		self.assertEqual(ret[0]["code"], 200)
 		
 

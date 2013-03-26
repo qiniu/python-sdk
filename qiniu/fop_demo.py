@@ -11,13 +11,13 @@ class TestFop(unittest.TestCase):
 	def test_imageExif(self):
 		ie = fop.ImageExif()
 		ret, err = ie.call(pic)
-		self.assertIsNone(err)
+		assert err is None
 		self.assertIsNotNone(ret)
 		
 		# error
 		ret, err = ie.call(noexist_pic)
 		self.assertIsNotNone(err)
-		self.assertIsNone(ret)
+		assert err is None
 
 	def test_imageView(self):
 		iv = fop.ImageView()
@@ -33,7 +33,7 @@ class TestFop(unittest.TestCase):
 	def test_imageInfo(self):
 		ii = fop.ImageInfo()
 		ret, err = ii.call(pic)
-		self.assertIsNone(err)
+		assert err is None
 		self.assertIsNotNone(ret)
 		
 		# error
