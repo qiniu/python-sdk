@@ -38,7 +38,7 @@ class Client(object):
 	def call_with_multipart(self, path, fields=None, files=None):
 		"""
 		 *  fields => [(key, value)]
-		 *  files => [(key, filename, mimeType, value)]
+		 *  files => [(key, filename, value)]
 		"""
 		content_type, body = self.encode_multipart_formdata(fields, files)
 		self.set_header("Content-Type", content_type)
@@ -73,7 +73,7 @@ class Client(object):
 	def encode_multipart_formdata(self, fields, files):
 		"""
 		 *  fields => [(key, value)]
-		 *  files => [(key, filename, mimeType, value)]
+		 *  files => [(key, filename, value)]
 		 *  return content_type, body
 		"""
 		if files is None:
@@ -89,11 +89,11 @@ class Client(object):
 			L.append('Content-Disposition: form-data; name="%s"' % key)
 			L.append('')
 			L.append(value)
-		for (key, filename, mimeType, value) in files:
+		for (key, filename, value) in files:
 			L.append('--' + BOUNDARY)
 			disposition = "Content-Disposition: form-data;"
 			L.append('%s name="%s"; filename="%s"' % (disposition, key, filename))
-			L.append('Content-Type: %s' % mimeType)
+			L.append('Content-Type: application/octet-stream')
 			L.append('')
 			L.append(value)
 		L.append('--' + BOUNDARY + '--')

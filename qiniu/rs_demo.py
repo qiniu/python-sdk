@@ -29,7 +29,7 @@ class TestRs(unittest.TestCase):
 	
 	def test_delete_move_copy(self):
 		ret, err = r.copy(bucket_name, key, bucket_name, key2)
-		assert err is None
+		assert err is None, err
 		
 		ret, err = r.move(bucket_name, key2, bucket_name, key3)
 		assert err is None
