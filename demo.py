@@ -135,7 +135,7 @@ def image_info():
 	
 	extra = qiniu.io.PutExtra()
 	extra.mime_type = "image/png"
-	localfile = './demo-pic.jpg'
+	localfile = './demo-pic.jpeg'
 	ret, err = qiniu.io.put_file(uptoken, bucket_name, key2, localfile, extra)
 	if err is not None:
 		_error(err)
@@ -158,7 +158,7 @@ def image_exif():
 def image_view():
 	''' 对图片进行预览处理 '''
 	iv = qiniu.fop.ImageView()
-	iv.width = 200
+	iv.width = 100
 	print '可以在浏览器浏览: %s' % iv.make_request(domain + key2)
 
 def batch():
@@ -184,8 +184,8 @@ def batch():
 		return
 	
 	# 删除残留文件
-	rets, err = rs_client.batch_delete([path_1, path_2, path_3])
-	if not [ret['code'] for ret in rets] == [200, 200, 200]:
+	rets, err = rs_client.batch_delete([path_1, path_3])
+	if not [ret['code'] for ret in rets] == [200, 200]:
 		_error("删除失败")
 		return
 	
