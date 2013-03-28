@@ -12,4 +12,4 @@ before_script:
   - export QINIU_BUCKET_NAME="a"
 script:
   - cd qiniu/
-  - for file in `ls *_demo.py`; do python $file; done;
+  - for file in `ls *_test.py`; do python $file; done;
