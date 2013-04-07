@@ -5,12 +5,13 @@ import config
 
 class PutExtra(object):
 	callback_params = None
+	bucket = None
 	custom_meta = None
 	mime_type = None
 
-def put(uptoken, bucket, key, data, extra):
+def put(uptoken, key, data, extra):
 	action = ["/rs-put"]
-	action.append(urlsafe_b64encode("%s:%s" % (bucket, key)))
+	action.append(urlsafe_b64encode("%s:%s" % (extra.bucket, key)))
 	if extra.mime_type is not None:
 		action.append("mimeType/%s" % urlsafe_b64encode(extra.mime_type))
 
@@ -29,11 +30,11 @@ def put(uptoken, bucket, key, data, extra):
 	]
 	return rpc.Client(config.UP_HOST).call_with_multipart("/upload", fields, files)
 
-def put_file(uptoken, bucket, key, localfile, extra):
+def put_file(uptoken, key, localfile, extra):
 	f = open(localfile)
 	data = f.read()
 	f.close()
-	return put(uptoken, bucket, key, data, extra)
+	return put(uptoken, key, data, extra)
 
 def get_url(domain, key, dntoken):
 	return "%s/%s?token=%s" % (domain, key, dntoken)

@@ -6,14 +6,14 @@ import rpc
 import config
 
 class PutPolicy(object):
-	scope = None
-	expires = 3600
+	scope = None             # 可以是 bucketName 或者 bucketName:key
+	expires = 3600           # 默认是 3600 秒
 	callbackUrl = None
 	callbackBodyType = None
 	customer = None
-	asyncOps = None
-	escape = None
-	detectMime = None
+	asyncOps = None         
+	escape = None            # 非 0 表示 Callback 的 Params 支持转义符
+	detectMime = None        # 非 0 表示在服务端自动检测文件内容的 MimeType
 
 	def __init__(self, scope):
 		self.scope = scope

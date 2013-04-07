@@ -18,6 +18,7 @@ bucket_name = os.getenv("QINIU_BUCKET_NAME")
 policy = auth_token.PutPolicy(bucket_name)
 extra = io.PutExtra()
 extra.mime_type = "text/plain"
+extra.bucket = bucket_name
 
 def r(length):
 	lib = string.ascii_uppercase
@@ -28,14 +29,14 @@ class TestUp(unittest.TestCase):
 		key = "test_%s" % r(9)
 		params = "op=3"
 		data = "hello bubby!"
-		ret, err = io.put(policy.token(), bucket_name, key, data, extra)
+		ret, err = io.put(policy.token(), key, data, extra)
 		assert err is None
 
 	def test_put_file(self):
 		localfile = "./%s" % __file__
 		key = "test_%s" % r(9)
 
-		ret, err = io.put_file(policy.token(), bucket_name, key, localfile, extra)
+		ret, err = io.put_file(policy.token(), key, localfile, extra)
 		assert err is None
 		assert ret is not None
 
