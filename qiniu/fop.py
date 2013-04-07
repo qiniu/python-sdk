@@ -33,8 +33,6 @@ class ImageView(object):
 
 	def make_request(self, url):
 		target = []
-		if not self.mode == 1 and not self.mode == 2:
-			return 
 		target.append('%s' % self.mode)
 		
 		if self.width is not None:
