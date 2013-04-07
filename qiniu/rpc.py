@@ -14,25 +14,37 @@ class Client(object):
 
 	def round_tripper(self, method, path, body):
 		self._conn.request(method, path, body, self._header)
-		return self._conn.getresponse()
+		resp = self._conn.getresponse()
+		return resp
 
 	def call(self, path):
 		return self.call_with(path, None)
 
-	def call_with(self, path, body):
+	def call_with(self, path, body, content_type=None, content_length=None):
 		ret = None
+		if content_type is not None:
+			self.set_header("Content-Type", content_type)
+		
+		if content_length is not None:
+			self.set_header("Content-Length", content_length)
+
+		resp = self.round_tripper("POST", path, body)
 		try:
-			resp = self.round_tripper("POST", path, body)
 			ret = resp.read()
 			ret = json.loads(ret)
 		except IOError, e:
 			return None, e
 		except ValueError:
 			pass
-
+			
 		if resp.status / 100 != 2:
 			err_msg = ret if "error" not in ret else ret["error"]
+			detail = resp.getheader("x-log", None)
+			if detail is not None:
+				err_msg += ", detail:%s" % detail
+				
 			return None, err_msg
+		
 		return ret, None
 
 	def call_with_multipart(self, path, fields=None, files=None):
@@ -41,9 +53,7 @@ class Client(object):
 		 *  files => [(key, filename, value)]
 		"""
 		content_type, body = self.encode_multipart_formdata(fields, files)
-		self.set_header("Content-Type", content_type)
-		self.set_header("Content-Length", len(body))
-		return self.call_with(path, body)
+		return self.call_with(path, body, content_type, len(body))
 
 	def call_with_form(self, path, ops):
 		"""
@@ -60,9 +70,8 @@ class Client(object):
 			body.append('%s=%s' % (i, data))
 		body = '&'.join(body)
 		
-		self.set_header("Content-Type", "application/x-www-form-urlencoded")
-		self.set_header("Content-Length", len(body))
-		return self.call_with(path, body)
+		content_type = "application/x-www-form-urlencoded"
+		return self.call_with(path, body, content_type, len(body))
 
 	def set_header(self, field, value):
 		self._header[field] = value

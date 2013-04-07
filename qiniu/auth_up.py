@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import config
 
-import auth
+import rpc
 
 def setup():
 	pass
 
-class Client(auth.Client):
+class Client(rpc.Client):
 	up_token = None
 	
 	def __init__(self, up_token, host=None):

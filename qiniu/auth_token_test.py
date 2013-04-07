@@ -8,7 +8,7 @@ from base64 import urlsafe_b64encode as encode
 from hashlib import sha1
 import hmac
 
-import auth
+import rpc
 import auth_token
 
 config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")

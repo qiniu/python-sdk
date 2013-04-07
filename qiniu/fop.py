@@ -2,8 +2,6 @@
 import json
 import urllib
 
-import auth
-
 class BaseCall(object):
 	def call_url(self, url):
 		try:

@@ -2,7 +2,7 @@
 import json
 import base64
 import time
-import auth
+import rpc
 import config
 
 class PutPolicy(object):
@@ -42,7 +42,7 @@ class PutPolicy(object):
 		if self.detectMime is not None:
 			token["detectMime"] = self.detectMime
 		
-		return auth.sign_json(config.ACCESS_KEY, config.SECRET_KEY, token)
+		return rpc.sign_json(config.ACCESS_KEY, config.SECRET_KEY, token)
 
 class GetPolicy(object):
 	scope = None
@@ -55,4 +55,4 @@ class GetPolicy(object):
 			S = self.scope,
 			E = self.expires + int(time.time())
 		)
-		return auth.sign_json(config.ACCESS_KEY, config.SECRET_KEY, token)
+		return rpc.sign_json(config.ACCESS_KEY, config.SECRET_KEY, token)

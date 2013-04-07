@@ -2,9 +2,9 @@
 import config
 from urlparse import urlparse
 
-import auth
+import rpc
 
-class Client(auth.Client):
+class Client(rpc.Client):
 	def __init__(self):
 		super(Client, self).__init__(config.RS_HOST)
 
@@ -21,7 +21,7 @@ class Client(auth.Client):
 			self._header["Content-Type"] == "application/x-www-form-urlencoded":
 			data += body
 
-		return auth.sign(config.SECRET_KEY, data)
+		return rpc.sign(config.SECRET_KEY, data)
 
 	def round_tripper(self, method, path, body):
 		digest = self.make_signal(path, body)

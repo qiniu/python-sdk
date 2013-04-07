@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-import auth
+import rpc
 import config
 
 def round_tripper(client, method, path, body):
 	pass
 
-class ClsTestClient(auth.Client):
+class ClsTestClient(rpc.Client):
 	def round_tripper(self, method, path, body):
 		round_tripper(self, method, path, body)
 		return super(ClsTestClient, self).round_tripper(method, path, body)

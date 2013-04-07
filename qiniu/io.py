@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from base64 import urlsafe_b64encode
-import auth
+import rpc
 import config
 
 class PutExtra(object):
@@ -27,7 +27,7 @@ def put(uptoken, bucket, key, data, extra):
 	files = [
 		("file", key, data)
 	]
-	return auth.Client(config.UP_HOST).call_with_multipart("/upload", fields, files)
+	return rpc.Client(config.UP_HOST).call_with_multipart("/upload", fields, files)
 
 def put_file(uptoken, bucket, key, localfile, extra):
 	f = open(localfile)
