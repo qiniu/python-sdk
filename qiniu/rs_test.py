@@ -2,6 +2,7 @@
 import unittest
 import os
 import random
+import string
 
 import rs
 import config
