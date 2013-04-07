@@ -15,7 +15,6 @@ key2 = "rs_demo_test_key"
 key3 = "rs_demo_test_key_2"
 key4 = "rs_demo_test_key_3"
 
-
 class TestRs(unittest.TestCase):
 	def test_stat(self):
 		r = rs.Rs()
