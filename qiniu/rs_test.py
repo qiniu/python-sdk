@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 import unittest
 import os
+import random
 
 import rs
 import config
+
+def r(length):
+	lib = string.ascii_uppercase
+	return ''.join([random.choice(lib) for i in range(0, length)])
 
 config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
@@ -11,9 +16,9 @@ pic = os.getenv("QINIU_TEST_PIC_1")
 key = os.getenv("QINIU_PIC_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 noexist_key = os.getenv("QINIU_NOEXIST_PIC_KEY")
-key2 = "rs_demo_test_key"
-key3 = "rs_demo_test_key_2"
-key4 = "rs_demo_test_key_3"
+key2 = "rs_demo_test_key_1_" + r(5)
+key3 = "rs_demo_test_key_2_" + r(5)
+key4 = "rs_demo_test_key_3_" + r(5)
 
 class TestRs(unittest.TestCase):
 	def test_stat(self):
@@ -38,7 +43,7 @@ class TestRs(unittest.TestCase):
 		assert err is None, err
 		
 		ret, err = r.delete(bucket_name, key3)
-		assert err is None
+		assert err is None, err
 		
 		# error
 		_, err = r.delete(bucket_name, key2)
@@ -83,6 +88,8 @@ class TestRs(unittest.TestCase):
 		ret, err = r.batch_delete([e3, e4])
 		assert err is None
 		self.assertEqual(ret[0]["code"], 200)
+		
+		r.batch_delete([e2, e3, e4])
 
 if __name__ == "__main__":
 	unittest.main()
