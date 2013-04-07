@@ -25,8 +25,6 @@ err_unmatched_checksum = Error("unmatched checksum")
 
 def setup(chunk_size=0, try_times=0):
 	"""
-	 * workers         => 并行的工作线程数目
-	 * task_queue_size => 任务队列大小。不设定表示取 Workers * 4
 	 * chunk_size      => 默认的Chunk大小，不设定则为256k
 	 * try_times       => 默认的尝试次数，不设定则为3
 	"""
