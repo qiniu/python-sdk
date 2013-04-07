@@ -92,13 +92,13 @@ def put(uptoken, key, f, fsize, extra):
 				read_length = fsize - i*_block_size
 			data_slice = f.read(read_length)
 			err = resumable_block_put(client, data_slice, i, extra)
-			if err is not None:
-				if try_time <= 0:
-					return None, err_put_failed
-				try_time -= 1
-				print("retry")
-				continue
-			break
+			if err is None:
+				break
+
+			if try_time <= 0:
+				return None, err_put_failed
+			try_time -= 1
+			print("retry")
 
 	return mkfile(client, key, fsize, extra)
 
