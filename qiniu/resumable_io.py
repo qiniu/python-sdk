@@ -106,7 +106,9 @@ def resumable_block_put(client, block, index, extra):
 	block_size = len(block)
 
 	if extra.progresses[index] is None or "ctx" not in extra.progresses[index]:
-		end_pos = _chunk_size-1 if block_size >= _chunk_size else block_size-1
+		end_pos = extra.chunk_size-1
+		if block_size < extra.chunk_size:
+			end_pos = block_size-1
 		chunk = block[: end_pos]
 		crc32 = zlib.crc32(chunk)
 		chunk = bytearray(chunk)
@@ -120,7 +122,7 @@ def resumable_block_put(client, block, index, extra):
 
 	while extra.progresses[index]["offset"] < block_size:
 		offset = extra.progresses[index]["offset"]
-		chunk = block[offset: offset+_chunk_size-1]
+		chunk = block[offset: offset+extra.chunk_size-1]
 		crc32 = zlib.crc32(chunk)
 		chunk = bytearray(chunk)
 		extra.progresses[index], err = putblock(client, extra.progresses[index], chunk)
