@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-
 import MultipartPostHandler
 import urllib
 import urllib2
