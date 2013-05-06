@@ -96,7 +96,7 @@ def put(uptoken, key, f, fsize, extra):
 			if try_time <= 0:
 				return None, err_put_failed
 			try_time -= 1
-			print("retry")
+			print err, ".. retry"
 
 	return mkfile(client, key, fsize, extra)
 

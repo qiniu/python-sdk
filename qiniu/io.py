@@ -8,6 +8,8 @@ class PutExtra(object):
 	bucket = None
 	custom_meta = None
 	mime_type = None
+	def __init__(self, bucket):
+		self.bucket = bucket
 
 def put(uptoken, key, data, extra):
 	action = ["/rs-put"]
