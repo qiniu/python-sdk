@@ -16,9 +16,8 @@ noexist_pic = os.getenv("QINIU_NOEXIST_PIC")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 
 policy = auth_token.PutPolicy(bucket_name)
-extra = io.PutExtra()
+extra = io.PutExtra(bucket_name)
 extra.mime_type = "text/plain"
-extra.bucket = bucket_name
 
 def r(length):
 	lib = string.ascii_uppercase

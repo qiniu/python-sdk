@@ -8,8 +8,8 @@ pic = os.getenv("QINIU_TEST_PIC_1")
 noexist_pic = os.getenv("QINIU_NOEXIST_PIC")
 
 class TestFop(unittest.TestCase):
-	def test_imageExif(self):
-		ie = fop.ImageExif()
+	def test_exif(self):
+		ie = fop.Exif()
 		ret, err = ie.call(pic)
 		assert err is None
 		assert ret is not None

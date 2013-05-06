@@ -17,7 +17,7 @@ class BaseCall(object):
 			return None, body["error"]
 		return body, None
 
-class ImageExif(BaseCall):
+class Exif(BaseCall):
 	def make_request(self, url):
 		return '%s?exif' % url
 
