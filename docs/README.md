@@ -1,374 +1,450 @@
----
-title: Python 2.x SDK | 七牛云存储
----
+Qiniu Resource (Cloud) Storage SDK for Python
+===
 
 # Python 2.x SDK 使用指南
 
+此 Python SDK 适用于2.x版本，基于 [七牛云存储官方API](http://docs.qiniutek.com/v3/api/) 构建。使用此 SDK 构建您的网络应用程序，能让您以非常便捷地方式将数据安全地存储到七牛云存储上。无论您的网络应用是一个网站程序，还是包括从云端（服务端程序）到终端（手持设备应用）的架构的服务或应用，通过七牛云存储及其 SDK，都能让您应用程序的终端用户高速上传和下载，同时也让您的服务端更加轻盈。
 
-此 SDK 适用于 Python 2.x 版本
+目录
+----
+- [1. 安装](#install)
+- [2. 初始化](#setup)
+	- [2.1 配置密钥](#setup-key)
+- [3. 资源管理接口](#rs-api)
+	- [3.1 查看单个文件属性信息](#rs-stat)
+	- [3.2 复制单个文件](#rs-copy)
+	- [3.3 移动单个文件](#rs-move)
+	- [3.4 删除单个文件](#rs-delete)
+	- [3.5 批量操作](#batch)
+		- [3.5.1 批量获取文件属性信息](#batch-stat)
+		- [3.5.2 批量复制文件](#batch-copy)
+		- [3.5.3 批量移动文件](#batch-move)
+		- [3.5.4 批量删除文件](#batch-delete)
+- [4. 上传下载接口](#get-and-put-api)
+	- [4.1 上传下载授权](#token)
+		- [4.1.1 生成uptoken](#make-uptoken)
+		- [4.1.2 生成downtoken](#make-downtoken)
+	- [4.2 文件上传](#upload)
+		- [4.2.1 普通上传](#io-upload)
+		- [4.2.2 断点续上传](#resumable-io-upload)
+	- [4.3 文件下载](#io-download)
+		- [4.3.1 公有资源下载](#public-download)
+		- [4.3.2 私有资源下载](#private-download)
+- [5. 数据处理接口](#fop-api)
+	- [5.1 图像](#fop-image)
+		- [5.1.1 查看图像属性](#fop-image-info)
+		- [5.1.2 查看图片EXIF信息](#fop-exif)
+		- [5.1.3 生成图片预览](#fop-image-view)
+- [6. 贡献代码](#contribution)
+- [7. 许可证](#license)
 
-SDK 下载地址：[https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags)
+----
 
-SDK 使用依赖Python第三方HTTP CLient -- <http://code.google.com/p/httplib2/>
+<a name=install></a>
+## 1. 安装
+在命令行下执行
 
-**应用接入**
+	git clone http://github.com/qiniu/python-sdk
+	# 将系统路径添加到python 的搜索路径
 
-- [获取Access Key 和 Secret Key](#acc-appkey)
-- [签名认证](#acc-auth)
-
-**云存储接口**
-
-- [新建存储空间（Bucket）](#rs-Mkbucket)
-- [上传文件](#rs-PutFile)
-    - [获取用于上传文件的临时授权凭证](#token)
-    - [服务端上传文件](#putfile)
-    - [客户端直传文件](#enputfile)
-        - [网页直传文件](#web-upload-fie)
-- [初始化空间（Bucket）对象](#rs-NewService)
-- [获取已上传文件信息](#rs-Stat)
-- [下载文件](#rs-Get)
-- [发布公开资源](#rs-Publish)
-- [取消资源发布](#rs-Unpublish)
-- [删除已上传的文件](#rs-Delete)
-- [资源表管理](#rs-buckets)
-    - [列出所有资源表](#rs-Buckets)
-    - [删除整张资源表](#rs-Drop)
-- [资源表批量操作接口](#rs-Batch)
-    - [批量下载](#rs-BatchGet)
-    - [批量删除](#rs-BatchDelete)
-
-**图像处理接口**
-
-TODO
-
-
-
-## 应用接入
-
-<a name="acc-appkey"></a>
-
-### 1. 获取Access Key 和 Secret Key
+<a name=setup-key></a>
+### 2.1 配置密钥
 
 要接入七牛云存储，您需要拥有一对有效的 Access Key 和 Secret Key 用来进行签名认证。可以通过如下步骤获得：
 
 1. [开通七牛开发者帐号](https://dev.qiniutek.com/signup)
-2. [登录七牛开发者自助平台，查看 Access Key 和 Secret Key](https://dev.qiniutek.com/account/keys)
+2. [登录七牛开发者自助平台，查看 Access Key 和 Secret Key](https://dev.qiniutek.com/account/keys) 。
+
+在获取到 Access Key 和 Secret Key 之后，您可以在您的程序中调用如下两行代码进行初始化对接, 要确保`ACCESS_KEY` 和 `SECRET_KEY` 在调用所有七牛API服务之前均已赋值：
 
-<a name="acc-login"></a>
+```{python}
+import qiniu.config
+
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+```
 
-### 2. 签名认证
+<a name=rs-api></a>
+## 3. 资源管理接口
 
-首先，到 [https://github.com/qiniu/python-sdk/tags](https://github.com/qiniu/python-sdk/tags) 下载SDK源码。
+<a name=rs-stat></a>
+### 3.1 查看单个文件属性信息
+```{python}
+import qiniu.config
 
-然后，您可以解压 SDK 包后将其放入您项目工程相应的目录中。在引入 SDK 里边的文件后，您需要修改下配置项：
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+
+import qiniu.rs
 
-    import config
+ret, err = rs_client.stat(bucket_name, key)
+if err is not None:
+	error(err)
+	return
+print ret,
+```
+
+<a name=rs-copy></a>
+### 3.2 复制单个文件
+```{python}
+import qiniu.config
 
-    config.ACCESS_KEY = '<Please apply your access key>'
-    config.SECRET_KEY = '<Dont send your secret key to anyone>'
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-在完成 Access Key 和 Secret Key 配置后，您就可以正常使用该 SDK 提供的功能了，这些功能接下来会一一介绍。
+import qiniu.rs
 
-## 云存储接口
+ret, err = rs_client.copy(bucket_name, key, bucket_name, key2)
+if err is not None:
+	error(err)
+	return
+```
+
+<a name=rs-move></a>
+### 3.3 移动单个文件
+```{python}
+import qiniu.config
+
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-<a name="rs-Mkbucket"></a>
+import qiniu.rs
 
-### 1. 新建存储空间（Bucket）
+ret, err = rs_client.move(bucket_name, key2, bucket_name, key3)
+if err is not None:
+	error(err)
+	return
+```
+
+<a name=rs-delete></a>
+### 3.4 删除单个文件
+```{python}
+import qiniu.config
 
-新建存储空间（Bucket）的意义在于，您可以将所有上传的资源分布式加密存储在七牛云存储服务端后还能保持相应的完整映射索引。
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+
+import qiniu.rs
+
+ret, err = rs_client.move(bucket_name, key2, bucket_name, key3)
+if err is not None:
+	error(err)
+	return
+```
+
+<a name=batch></a>
+### 3.5 批量操作
+当您需要一次性进行多个操作时, 可以使用批量操作.
+<a name=batch-stat></a>
+#### 3.5.1 批量获取文件属性信息
+```{python}
+import qiniu.config
+
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+
+import qiniu.rs
 
-可以通过 SDK 提供的 `Mkbucket` 函数创建一个 Bucket 。
+path_1 = qiniu.rs.EntryPath(bucket_name, key)
+path_2 = qiniu.rs.EntryPath(bucket_name, key2)
+path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
-    resp = rs.Mkbucket(BucketName)
+rets, err = rs_client.batch_stat([path_1, path_2, path_3])
+if err is not None:
+	error(err)
+	return
+```
 
-**参数**
+<a name=batch-copy></a>
+#### 3.5.2 批量复制文件
+```{python}
+import qiniu.config
 
-**BucketName**
-: 必填，字符串（String）类型，空间名称，不能含有特殊字符。　
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-<a name="rs-PutFile"></a>
+import qiniu.rs
 
-### 2. 上传文件
+path_1 = qiniu.rs.EntryPath(bucket_name, key)
+path_2 = qiniu.rs.EntryPath(bucket_name, key2)
+path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
-<a name="token"></a>
+pair_1 = qiniu.rs.EntryPathPair(path_1, path_3)
+rets, err = rs_client.batch_copy([pair_1])
+if not rets[0]['code'] == 200:
+	error("复制失败")
+	return
+```
 
-#### 2.1 获取用于上传文件的临时授权凭证
+<a name=batch-move></a>
+#### 3.5.3 批量移动文件
+```{python}
+import qiniu.config
 
-要上传一个文件，首先需要调用 SDK 提供的 generate_token 函数来获取一个经过授权用于临时匿名上传的 uploadtoken——经过数字签名的一组数据信息，该 uploadtoken 作为文件上传流中 multipart/form-data 的一部分进行传输。
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-生成uptoken如下：
+import qiniu.rs
 
-    import uptoken
-    tokenObj = uptoken.UploadToken(scope, expires_in, callback_url, callback_bodytype, customer)
-    uploadtoken = tokenObj.generate_token()
+path_1 = qiniu.rs.EntryPath(bucket_name, key)
+path_2 = qiniu.rs.EntryPath(bucket_name, key2)
+path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
-UploadToken 初始化各参数含义如下：
+pair_2 = qiniu.rs.EntryPathPair(path_3, path_2)
+rets, err = rs_client.batch_move([pair_2])
+if not rets[0]['code'] == 200:
+	error("移动失败")
+	return
+```
 
-**scope**
-: 必须，字符串类型（String），设定文件要上传到的目标 bucket。
+<a name=batch-delete></a>
+#### 3.5.4 批量删除文件
+```{python}
+import qiniu.config
 
-**expires_in**
-: 可选，数字类型，用于设置上传 URL 的有效期，单位：秒，缺省为 3600 秒，即 1 小时后该上传链接不再有效（但该上传URL在其生成之后的59分59秒都是可用的）。
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-**callback_url**
-: 可选，字符串类型（String），用于设置文件上传成功后，七牛云存储服务端要回调客户方的业务服务器地址。
+import qiniu.rs
 
-**callback_bodytype**
-: 可选，字符串类型（String），用于设置文件上传成功后，七牛云存储服务端向客户方的业务服务器发送回调请求的 Content-Type。
+path_1 = qiniu.rs.EntryPath(bucket_name, key)
+path_2 = qiniu.rs.EntryPath(bucket_name, key2)
+path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
-**customer**
-: 可选，字符串类型（String），客户方终端用户（End User）的ID，该字段可以用来标示一个文件的属主，这在一些特殊场景下（比如给终端用户上传的图片打上名字水印）非常有用。
+rets, err = rs_client.batch_delete([path_1, path_2])
+if not [ret['code'] for ret in rets] == [200, 200]:
+	error("删除失败")
+	return
+```
 
+<a name=get-and-put-api></a>
+## 4. 上传下载接口
 
-<a name="putfile"></a>
+<a name=token></a>
+### 4.1 上传下载授权
+<a name=make-uptoken></a>
+#### 4.1.1 上传授权uptoken
+uptoken是一个字符串，作为http协议Header的一部分（Authorization字段）发送到我们七牛的服务端，表示这个http请求是经过认证的。
+```{python}
+import qiniu.config
+
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+
+import qiniu.auth_token
+
+policy = qiniu.auth_token.PutPolicy(bucket_name)
+uptoken = policy.token()
+```
 
-#### 2.2 服务端上传文件
+#### 4.1.2 下载授权downtoken
+downtoken的原理同上，用来生成downtoken的GetPolicy
 
-PutFile() 方法可在客户方的业务服务器上直接往七牛云存储上传文件。该函数规格如下：
+```{python}
+import qiniu.config
 
-    import rscli
-    resp = rscli.UploadFile(bucket, key, mimeType, localFile, customMeta, callbackParams, uploadToken)
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-PutFile() 参数含义如下：
+import qiniu.auth_token
+
+policy = qiniu.auth_token.GetPolicy(bucket_name)
+token = policy.token()
+```
+
+<a name=upload></a>
+### 4.2 文件上传
+**注意**：如果您只是想要上传已存在您电脑本地或者是服务器上的文件到七牛云存储，可以直接使用七牛提供的 [qrsync](/v3/tools/qrsync/) 上传工具。
+文件上传有两种方式，一种是以普通方式直传文件，简称普通上传，另一种方式是断点续上传，断点续上传在网络条件很一般的情况下也能有出色的上传速度，而且对大文件的传输非常友好。
 
-    bucket          # 要上传到的目标 bucket 名称
-    key		        # 设置文件唯一标识
-    mimeType	    # 资源类型，文件的 MIME TYPE，比如 jpg 图片可以是 'image/jpg'
-    localFile	    # 本地文件路径，最好是完整的绝对路径
-    customMeta	    # 自定义描述信息
-    callbackParams 	# 回调参数，格式: "k1=v1&k2=v2&k3=v3..."
-    uploadToken		# 此次上传的授权凭证
+<a name=io-upload></a>
+### 4.2.1 普通上传
+普通上传的接口在 `qiniu.io` 里，如下：
 
-<a name="enputfile"></a>
+直接上传二进制流
+```{python}
+import qiniu.config
 
-#### 2.3 客户端直传文件
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-客户端上传流程和服务端上传类似，差别在于：客户端直传文件所需的 `upload_token` 可以选择在客户方的业务服务器端生成，也可以选择在客户方的客户端程序里边生成。选择前者，可以和客户方的业务揉合得更紧密和安全些，比如防伪造请求。
+import qiniu.io
 
-简单来讲，客户端上传流程也分为两步：
+extra = qiniu.io.PutExtra(bucket_name)
+extra.mime_type = "text/plain"
 
-1. 生成 `uploadToken`（[用于上传文件的临时授权凭证](#generate-upload-token)）
-2. 将该 `uploadToken` 作为文件上传流 `multipart/form-data` 中的一部分实现上传操作
+ret, err = qiniu.io.put(uptoken, key, "hello!", extra)
+if err is not None:
+	error(err)
+	return
+```
 
-如果您的网络程序是从云端（服务端程序）到终端（手持设备应用）的架构模型，且终端用户有使用您移动端App上传文件（比如照片或视频）的需求，可以把您服务器得到的此 `upload_token` 返回给手持设备端的App，然后您的移动 App 可以使用 [七牛云存储 Objective-SDK （iOS）](http://docs.qiniutek.com/v3/sdk/objc/) 或 [七牛云存储 Android-SDK](http://docs.qiniutek.com/v3/sdk/android/) 的相关上传函数或参照 [七牛云存储API之文件上传](http://docs.qiniutek.com/v3/api/io/#upload) 直传文件。这样，您的终端用户即可把数据（比如图片或视频）直接上传到七牛云存储服务器上无须经由您的服务端中转，而且在上传之前，七牛云存储做了智能加速，终端用户上传数据始终是离他物理距离最近的存储节点。当终端用户上传成功后，七牛云存储服务端会向您指定的 `callback_url` 发送回调数据。如果 `callback_url` 所在的服务处理完毕后输出 `JSON` 格式的数据，七牛云存储服务端会将该回调请求所得的响应信息原封不动地返回给终端应用程序。
+上传本地文件
 
-<a name="web-upload-fie"></a>
+```{python}
+import qiniu.config
 
-#### 2.3.1 网页直传文件
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-网页上传文件，需要满足如下 HTML Form 规格：
+import qiniu.io
 
-    <form method="post" enctype="multipart/form-data" action="http://up.qbox.me/upload">
-      <input type="hidden" name="action" value="/rs-put/{urlsafe_b64encode({bucket}:{key})}" />
-      <input type="hidden" name="params" value="bucket={bucket}&key={key}&k1=v1&k2=v2&k3=v3&..." />
-      <input type="hidden" name="auth" value="{uploadToken}" />
-      <input type="file" name="file" />
-      <input type="hidden" name="return_url" value="http://DOMAIN/PATH?QUERY_STRING" />
-      <input type="submit" value="Upload File" />
-    </form>
+localfile = "./%s" % __file__
+extra = qiniu.io.PutExtra(bucket_name)
 
-如上表单结构，其中 `return_url` 字段非必须。倘若有入 `return_url` 字段，七牛云存储会在文件上传成功后执行301跳转，跳转的 URL 即 `return_url` 指定的文本值。七牛云存储执行 301 跳转不影响回调请求的进行，若生成 `uploadToken` 的过程中有指定 `callback_url` 参数，那么回调同样会执行，回调请求POST发送的参数即上述 HTML Form 结构中 `params` 字段指定的值。
+ret, err = qiniu.io.put_file(uptoken, key, localfile, extra)
+if err is not None:
+	error(err)
+	return
+```
 
-以上 HTML Form 结构只满足单个文件上传，大多数时候我们在网页中会用到批量上传，比如使用 `SWFUpload` 或 `jQuery-Ajax-File-Upload` 批量上传组件。使用这些批量上传组件，只需在文件上传前的虚拟Form中动态插入如上 HTML Form 结构中相应的字段即可，`return_url` 除外。关于网页批直传文件的更多细节，您可以向我们的技术支持工程师获得更详细的帮助。
+<a name=resumable-io-upload></a>
+### 4.2.2 断点续上传
+上传二进制流
+```{python}
+import qiniu.config
 
-<a name="rs-NewService"></a>
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-### 3. 初始化空间（Bucket）对象
+import qiniu.resumable_io as rio
 
-初始化空间（Bucket）对象后，后续可以在该空间对象的基础上对该空间进行各种操作。　
+class ResumableUpload(object):
+	position = 0
+	def __init__(self, string_data):
+		self.data = string_data
+	
+	def read(self, length):
+		data = self.data[self.position: self.position+length]
+		self.position += length
+		return data
 
-    client = digestoauth.Client()
-    bucket = 'bucket_name'
-    rs = qboxrs.Service(client, bucket)
+a = "resumable upload string"
+extra = rio.PutExtra(bucket_name)
+extra.mime_type = "text/plain"
+ret, err = rio.put(uptoken, key, ResumableUpload(a), len(a), extra)
+if err is not None:
+	error(err)
+	return
+print ret,
+```
 
+上传本地文件
+```{python}
+import qiniu.config
 
-<a name="rs-Stat"></a>
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-### 4. 获取已上传文件信息
+import qiniu.resumable_io as rio
 
-您可以调用资源表对象的 Stat() 方法并传入一个 Key（类似ID）来获取指定文件的相关信息。
+localfile = "./%s" % __file__
+extra = rio.PutExtra(bucket_name)
 
-    resp = rs.Stat(key)
+ret, err = rio.put_file(uptoken, key, localfile, extra)
+if err is not None:
+	error(err)
+	return
+print ret,
+```
 
+<a name=io-download></a>
+### 4.3 文件下载
+七牛云存储上的资源下载分为 公有资源下载 和 私有资源下载 。
 
-如果请求成功，得到的 statRet 数组将会包含如下几个字段：
+私有（private）是 Bucket（空间）的一个属性，一个私有 Bucket 中的资源为私有资源，私有资源不可匿名下载。
 
-    hash: <FileETag>
-    fsize: <FileSize>
-    putTime: <PutTime>
-    mimeType: <MimeType>
+新创建的空间（Bucket）缺省为私有，也可以将某个 Bucket 设为公有，公有 Bucket 中的资源为公有资源，公有资源可以匿名下载。
 
+<a name=public-download></a>
+#### 4.3.1 公有资源下载
+如果在给bucket绑定了域名的话，可以通过以下地址访问。
 
-<a name="rs-Get"></a>
+	[GET] http://<domain>/<key>
 
-### 5. 下载文件
+其中<domain>可以到[七牛云存储开发者自助网站](https://dev.qiniutek.com/buckets)绑定, 域名可以使用自己一级域名的或者是由七牛提供的二级域名(`<bucket>.qiniutek.com`)。注意，尖括号不是必需，代表替换项。
 
-要下载一个文件，首先需要取得下载授权，所谓下载授权，就是取得一个临时合法有效的下载链接，只需调用资源表对象的 Get() 方法并传入相应的 文件ID 和下载要保存的文件名 作为参数即可。示例代码如下：
+<a name=private-download></a>
+#### 4.3.2 私有资源下载
+私有资源必须通过临时下载授权凭证(downloadToken)下载，如下：
 
-    resp = rs.Get(key, saveAsFriendlyName)
+	[GET] http://<domain>/<key>?token=<downloadToken>
 
+注意，尖括号不是必需，代表替换项。  
+`downloadToken` 可以使用 SDK 提供的如下方法生成：
 
-注意，这并不会直接将文件下载并命名为一个 example.jpg 的文件。当请求执行成功，Get() 方法返回的 getRet 变量将会包含如下字段：
+<a name=fop-api></a>
+## 5. 数据处理接口
+七牛支持在云端对图像, 视频, 音频等富媒体进行个性化处理
 
-    url: <DownloadURL> # 获取文件内容的实际下载地址
-    hash: <FileETag>
-    fsize: <FileSize>
-    mimeType: <MimeType>
-    expires:<Seconds> ＃下载url的实际生命周期，精确到秒
+<a name=fop-image></a>
+### 5.1 图像
+<a name=fop-image-info></a>
+### 5.1.1 查看图像属性
+```{python}
+import qiniu.config
 
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-这里所说的断点续传指断点续下载，所谓断点续下载，就是已经下载的部分不用下载，只下载基于某个“游标”之后的那部分文件内容。相对于资源表对象的 Get() 方法，调用断点续下载方法 GetIfNotModified() 需额外再传入一个 $baseVersion 的参数作为下载的内容起点。示例代码如下：
+import qiniu.fop
 
-    resp = rs.GetIfNotModified(key, saveAsFriendlyName, resp['hash'])
+info, err = qiniu.fop.ImageInfo().call(domain + key2)
+if err is not None:
+	error(err)
+	return 
+print info,
+```
 
-GetIfNotModified() 方法返回的结果包含的字段同 Get() 方法一致。
+<a name=fop-exif></a>
+### 5.1.2 查看图片EXIF信息
+```{python}
+import qiniu.config
 
-<a name="rs-Publish"></a>
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-### 6. 发布公开资源
+import qiniu.fop
 
-使用七牛云存储提供的资源发布功能，您可以将一个资源表里边的所有文件以静态链接可访问的方式公开发布到您自己的域名下。
-要公开发布一个资源表里边的所有文件，只需调用改资源表对象的 Publish() 方法并传入 域名 作为参数即可。如下示例：
+exif, err = qiniu.fop.Exif().call(domain + key2)
+if err is not None:
+	error(err)
+	return
+print exif
+```
 
-    resp = rs.Publish(YOUR_DOMAIN)
 
-注意：需要到您的域名管理中心将 `YOUR_DOMAIN` CNAME 到 iovip.qbox.me
+<a name=fop-image-view></a>
+### 5.1.3 生成图片预览
+```{python}
+import qiniu.config
 
-如果还没有您自己的域名，可将 YOUR_DOMAIN 改成 `<bucketName>.dn.qbox.me` 供临时测试使用。
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-<a name="rs-Unpublish"></a>
+import qiniu.fop
 
-### 7. 取消资源发布
+iv = qiniu.fop.ImageView()
+iv.width = 100
+print '可以在浏览器浏览: %s' % iv.make_request(domain + key2)
+```
 
-调用资源表对象的 Unpublish() 方法可取消该资源表内所有文件的静态外链。
+<a name=contribution></a>
+## 6. 贡献代码
 
-    resp = rs.Unpublish(YOUR_DOMAIN)
+1. Fork
+2. 创建您的特性分支 (`git checkout -b my-new-feature`)
+3. 提交您的改动 (`git commit -am 'Added some feature'`)
+4. 将您的修改记录提交到远程 `git` 仓库 (`git push origin my-new-feature`)
+5. 然后到 github 网站的该 `git` 远程仓库的 `my-new-feature` 分支下发起 Pull Request
 
-<a name="rs-Delete"></a>
+<a name=license></a>
+## 7. 许可证
 
-### 8. 删除已上传的文件
+Copyright (c) 2013 qiniu.com
 
-要删除指定的文件，只需调用资源表对象的 Delete() 方法并传入 文件ID（key）作为参数即可。如下示例代码：
+基于 MIT 协议发布:
 
-    resp = rs.Delete(key)
+* [www.opensource.org/licenses/MIT](http://www.opensource.org/licenses/MIT)
 
-<a name="rs-buckets"></a>
-
-### 9. 资源表管理
-
-<a name="rs-Buckets"></a>
-
-#### 9.1 列出所有资源表
-
-可以通过 SDK 提供的 `Buckets` 列出所有 bucket（资源表）。
-
-    resp = rs.Buckets()
-
-<a name="rs-Drop"></a>
-
-
-#### 9.2 删除整张资源表
-
-要删除整个资源表及该表里边的所有文件，可以调用资源表对象的 Drop() 方法。
-需慎重，这会删除整个表及其所有文件。
-
-    resp = rs.Drop()
-
-
-<a name="rs-Batch"></a>
-
-### 10. 资源表批量操作接口
-
-通过指定的操作行为名称，以及传入的一组 keys，可以达到批量处理的功能。
-
-    resp = rs.Batch(actionNameString, keysList)
-
-**示例**
-
-批量获取文件属性信息：
-
-    resp = rs.Batch('stat', [key1, key2, key3, ..., keyN])
-
-批量获取下载链接：
-
-    resp = rs.Batch('get', [key1, key2, key3, ..., keyN])
-
-批量删除文件：
-
-    resp = rs.Batch('delete', [key1, key2, key3, ..., keyN])
-
-**响应**
-
-    200 OK [
-        <Result1>, <Result2>, ...
-    ]
-    298 Partial OK [
-        <Result1>, <Result2>, ...
-    ]
-    <Result> 是 {
-        code: <HttpCode>,
-        data: <Data> 或 error: <ErrorMessage>
-    }
-
-当只有部分 keys 执行成功时，返回 298（PartialOK）。
-
-
-<a name="rs-BatchGet"></a>
-
-#### 10.1 批量下载
-
-使用资源表对象的 `BatchGet` 方法可以批量取得下载链接：
-
-    resp = rs.BatchGet(keysList)
-
-**示例**
-
-批量获取下载链接：
-
-    resp = rs.BatchGet([key1, key2, key3, ..., keyN])
-
-**响应**
-
-    200 OK [
-        <Result1>, <Result2>, ...
-    ]
-    298 Partial OK [
-        <Result1>, <Result2>, ...
-    ]
-    <Result> 是 {
-        code: <HttpCode>,
-        data: <Data> 或 error: <ErrorMessage>
-    }
-
-当只有部分 keys 执行成功时，返回 298（PartialOK）。
-
-
-<a name="rs-BatchDelete"></a>
-
-#### 10.2 批量删除
-
-使用资源表对象的 `BatchDelete` 方法可以批量删除指定文件：
-
-    resp = rs.BatchDelete(keysList)
-
-**示例**
-
-批量删除指定文件：
-
-    resp = rs.BatchDelete([key1, key2, key3, ..., keyN])
-
-**响应**
-
-    200 OK [
-        <Result1>, <Result2>, ...
-    ]
-    298 Partial OK [
-        <Result1>, <Result2>, ...
-    ]
-    <Result> 是 {
-        code: <HttpCode>,
-        data: <Data> 或 error: <ErrorMessage>
-    }
-
-当只有部分 keys 执行成功时，返回 298（PartialOK）。
 
