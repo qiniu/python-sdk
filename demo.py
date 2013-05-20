@@ -233,7 +233,7 @@ def image_info():
 	
 	extra = qiniu.io.PutExtra(bucket_name)
 	extra.mime_type = "image/png"
-	localfile = './demo-pic.jpeg'
+	localfile = './qiniu-logo.jpeg'
 	ret, err = qiniu.io.put_file(uptoken, key2, localfile, extra)
 	if err is not None:
 		error(err)
