@@ -61,13 +61,13 @@ def getenv(name):
 	return env
 
 def error(obj):
-	print 'error: %s' % obj,
+	sys.stderr.write('error: %s ' % obj)
 
 def get_demo_list():
-	return [put_file, put_binary, 
+	return [put_file, put_binary,
 			resumable_put, resumable_put_file,
 			stat, copy, move, delete, batch,
-			image_info, image_exif, image_view, 
+			image_info, image_exif, image_view,
 			make_dntoken]
 
 def run_demos(demos):
@@ -151,7 +151,7 @@ def resumable_put_file():
 	# @gist resumable_put_file
 	localfile = "./%s" % __file__
 	extra = rio.PutExtra(bucket_name)
-
+	
 	ret, err = rio.put_file(uptoken, key, localfile, extra)
 	if err is not None:
 		error(err)
@@ -181,7 +181,7 @@ def copy():
 		error(err)
 		return
 	# @endgist
-
+	
 	stat, err = rs_client.stat(bucket_name, key2)
 	if err is not None:
 		error(err)
@@ -243,7 +243,7 @@ def image_info():
 	info, err = qiniu.fop.ImageInfo().call(domain + key2)
 	if err is not None:
 		error(err)
-		return 
+		return
 	print info,
 	# @endgist
 
@@ -252,7 +252,9 @@ def image_exif():
 	# @gist exif
 	exif, err = qiniu.fop.Exif().call(domain + key2)
 	if err is not None:
-		error(err)
+		# 部分图片不存在exif
+		if not err == "no exif data":
+			error(err)
 		return
 	print exif
 	# @endgist
@@ -264,8 +266,6 @@ def image_view():
 	iv.width = 100
 	print '可以在浏览器浏览: %s' % iv.make_request(domain + key2)
 	# @endgist
-
-	
 
 def batch():
 	''' 文件处理的批量操作 '''
@@ -312,10 +312,9 @@ def batch():
 		error("删除失败")
 		return
 	# @endgist
-	
 
 if __name__ == "__main__":
 	_setup()
-
+	
 	demos = get_demo_list()
 	run_demos(demos)
