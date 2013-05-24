@@ -19,9 +19,9 @@ class Error(Exception):
 	def __str__(self):
 		return self.value
 
-err_invalid_put_progress = Error("client: invalid put progress")
-err_put_failed = Error("client: resumable put failed")
-err_unmatched_checksum = Error("client: unmatched checksum")
+err_invalid_put_progress = Error("invalid put progress")
+err_put_failed = Error("resumable put failed")
+err_unmatched_checksum = Error("unmatched checksum")
 
 def setup(chunk_size=0, try_times=0):
 	"""
