@@ -19,9 +19,9 @@ class Error(Exception):
 	def __str__(self):
 		return self.value
 
-err_invalid_put_progress = Error("invalid put progress")
-err_put_failed = Error("resumable put failed")
-err_unmatched_checksum = Error("unmatched checksum")
+err_invalid_put_progress = Error("client: invalid put progress")
+err_put_failed = Error("client: resumable put failed")
+err_unmatched_checksum = Error("client: unmatched checksum")
 
 def setup(chunk_size=0, try_times=0):
 	"""
@@ -39,6 +39,8 @@ def setup(chunk_size=0, try_times=0):
 	_chunk_size, _try_times = chunk_size, try_times
 
 # ----------------------------------------------------------
+def gen_crc32(data):
+	return zlib.crc32(data) & 0xffffffff
 
 class PutExtra(object):
 	callback_params = None # 当 uptoken 指定了 CallbackUrl，则 CallbackParams 必须非空
@@ -84,18 +86,18 @@ def put(uptoken, key, f, fsize, extra):
 	client = auth_up.Client(uptoken)
 	for i in xrange(0, block_cnt):
 		try_time = extra.try_times
+		read_length = _block_size
+		if (i+1)*_block_size > fsize:
+			read_length = fsize - i*_block_size
+		data_slice = f.read(read_length)
 		while True:
-			read_length = _block_size
-			if (i+1)*_block_size > fsize:
-				read_length = fsize - i*_block_size
-			data_slice = f.read(read_length)
 			err = resumable_block_put(client, data_slice, i, extra)
 			if err is None:
 				break
 
+			try_time -= 1
 			if try_time <= 0:
 				return None, err_put_failed
-			try_time -= 1
 			print err, ".. retry"
 
 	return mkfile(client, key, fsize, extra)
@@ -110,7 +112,7 @@ def resumable_block_put(client, block, index, extra):
 		if block_size < extra.chunk_size:
 			end_pos = block_size-1
 		chunk = block[: end_pos]
-		crc32 = zlib.crc32(chunk)
+		crc32 = gen_crc32(chunk)
 		chunk = bytearray(chunk)
 		extra.progresses[index], err = mkblock(client, block_size, chunk)
 		if not extra.progresses[index]["crc32"] == crc32:
@@ -123,7 +125,7 @@ def resumable_block_put(client, block, index, extra):
 	while extra.progresses[index]["offset"] < block_size:
 		offset = extra.progresses[index]["offset"]
 		chunk = block[offset: offset+extra.chunk_size-1]
-		crc32 = zlib.crc32(chunk)
+		crc32 = gen_crc32(chunk)
 		chunk = bytearray(chunk)
 		extra.progresses[index], err = putblock(client, extra.progresses[index], chunk)
 		if not extra.progresses[index]["crc32"] == crc32:
