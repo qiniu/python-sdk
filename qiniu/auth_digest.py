@@ -14,7 +14,7 @@ class Client(rpc.Client):
 		p_path = parsedurl.path
 		data = p_path
 		if p_query != "":
-			data = ''.join([data, '?', query])
+			data = ''.join([data, '?', p_query])
 		data = ''.join([data, "\n"])
 		
 		if body != None and "Content-Type" in self._header and \
