@@ -82,7 +82,7 @@ def make_private_url(domain, key):
 	# @gist dntoken
 	base_url = qiniu.auth_token.make_base_url(domain, key)
 	policy = qiniu.auth_token.GetPolicy()
-	private_url policy.make_request(base_url)
+	private_url = policy.make_request(base_url)
 	# @endgist
 	return private_url
 

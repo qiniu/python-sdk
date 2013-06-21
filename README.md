@@ -367,7 +367,7 @@ import qiniu.auth_token
 
 base_url = qiniu.auth_token.make_base_url(domain, key)
 policy = qiniu.auth_token.GetPolicy()
-private_url policy.make_request(base_url)
+private_url = policy.make_request(base_url)
 ```
 
 <a name=fop-api></a>
