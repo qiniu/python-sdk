@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 import httplib
 import json
-from hashlib import sha1
-from base64 import urlsafe_b64encode
-import hmac
 
 class Client(object):
 	_conn = None
@@ -111,10 +108,10 @@ class Client(object):
 		content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
 		return content_type, body
 
-def sign(secret, data):
-	hashed = hmac.new(secret, data, sha1)
-	return urlsafe_b64encode(hashed.digest())
+# def sign(secret, data):
+# 	hashed = hmac.new(secret, data, sha1)
+# 	return urlsafe_b64encode(hashed.digest())
 
-def sign_json(access, secret, data):
-	data = urlsafe_b64encode(json.dumps(data, separators=(',',':')))
-	return '%s:%s:%s' % (access, sign(secret, data), data)
+# def sign_json(access, secret, data):
+# 	data = urlsafe_b64encode(json.dumps(data, separators=(',',':')))
+# 	return '%s:%s:%s' % (access, sign(secret, data), data)

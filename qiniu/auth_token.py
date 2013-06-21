@@ -4,6 +4,8 @@ import base64
 import time
 import rpc
 import config
+import urllib
+import auth_digest
 
 class PutPolicy(object):
 	scope = None             # 可以是 bucketName 或者 bucketName:key
@@ -18,7 +20,7 @@ class PutPolicy(object):
 	def __init__(self, scope):
 		self.scope = scope
 
-	def token(self):
+	def token(self, mac=auth_digest.Mac()):
 		token = dict(
 			scope = self.scope,
 			deadline = int(time.time()) + self.expires,
@@ -42,17 +44,33 @@ class PutPolicy(object):
 		if self.detectMime is not None:
 			token["detectMime"] = self.detectMime
 		
-		return rpc.sign_json(config.ACCESS_KEY, config.SECRET_KEY, token)
+		b = json.dumps(token, separators=(',',':'))
+		return mac.sign_with_data(b)
 
 class GetPolicy(object):
-	scope = None
 	expires = 3600
-	def __init__(self, scope):
-		self.scope = scope
+	def __init__(self):
+		pass
 	
-	def token(self):
-		token = dict(
-			S = self.scope,
-			E = self.expires + int(time.time())
-		)
-		return rpc.sign_json(config.ACCESS_KEY, config.SECRET_KEY, token)
+	def make_request(base_url, mac=auth_digest.Mac()):
+		'''
+		 *  return private_url
+		'''
+		deadline = int(time.time()) + self.expires
+		if '?' in base_url:
+			base_url += '&'
+		else:
+			base_url += '?'
+		base_url = '%se=%s' % (base_url, str(deadline))
+
+		token = mac.sign(base_url)
+		return '%s&token=%s' % (base_url, token)
+
+
+def make_base_url(domain, key):
+	'''
+	 * domain => str
+	 * key => str
+	 * return base_url
+	'''
+	return ''.join(['http://', domain, '/', urllib.quote(key)])
