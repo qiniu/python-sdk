@@ -15,7 +15,6 @@ class PutExtra(object):
 	check_crc = 0
 	def __init__(self, bucket):
 		self.bucket = bucket
-		self.file_crc32 = ""
 
 def put(uptoken, key, data, extra):
 	action = ["/rs-put"]
@@ -27,10 +26,7 @@ def put(uptoken, key, data, extra):
 		action.append("meta/%s" % urlsafe_b64encode(extra.custom_meta))
 
 	if extra.check_crc:
-		real_crc32 = extra.crc32
-		if extra.check_crc == 1:
-			real_crc32 = extra.file_crc32
-		action.append("crc32/%s" % real_crc32)
+		action.append("crc32/%s" % extra.crc32)
 
 	fields = [
 		("action", '/'.join(action)),
@@ -49,7 +45,7 @@ def put_file(uptoken, key, localfile, extra):
 	data = f.read()
 	f.close()
 	if extra.check_crc == 1:
-		extra.file_crc32 = zlib.crc32(data) & 0xFFFFFFFF
+		extra.crc32 = zlib.crc32(data) & 0xFFFFFFFF
 	return put(uptoken, key, data, extra)
 
 def get_url(domain, key, dntoken):
