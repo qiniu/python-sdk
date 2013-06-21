@@ -5,7 +5,9 @@ from base64 import urlsafe_b64encode
 
 class Rs(object):
 	conn = None
-	def __init__(self, mac=auth_digest.Mac()):
+	def __init__(self, mac=None):
+		if mac is None:
+			mac = auth_digest.Mac()
 		self.conn = auth_digest.Client(mac)
 	
 	def stat(self, bucket, key):

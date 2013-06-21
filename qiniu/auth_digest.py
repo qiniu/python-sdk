@@ -10,19 +10,21 @@ import rpc
 class Mac(object):
 	access = None
 	secret = None
-	def __init__(self, access=config.ACCESS_KEY, secret=config.SECRET_KEY):
-		self.access, self.secret = ACCESS_KEY, SECRET_KEY
+	def __init__(self, access=None, secret=None):
+		if access is None and secret is None:
+			access, secret = config.ACCESS_KEY, config.SECRET_KEY
+		self.access, self.secret = access, secret
 
 	def __sign(self, data):
 		hashed = hmac.new(self.secret, data, sha1)
 		return urlsafe_b64encode(hashed.digest())
 
 	def sign(self, data):
-		return '%s:%s' % (self.access, __sign(data))
+		return '%s:%s' % (self.access, self.__sign(data))
 
 	def sign_with_data(self, b):
 		data = urlsafe_b64encode(b)
-		return '%s:%s:%s' % (self.access, __sign(data), data)
+		return '%s:%s:%s' % (self.access, self.__sign(data), data)
 
 	def sign_request(self, path, body, content_type):
 		parsedurl = urlparse(path)
@@ -32,7 +34,7 @@ class Mac(object):
 		if p_query != "":
 			data = ''.join([data, '?', p_query])
 		data = ''.join([data, "\n"])
-		
+
 		if body:
 			incBody = [
 				"application/x-www-form-urlencoded",
@@ -40,11 +42,13 @@ class Mac(object):
 			if content_type in incBody:
 				data += body
 
-		return '%s:%s' % (self.access, __sign(data))
+		return '%s:%s' % (self.access, self.__sign(data))
 
 
 class Client(rpc.Client):
-	def __init__(self, mac=Mac()):
+	def __init__(self, mac=None):
+		if mac is None:
+			mac = Mac()
 		super(Client, self).__init__(config.RS_HOST)
 		self.mac = mac
 

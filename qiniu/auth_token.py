@@ -20,7 +20,9 @@ class PutPolicy(object):
 	def __init__(self, scope):
 		self.scope = scope
 
-	def token(self, mac=auth_digest.Mac()):
+	def token(self, mac=None):
+		if mac is None:
+			mac = auth_digest.Mac()
 		token = dict(
 			scope = self.scope,
 			deadline = int(time.time()) + self.expires,
@@ -52,10 +54,13 @@ class GetPolicy(object):
 	def __init__(self):
 		pass
 	
-	def make_request(base_url, mac=auth_digest.Mac()):
+	def make_request(self, base_url, mac=None):
 		'''
 		 *  return private_url
 		'''
+		if mac is None:
+			mac = auth_digest.Mac()
+
 		deadline = int(time.time()) + self.expires
 		if '?' in base_url:
 			base_url += '&'
