@@ -77,12 +77,14 @@ def run_demos(demos):
 		print
 
 # ----------------------------------------------------------
-def make_dntoken():
-	''' 生成download Token '''
+def make_private_url(domain, key):
+	''' 生成私有下载链接 '''
 	# @gist dntoken
-	policy = qiniu.auth_token.GetPolicy(bucket_name)
-	token = policy.token()
+	base_url = qiniu.auth_token.make_base_url(domain, key)
+	policy = qiniu.auth_token.GetPolicy()
+	private_url policy.make_request(base_url)
 	# @endgist
+	return private_url
 
 def put_file():
 	''' 演示上传文件的过程 '''
