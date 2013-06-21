@@ -14,7 +14,7 @@ def r(length):
 config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 key = "aa"
-bucket_name = "a"
+bucket_name = os.getenv("QINIU_BUCKET_NAME")
 noexist_key = "noexist_key"
 key2 = "rs_demo_test_key_1_" + r(5)
 key3 = "rs_demo_test_key_2_" + r(5)
