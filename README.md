@@ -21,9 +21,8 @@ Qiniu Resource (Cloud) Storage SDK for Python
 		- [3.5.3 批量移动文件](#batch-move)
 		- [3.5.4 批量删除文件](#batch-delete)
 - [4. 上传下载接口](#get-and-put-api)
-	- [4.1 上传下载授权](#token)
+	- [4.1 上传授权](#token)
 		- [4.1.1 生成uptoken](#make-uptoken)
-		- [4.1.2 生成downtoken](#make-downtoken)
 	- [4.2 文件上传](#upload)
 		- [4.2.1 普通上传](#io-upload)
 		- [4.2.2 断点续上传](#resumable-io-upload)
@@ -237,21 +236,6 @@ policy = qiniu.auth_token.PutPolicy(bucket_name)
 uptoken = policy.token()
 ```
 
-#### 4.1.2 下载授权downtoken
-downtoken的原理同上，用来生成downtoken的GetPolicy
-
-```{python}
-import qiniu.config
-
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
-
-import qiniu.auth_token
-
-policy = qiniu.auth_token.GetPolicy(bucket_name)
-token = policy.token()
-```
-
 <a name=upload></a>
 ### 4.2 文件上传
 **注意**：如果您只是想要上传已存在您电脑本地或者是服务器上的文件到七牛云存储，可以直接使用七牛提供的 [qrsync](/v3/tools/qrsync/) 上传工具。
@@ -373,6 +357,19 @@ print ret,
 注意，尖括号不是必需，代表替换项。  
 `downloadToken` 可以使用 SDK 提供的如下方法生成：
 
+```{python}
+import qiniu.config
+
+qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+
+import qiniu.auth_token
+
+base_url = qiniu.auth_token.make_base_url(domain, key)
+policy = qiniu.auth_token.GetPolicy()
+private_url policy.make_request(base_url)
+```
+
 <a name=fop-api></a>
 ## 5. 数据处理接口
 七牛支持在云端对图像, 视频, 音频等富媒体进行个性化处理
@@ -389,10 +386,11 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
 
-info, err = qiniu.fop.ImageInfo().call(domain + key2)
+private_url = make_private_url(domain, key2)
+info, err = qiniu.fop.ImageInfo().call(private_url)
 if err is not None:
 	error(err)
-	return 
+	return
 print info,
 ```
 
@@ -406,9 +404,12 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
 
-exif, err = qiniu.fop.Exif().call(domain + key2)
+private_url = make_private_url(domain, key2)
+exif, err = qiniu.fop.Exif().call(private_url)
 if err is not None:
-	error(err)
+	# 部分图片不存在exif
+	if not err == "no exif data":
+		error(err)
 	return
 print exif
 ```
@@ -426,7 +427,8 @@ import qiniu.fop
 
 iv = qiniu.fop.ImageView()
 iv.width = 100
-print '可以在浏览器浏览: %s' % iv.make_request(domain + key2)
+private_url = make_private_url(domain, key2)
+print '可以在浏览器浏览: %s' % iv.make_request(private_url)
 ```
 
 <a name=contribution></a>

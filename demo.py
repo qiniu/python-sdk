@@ -78,12 +78,14 @@ def run_demos(demos):
 		print
 
 # ----------------------------------------------------------
-def make_private_url(base_url):
+def make_private_url(domain, key):
 	''' 生成私有下载链接 '''
 	# @gist dntoken
+	base_url = qiniu.auth_token.make_base_url(domain, key)
 	policy = qiniu.auth_token.GetPolicy()
-	return policy.make_request(base_url)
+	private_url policy.make_request(base_url)
 	# @endgist
+	return private_url
 
 def put_file():
 	''' 演示上传文件的过程 '''
@@ -241,7 +243,7 @@ def image_info():
 		return
 
 	# @gist image_info
-	private_url = make_private_url("http://%s/" % domain + key2)
+	private_url = make_private_url(domain, key2)
 	info, err = qiniu.fop.ImageInfo().call(private_url)
 	if err is not None:
 		error(err)
@@ -252,7 +254,7 @@ def image_info():
 def image_exif():
 	''' 查看图片的exif信息 '''
 	# @gist exif
-	private_url = make_private_url("http://%s/" % domain + key2)
+	private_url = make_private_url(domain, key2)
 	exif, err = qiniu.fop.Exif().call(private_url)
 	if err is not None:
 		# 部分图片不存在exif
@@ -267,7 +269,7 @@ def image_view():
 	# @gist image_view
 	iv = qiniu.fop.ImageView()
 	iv.width = 100
-	private_url = make_private_url("http://%s/" % domain + key2)
+	private_url = make_private_url(domain, key2)
 	print '可以在浏览器浏览: %s' % iv.make_request(private_url)
 	# @endgist
 
