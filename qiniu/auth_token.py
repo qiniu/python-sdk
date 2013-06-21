@@ -11,11 +11,11 @@ class PutPolicy(object):
 	scope = None             # 可以是 bucketName 或者 bucketName:key
 	expires = 3600           # 默认是 3600 秒
 	callbackUrl = None
-	callbackBodyType = None
-	customer = None
+	callbackBody = None
+	returnUrl = None
+	returnBody = None
+	endUser = None
 	asyncOps = None         
-	escape = None            # 非 0 表示 Callback 的 Params 支持转义符
-	detectMime = None        # 非 0 表示在服务端自动检测文件内容的 MimeType
 
 	def __init__(self, scope):
 		self.scope = scope
@@ -31,20 +31,20 @@ class PutPolicy(object):
 		if self.callbackUrl is not None:
 			token["callbackUrl"] = self.callbackUrl
 
-		if self.callbackBodyType is not None:
-			token["callbackBodyType"] = self.callbackBodyType
+		if self.callbackBody is not None:
+			token["callbackBody"] = self.callbackBody
 
-		if self.customer is not None:
-			token["customer"] = self.customer
+		if self.returnUrl is not None:
+			token["returnUrl"] = self.returnUrl
+
+		if self.returnBody is not None:
+			token["returnBody"] = self.returnBody
+
+		if self.endUser is not None:
+			token["endUser"] = self.endUser
 
 		if self.asyncOps is not None:
 			token["asyncOps"] = self.asyncOps
-
-		if self.escape is not None:
-			token["escape"] = self.escape
-
-		if self.detectMime is not None:
-			token["detectMime"] = self.detectMime
 		
 		b = json.dumps(token, separators=(',',':'))
 		return mac.sign_with_data(b)

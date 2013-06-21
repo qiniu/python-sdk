@@ -19,12 +19,12 @@ bucket_name = os.getenv("QINIU_BUCKET_NAME")
 class TestToken(unittest.TestCase):
 	def test_put_policy(self):
 		policy = auth_token.PutPolicy(bucket_name)
-		policy.customer = "hello!"
+		policy.endUser = "hello!"
 		tokens = policy.token().split(':')
 		self.assertEqual(config.ACCESS_KEY, tokens[0])
 		data = json.loads(decode(tokens[2]))
 		self.assertEqual(data["scope"], bucket_name)
-		self.assertEqual(data["customer"], policy.customer)
+		self.assertEqual(data["endUser"], policy.endUser)
 
 		new_hmac = encode(hmac.new(config.SECRET_KEY, tokens[2], sha1).digest())
 		self.assertEqual(new_hmac, tokens[1])

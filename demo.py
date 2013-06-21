@@ -87,7 +87,7 @@ def make_dntoken():
 def put_file():
 	''' 演示上传文件的过程 '''
 	# 尝试删除
-	rs_client.delete(bucket_name, key)
+	print rs_client.delete(bucket_name, key)
 	
 	# @gist put_file
 	localfile = "./%s" % __file__
