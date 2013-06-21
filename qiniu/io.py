@@ -4,6 +4,8 @@ import rpc
 import config
 import zlib
 
+UNDEFINED_KEY = "?"
+
 class PutExtra(object):
 	callback_params = None
 	bucket = None
