@@ -4,8 +4,8 @@ import fop
 
 access_key = os.getenv("QINIU_ACCESS_KEY")
 secret_key = os.getenv("QINIU_SECRET_KEY")
-pic = os.getenv("QINIU_TEST_PIC_1")
-noexist_pic = os.getenv("QINIU_NOEXIST_PIC")
+pic = "http://cheneya.qiniudn.com/hello_jpg"
+noexist_pic = "http://cheneya.qiniudn.com/noexist_pic" 
 
 class TestFop(unittest.TestCase):
 	def test_exif(self):
