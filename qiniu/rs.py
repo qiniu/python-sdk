@@ -5,10 +5,10 @@ from base64 import urlsafe_b64encode
 
 class Rs(object):
 	conn = None
-	def __init__(self, conn=None):
-		if conn is None:
-			conn = auth_digest.Client()
-		self.conn = conn
+	def __init__(self, mac=None):
+		if mac is None:
+			mac = auth_digest.Mac()
+		self.conn = auth_digest.Client(mac)
 	
 	def stat(self, bucket, key):
 		return self.conn.call(uri_stat(bucket, key))
