@@ -15,6 +15,8 @@ import auth_token
 config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
+domain = os.getenv("QINIU_DOMAIN")
+key = os.getenv("QINIU_PIC_KEY")
 
 class TestToken(unittest.TestCase):
 	def test_put_policy(self):
@@ -30,15 +32,13 @@ class TestToken(unittest.TestCase):
 		self.assertEqual(new_hmac, tokens[1])
 
 	def test_get_policy(self):
-		domain = "aatest.qiniudn.com"
-		key = "aa"
 		base_url = auth_token.make_base_url(domain, key)
 		policy = auth_token.GetPolicy()
 		private_url = policy.make_request(base_url)
 
 		f = urllib.urlopen(private_url)
 		body = f.read()
-		self.assertEqual(body, "hello! new Put")
+		self.assertEqual(len(body)>100, True)
 
 
 if __name__ == "__main__":
