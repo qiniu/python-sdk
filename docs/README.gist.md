@@ -21,9 +21,8 @@ Qiniu Resource (Cloud) Storage SDK for Python
 		- [3.5.3 批量移动文件](#batch-move)
 		- [3.5.4 批量删除文件](#batch-delete)
 - [4. 上传下载接口](#get-and-put-api)
-	- [4.1 上传下载授权](#token)
+	- [4.1 上传授权](#token)
 		- [4.1.1 生成uptoken](#make-uptoken)
-		- [4.1.2 生成downtoken](#make-downtoken)
 	- [4.2 文件上传](#upload)
 		- [4.2.1 普通上传](#io-upload)
 		- [4.2.2 断点续上传](#resumable-io-upload)
@@ -171,17 +170,6 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 @gist(../demo.py#uptoken)
 ```
 
-#### 4.1.2 下载授权downtoken
-downtoken的原理同上，用来生成downtoken的GetPolicy
-
-```{python}
-@gist(gist/conf.py#config)
-
-@gist(../demo.py#import_token)
-
-@gist(../demo.py#dntoken)
-```
-
 <a name=upload></a>
 ### 4.2 文件上传
 **注意**：如果您只是想要上传已存在您电脑本地或者是服务器上的文件到七牛云存储，可以直接使用七牛提供的 [qrsync](/v3/tools/qrsync/) 上传工具。
@@ -254,6 +242,14 @@ downtoken的原理同上，用来生成downtoken的GetPolicy
 
 注意，尖括号不是必需，代表替换项。  
 `downloadToken` 可以使用 SDK 提供的如下方法生成：
+
+```{python}
+@gist(gist/conf.py#config)
+
+@gist(../demo.py#import_token)
+
+@gist(../demo.py#dntoken)
+```
 
 <a name=fop-api></a>
 ## 5. 数据处理接口
