@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import httplib
 import json
+import config
 
 class Client(object):
 	_conn = None
