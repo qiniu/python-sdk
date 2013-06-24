@@ -30,7 +30,7 @@ class TestUp(unittest.TestCase):
 		assert err is None
 
 	def test_put_file(self):
-		localfile = "./%s" % __file__
+		localfile = "%s" % __file__
 		key = "test_%s" % r(9)
 
 		ret, err = io.put_file(policy.token(), key, localfile, extra)
