@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import auth_digest
-import config
 from base64 import urlsafe_b64encode
 
 class Rs(object):
