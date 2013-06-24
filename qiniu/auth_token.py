@@ -78,4 +78,4 @@ def make_base_url(domain, key):
 	 * key => str
 	 * return base_url
 	'''
-	return ''.join(['http://', domain, '/', urllib.quote(key)])
+	return 'http://%s/%s' % (domain, urllib.quote(key))
