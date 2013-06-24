@@ -32,7 +32,7 @@ class Mac(object):
 		p_path = parsedurl.path
 		data = p_path
 		if p_query != "":
-			data = ''.join([data, '?', query])
+			data = ''.join([data, '?', p_query])
 		data = ''.join([data, "\n"])
 
 		if body:
