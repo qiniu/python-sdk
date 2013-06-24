@@ -243,8 +243,19 @@ def image_info():
 		return
 
 	# @gist image_info
-	base_url = qiniu.auth_token.make_base_url(domain, key2)
-	info, err = qiniu.fop.ImageInfo().call(base_url)
+	# 生成base_url
+	url = qiniu.auth_token.make_base_url(domain, key2)
+
+	# 生成fop_url
+	image_info = qiniu.fop.ImageInfo()
+	url = image_info.make_request(url)
+
+	# 对其签名，生成private_url。如果是公有bucket此步可以省略
+	policy = qiniu.auth_token.GetPolicy()
+	url = policy.make_request(url)
+
+	# 从该url获得结果
+	info, err = image_info.call(url) 
 	if err is not None:
 		error(err)
 		return
@@ -254,8 +265,19 @@ def image_info():
 def image_exif():
 	''' 查看图片的exif信息 '''
 	# @gist exif
-	base_url = qiniu.auth_token.make_base_url(domain, key2)
-	exif, err = qiniu.fop.Exif().call(base_url)
+	# 生成base_url
+	url = qiniu.auth_token.make_base_url(domain, key2)
+
+	# 生成fop_url
+	image_exif = qiniu.fop.Exif()
+	url = image_exif.make_request(url)
+
+	# 对其签名，生成private_url。如果是公有bucket此步可以省略
+	policy = qiniu.auth_token.GetPolicy()
+	url = policy.make_request(url)
+
+	# 从该url获得结果
+	exif, err = image_exif.call(url)
 	if err is not None:
 		# 部分图片不存在exif
 		if not err == "no exif data":
@@ -269,8 +291,15 @@ def image_view():
 	# @gist image_view
 	iv = qiniu.fop.ImageView()
 	iv.width = 100
-	base_url = qiniu.auth_token.make_base_url(domain, key2)
-	print '可以在浏览器浏览: %s' % iv.make_request(base_url)
+
+	# 生成base_url
+	url = qiniu.auth_token.make_base_url(domain, key2)
+	# 生成fop_url
+	url = iv.make_request(url)
+	# 对其签名，生成private_url。如果是公有bucket此步可以省略
+	policy = qiniu.auth_token.GetPolicy()
+	url = policy.make_request(url)
+	print '可以在浏览器浏览: %s' % url
 	# @endgist
 
 def batch():
