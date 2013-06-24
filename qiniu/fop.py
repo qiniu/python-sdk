@@ -1,35 +1,10 @@
 # -*- coding:utf-8 -*-
 import json
-import urllib
 
-class BaseCall(object):
-	def call_url(self, url):
-		try:
-			f = urllib.urlopen(url)
-			body = json.loads(f.read())
-			f.close()
-		except IOError, e:
-			return None, e
-		except ValueError, e:
-			return None, e
-		
-		if "error" in body:
-			return None, body["error"]
-		return body, None
-
-class Exif(BaseCall):
+class Exif(object):
 	def make_request(self, url):
 		return '%s?exif' % url
 
-	def call(self, url):
-		'''
-		Directly call the url:
-			if your bucket is public
-				self.call(self.make_request(url))
-			else
-				self.call(GetPolicy.make_request(self.make_request(url)))
-		'''
-		return self.call_url(url)
 
 class ImageView(object):
 	mode = 1 # 1或2
@@ -57,16 +32,6 @@ class ImageView(object):
 		return "%s?imageView/%s" % (url, '/'.join(target))
 
 
-class ImageInfo(BaseCall):
+class ImageInfo(object):
 	def make_request(self, url):
 		return '%s?imageInfo' % url
-
-	def call(self, url):
-		'''
-		Directly call the url:
-			if your bucket is public
-				self.call(self.make_request(url))
-			else
-				self.call(GetPolicy.make_request(self.make_request(url)))
-		'''
-		return self.call_url(url)

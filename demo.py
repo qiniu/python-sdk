@@ -254,12 +254,7 @@ def image_info():
 	policy = qiniu.auth_token.GetPolicy()
 	url = policy.make_request(url)
 
-	# 从该url获得结果
-	info, err = image_info.call(url) 
-	if err is not None:
-		error(err)
-		return
-	print info,
+	print '可以在浏览器浏览: %s' % url
 	# @endgist
 
 def image_exif():
@@ -276,14 +271,7 @@ def image_exif():
 	policy = qiniu.auth_token.GetPolicy()
 	url = policy.make_request(url)
 
-	# 从该url获得结果
-	exif, err = image_exif.call(url)
-	if err is not None:
-		# 部分图片不存在exif
-		if not err == "no exif data":
-			error(err)
-		return
-	print exif
+	print '可以在浏览器浏览: %s' % url
 	# @endgist
 
 def image_view():
