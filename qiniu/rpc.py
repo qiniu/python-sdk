@@ -4,6 +4,7 @@ import json
 from hashlib import sha1
 from base64 import urlsafe_b64encode
 import hmac
+import config
 
 class Client(object):
 	_conn = None
@@ -22,6 +23,8 @@ class Client(object):
 
 	def call_with(self, path, body, content_type=None, content_length=None):
 		ret = None
+
+		self.set_header("User-Agent", config.USER_AGENT)
 		if content_type is not None:
 			self.set_header("Content-Type", content_type)
 		
