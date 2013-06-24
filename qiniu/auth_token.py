@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
-import base64
 import time
-import rpc
-import config
 import urllib
 import auth_digest
 
@@ -78,4 +75,4 @@ def make_base_url(domain, key):
 	 * key => str
 	 * return base_url
 	'''
-	return ''.join(['http://', domain, '/', urllib.quote(key)])
+	return 'http://%s/%s' % (domain, urllib.quote(key))

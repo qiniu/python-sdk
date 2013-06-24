@@ -18,6 +18,9 @@ import qiniu.fop
 # @gist import_resumable_io
 import qiniu.resumable_io as rio
 # @endgist
+# @gist import_rsf
+import qiniu.rsf
+# @endgist
 
 bucket_name = None
 uptoken = None
@@ -69,6 +72,7 @@ def get_demo_list():
 			resumable_put, resumable_put_file,
 			stat, copy, move, delete, batch,
 			image_info, image_exif, image_view,
+			list_prefix,
 	]
 
 def run_demos(demos):
@@ -236,15 +240,20 @@ def image_info():
 	
 	extra = qiniu.io.PutExtra(bucket_name)
 	extra.mime_type = "image/png"
-	localfile = './qiniu-logo.jpeg'
+	localfile = './demo-photo.jpeg'
 	ret, err = qiniu.io.put_file(uptoken, key2, localfile, extra)
 	if err is not None:
 		error(err)
 		return
 
 	# @gist image_info
+<<<<<<< HEAD
+	base_url = qiniu.auth_token.make_base_url(domain, key2)
+	info, err = qiniu.fop.ImageInfo().call(base_url)
+=======
 	private_url = make_private_url(domain, key2)
 	info, err = qiniu.fop.ImageInfo().call(private_url)
+>>>>>>> feature/1.0.2&1.0.1
 	if err is not None:
 		error(err)
 		return
@@ -254,8 +263,8 @@ def image_info():
 def image_exif():
 	''' 查看图片的exif信息 '''
 	# @gist exif
-	private_url = make_private_url(domain, key2)
-	exif, err = qiniu.fop.Exif().call(private_url)
+	base_url = qiniu.auth_token.make_base_url(domain, key2)
+	exif, err = qiniu.fop.Exif().call(base_url)
 	if err is not None:
 		# 部分图片不存在exif
 		if not err == "no exif data":
@@ -269,8 +278,8 @@ def image_view():
 	# @gist image_view
 	iv = qiniu.fop.ImageView()
 	iv.width = 100
-	private_url = make_private_url(domain, key2)
-	print '可以在浏览器浏览: %s' % iv.make_request(private_url)
+	base_url = qiniu.auth_token.make_base_url(domain, key2)
+	print '可以在浏览器浏览: %s' % iv.make_request(base_url)
 	# @endgist
 
 def batch():
@@ -317,6 +326,17 @@ def batch():
 	if not [ret['code'] for ret in rets] == [200, 200]:
 		error("删除失败")
 		return
+	# @endgist
+
+def list_prefix():
+	''' 列出文件操作 '''
+	# @gist list_prefix
+	rsf_client = qiniu.rsf.Rsf()
+	rets, err = rsf_client.list_prefix(bucket_name, prefix="python-demo-put-file")
+	if err is not None:
+		error(err)
+		return
+	print rets,
 	# @endgist
 
 if __name__ == "__main__":
