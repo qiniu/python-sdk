@@ -1,3 +1,1 @@
-import version
-
-__version__ = version.VERSION
+__version__ = '6.0.1'
