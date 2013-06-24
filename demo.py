@@ -25,12 +25,12 @@ key = None
 key2 = None
 key3 = None
 domain = None
-rs_client = qiniu.rs.Rs()
+rs_client = None
 
 # ----------------------------------------------------------
 
 def setup(access_key, secret_key, bucketname, bucket_domain):
-	global bucket_name, uptoken, key, key2, domain, key3
+	global bucket_name, uptoken, key, key2, domain, key3, rs_client
 	qiniu.config.ACCESS_KEY = access_key
 	qiniu.config.SECRET_KEY = secret_key
 	bucket_name = bucketname
@@ -42,6 +42,7 @@ def setup(access_key, secret_key, bucketname, bucket_domain):
 	key = "python-demo-put-file"
 	key2 = "python-demo-put-file-2"
 	key3 = "python-demo-put-file-3"
+	rs_client = qiniu.rs.Rs()
 
 def _setup():
 	''' 根据环境变量配置信息 '''
@@ -68,7 +69,7 @@ def get_demo_list():
 			resumable_put, resumable_put_file,
 			stat, copy, move, delete, batch,
 			image_info, image_exif, image_view,
-			make_dntoken]
+	]
 
 def run_demos(demos):
 	for i, demo in enumerate(demos):
@@ -89,7 +90,7 @@ def make_private_url(domain, key):
 def put_file():
 	''' 演示上传文件的过程 '''
 	# 尝试删除
-	print rs_client.delete(bucket_name, key)
+	rs_client.delete(bucket_name, key)
 	
 	# @gist put_file
 	localfile = "./%s" % __file__
@@ -242,7 +243,8 @@ def image_info():
 		return
 
 	# @gist image_info
-	info, err = qiniu.fop.ImageInfo().call(domain + key2)
+	base_url = qiniu.auth_token.make_base_url(domain, key2)
+	info, err = qiniu.fop.ImageInfo().call(base_url)
 	if err is not None:
 		error(err)
 		return
@@ -252,7 +254,8 @@ def image_info():
 def image_exif():
 	''' 查看图片的exif信息 '''
 	# @gist exif
-	exif, err = qiniu.fop.Exif().call(domain + key2)
+	base_url = qiniu.auth_token.make_base_url(domain, key2)
+	exif, err = qiniu.fop.Exif().call(base_url)
 	if err is not None:
 		# 部分图片不存在exif
 		if not err == "no exif data":
@@ -266,7 +269,8 @@ def image_view():
 	# @gist image_view
 	iv = qiniu.fop.ImageView()
 	iv.width = 100
-	print '可以在浏览器浏览: %s' % iv.make_request(domain + key2)
+	base_url = qiniu.auth_token.make_base_url(domain, key2)
+	print '可以在浏览器浏览: %s' % iv.make_request(base_url)
 	# @endgist
 
 def batch():
