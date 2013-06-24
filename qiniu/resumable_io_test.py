@@ -43,7 +43,7 @@ class TestBlock(unittest.TestCase):
 		extra = resumable_io.PutExtra(bucket)
 		extra.bucket = bucket
 		key = "sdk_py_resumable_block_5"
-		localfile = "../demo-pic.jpeg"
+		localfile = "../demo-photo.jpeg"
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FggslKhqmufiC1VkQvuF2gtvve9P", "hash not match")
