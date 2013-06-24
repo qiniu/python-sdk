@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import auth_digest
+import config
 from base64 import urlsafe_b64encode
 
 class Rs(object):
@@ -7,7 +8,7 @@ class Rs(object):
 	def __init__(self, mac=None):
 		if mac is None:
 			mac = auth_digest.Mac()
-		self.conn = auth_digest.Client(mac)
+		self.conn = auth_digest.Client(host=config.RS_HOST, mac=mac)
 	
 	def stat(self, bucket, key):
 		return self.conn.call(uri_stat(bucket, key))
