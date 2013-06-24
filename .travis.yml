@@ -3,14 +3,12 @@ python:
   - "2.6"
   - "2.7"
 before_script:
-  - export QINIU_ACCESS_KEY="tGf47MBl1LyT9uaNv-NZV4XZe7sKxOIa9RE2Lp8B"
-  - export QINIU_SECRET_KEY="zhbiA6gcQMEi22uZ8CBGvmbnD2sR8SO-5S8qlLCG"
-  - export QINIU_DOMAIN="http://cheneya.qiniudn.com/"
+  - export QINIU_ACCESS_KEY="X0XpjFmLMTJpHB_ESHjeolCtipk-1U3Ok7LVTdoN"
+  - export QINIU_SECRET_KEY="wenlwkU1AYwNBf7Q9cCoG4VT_GYyrHE9AS_R2u81"
   - export QINIU_PIC_KEY="hello_jpg"
   - export QINIU_NOEXIST_PIC_KEY="no_exist"
-  - export QINIU_TEST_PIC_1="$QINIU_DOMAIN$QINIU_PIC_KEY"
-  - export QINIU_NOEXIST_PIC="$QINIU_DOMAIN$QINIU_NOEXIST_PIC_KEY"
-  - export QINIU_BUCKET_NAME="a"
+  - export QINIU_BUCKET_NAME="pysdk"
+  - export QINIU_DOMAIN="pysdk.qiniudn.com"
 script:
   - cd qiniu/
   - for file in `ls *_test.py`; do python $file; done;
