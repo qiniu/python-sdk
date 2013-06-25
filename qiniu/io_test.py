@@ -11,8 +11,6 @@ import io
 
 config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
-pic = os.getenv("QINIU_TEST_PIC_1")
-noexist_pic = os.getenv("QINIU_NOEXIST_PIC")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 
 policy = auth_token.PutPolicy(bucket_name)

@@ -47,7 +47,7 @@ class ImageView(object):
 		if self.format is not None:
 			target.append("format/%s" % self.format)
 
-		return "%s?imageView/%s/" % (url, '/'.join(target))
+		return "%s?imageView/%s" % (url, '/'.join(target))
 
 class ImageMogr(object):
 	auto_orient = False # 根据原图EXIF信息自动旋正
