@@ -19,25 +19,28 @@ policy = auth_token.PutPolicy(bucket_name)
 extra = io.PutExtra(bucket_name)
 extra.mime_type = "text/plain"
 
+
 def r(length):
-	lib = string.ascii_uppercase
-	return ''.join([random.choice(lib) for i in range(0, length)])
+    lib = string.ascii_uppercase
+    return ''.join([random.choice(lib) for i in range(0, length)])
+
 
 class TestUp(unittest.TestCase):
-	def test_put(self):
-		key = "test_%s" % r(9)
-		params = "op=3"
-		data = "hello bubby!"
-		ret, err = io.put(policy.token(), key, data, extra)
-		assert err is None
 
-	def test_put_file(self):
-		localfile = "./%s" % __file__
-		key = "test_%s" % r(9)
+    def test_put(self):
+        key = "test_%s" % r(9)
+        params = "op=3"
+        data = "hello bubby!"
+        ret, err = io.put(policy.token(), key, data, extra)
+        assert err is None
 
-		ret, err = io.put_file(policy.token(), key, localfile, extra)
-		assert err is None
-		assert ret is not None
+    def test_put_file(self):
+        localfile = "./%s" % __file__
+        key = "test_%s" % r(9)
+
+        ret, err = io.put_file(policy.token(), key, localfile, extra)
+        assert err is None
+        assert ret is not None
 
 if __name__ == "__main__":
-	unittest.main()
+    unittest.main()
