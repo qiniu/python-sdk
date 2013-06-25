@@ -41,10 +41,17 @@ Qiniu Resource (Cloud) Storage SDK for Python
 
 <a name=install></a>
 ## 1. 安装
-在命令行下执行
+
+直接安装:
+	
+	pip install qiniu
+	#或
+	easy_install qiniu
+
+源码安装：
 
 	git clone http://github.com/qiniu/python-sdk
-	# 将系统路径添加到python 的搜索路径
+	cd python-sdk && python setup.py install
 
 <a name=setup-key></a>
 ### 2.1 配置密钥
