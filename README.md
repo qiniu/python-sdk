@@ -386,12 +386,18 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
 
-private_url = make_private_url(domain, key2)
-info, err = qiniu.fop.ImageInfo().call(private_url)
-if err is not None:
-	error(err)
-	return
-print info,
+# 生成base_url
+url = qiniu.auth_token.make_base_url(domain, key2)
+
+# 生成fop_url
+image_info = qiniu.fop.ImageInfo()
+url = image_info.make_request(url)
+
+# 对其签名，生成private_url。如果是公有bucket此步可以省略
+policy = qiniu.auth_token.GetPolicy()
+url = policy.make_request(url)
+
+print '可以在浏览器浏览: %s' % url
 ```
 
 <a name=fop-exif></a>
@@ -404,14 +410,18 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
 
-private_url = make_private_url(domain, key2)
-exif, err = qiniu.fop.Exif().call(private_url)
-if err is not None:
-	# 部分图片不存在exif
-	if not err == "no exif data":
-		error(err)
-	return
-print exif
+# 生成base_url
+url = qiniu.auth_token.make_base_url(domain, key2)
+
+# 生成fop_url
+image_exif = qiniu.fop.Exif()
+url = image_exif.make_request(url)
+
+# 对其签名，生成private_url。如果是公有bucket此步可以省略
+policy = qiniu.auth_token.GetPolicy()
+url = policy.make_request(url)
+
+print '可以在浏览器浏览: %s' % url
 ```
 
 
@@ -427,8 +437,15 @@ import qiniu.fop
 
 iv = qiniu.fop.ImageView()
 iv.width = 100
-private_url = make_private_url(domain, key2)
-print '可以在浏览器浏览: %s' % iv.make_request(private_url)
+
+# 生成base_url
+url = qiniu.auth_token.make_base_url(domain, key2)
+# 生成fop_url
+url = iv.make_request(url)
+# 对其签名，生成private_url。如果是公有bucket此步可以省略
+policy = qiniu.auth_token.GetPolicy()
+url = policy.make_request(url)
+print '可以在浏览器浏览: %s' % url
 ```
 
 <a name=contribution></a>

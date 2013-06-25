@@ -1,34 +1,10 @@
 # -*- coding:utf-8 -*-
 import json
-import urllib
 
-def _add_query(url, query):
-	if '?' in url:
-		return '%s&%s' % (url, query)
-	else:
-		return '%s?%s' % (url, query)
-
-class BaseCall(object):
-	def call_url(self, url):
-		try:
-			f = urllib.urlopen(self.make_request(url))
-			body = json.loads(f.read())
-			f.close()
-		except IOError, e:
-			return None, e
-		except ValueError, e:
-			return None, e
-		
-		if "error" in body:
-			return None, body["error"]
-		return body, None
-
-class Exif(BaseCall):
+class Exif(object):
 	def make_request(self, url):
-		return _add_query(url, "exif")
+		return '%s?exif' % url
 
-	def call(self, url):
-		return self.call_url(url)
 
 class ImageView(object):
 	mode = 1 # 1或2
@@ -55,43 +31,7 @@ class ImageView(object):
 
 		return "%s?imageView/%s" % (url, '/'.join(target))
 
-class ImageMogr(object):
-	auto_orient = False # 根据原图EXIF信息自动旋正
-	thumbnail = None # 缩略图尺寸
-	gravity = None
-	crop = None # 裁剪尺寸
-	quality = None # 质量
-	rotate = None # 旋转角度, 单位为度
-	format = None # png, jpg等图片格式
 
+class ImageInfo(object):
 	def make_request(self, url):
-		target = []
-		if self.auto_orient:
-			target.append("auto-orient")
-
-		if self.thumbnail is not None:
-			target.append("thumbnail/%s" % self.thumbnail)
-
-		if self.gravity is not None:
-			target.append("gravity/%s" % self.gravity)
-
-		if self.crop is not None:
-			target.append("crop/%s" % self.crop)
-
-		if self.quality is not None:
-			target.append("quality/%s" % self.quality)
-
-		if self.rotate is not None:
-			target.append("rotate/%s" % self.rotate)
-
-		if self.format is not None:
-			target.append("format/%s" % self.format)
-
-		return _add_query(url, 'imageMogr/%s' % ('/'.join(target)))
-
-class ImageInfo(BaseCall):
-	def make_request(self, url):
-		return _add_query(url, "imageInfo")
-
-	def call(self, url):
-		return self.call_url(url)
+		return '%s?imageInfo' % url
