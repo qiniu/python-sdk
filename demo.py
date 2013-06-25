@@ -18,6 +18,9 @@ import qiniu.fop
 # @gist import_resumable_io
 import qiniu.resumable_io as rio
 # @endgist
+# @gist import_rsf
+import qiniu.rsf
+# @endgist
 
 bucket_name = None
 uptoken = None
@@ -69,6 +72,7 @@ def get_demo_list():
 			resumable_put, resumable_put_file,
 			stat, copy, move, delete, batch,
 			image_info, image_exif, image_view,
+			list_prefix,
 	]
 
 def run_demos(demos):
@@ -317,6 +321,17 @@ def batch():
 	if not [ret['code'] for ret in rets] == [200, 200]:
 		error("删除失败")
 		return
+	# @endgist
+
+def list_prefix():
+	''' 列出文件操作 '''
+	# @gist list_prefix
+	rsf_client = qiniu.rsf.Rsf()
+	rets, err = rsf_client.list_prefix(bucket_name, prefix="python-demo-put-file")
+	if err is not None:
+		error(err)
+		return
+	print rets,
 	# @endgist
 
 if __name__ == "__main__":

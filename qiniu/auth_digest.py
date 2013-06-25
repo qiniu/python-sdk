@@ -46,10 +46,10 @@ class Mac(object):
 
 
 class Client(rpc.Client):
-	def __init__(self, mac=None):
+	def __init__(self, host, mac=None):
 		if mac is None:
 			mac = Mac()
-		super(Client, self).__init__(config.RS_HOST)
+		super(Client, self).__init__(host)
 		self.mac = mac
 
 	def round_tripper(self, method, path, body):
