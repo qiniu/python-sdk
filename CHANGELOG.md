@@ -5,9 +5,9 @@
 2013-06-25 issue [#36](https://github.com/qiniu/python-sdk/pull/36)
 
 - 加入CHANGELOG.md
-- 修复文档
+- 更新文档
 - 使config.UP_HOST="up.qiniu.com"
-- 引入setup.py
+- 引入setup.py，并上传至PYPI
 
 2013-06-24 issue [#35](https://github.com/qiniu/python-sdk/pull/35)
 
