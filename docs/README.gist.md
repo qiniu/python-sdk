@@ -232,16 +232,16 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 
 	[GET] http://<domain>/<key>
 
-其中<domain>可以到[七牛云存储开发者自助网站](https://dev.qiniutek.com/buckets)绑定, 域名可以使用自己一级域名的或者是由七牛提供的二级域名(`<bucket>.qiniutek.com`)。注意，尖括号不是必需，代表替换项。
+其中<domain>可以到[七牛云存储开发者自助网站](https://portal.qiniu.com/)绑定, 域名可以使用自己一级域名的或者是由七牛提供的二级域名(`<bucket>.qiniudn.com`)。注意，尖括号不是必需，代表替换项。
 
 <a name=private-download></a>
 #### 4.3.2 私有资源下载
 私有资源必须通过临时下载授权凭证(downloadToken)下载，如下：
 
-	[GET] http://<domain>/<key>?token=<downloadToken>
+	[GET] http://<domain>/<key>?e=<deadline>&token=<downloadToken>
 
 注意，尖括号不是必需，代表替换项。  
-`downloadToken` 可以使用 SDK 提供的如下方法生成：
+私有下载链接可以使用 SDK 提供的如下方法生成：
 
 ```{python}
 @gist(gist/conf.py#config)
@@ -263,6 +263,7 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 @gist(gist/conf.py#config)
 
 @gist(../demo.py#import_fop)
+@gist(../demo.py#import_token)
 
 @gist(../demo.py#image_info)
 ```
@@ -273,6 +274,7 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 @gist(gist/conf.py#config)
 
 @gist(../demo.py#import_fop)
+@gist(../demo.py#import_token)
 
 @gist(../demo.py#exif)
 ```
@@ -284,6 +286,7 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 @gist(gist/conf.py#config)
 
 @gist(../demo.py#import_fop)
+@gist(../demo.py#import_token)
 
 @gist(../demo.py#image_view)
 ```
