@@ -18,9 +18,6 @@ import qiniu.fop
 # @gist import_resumable_io
 import qiniu.resumable_io as rio
 # @endgist
-# @gist import_rsf
-import qiniu.rsf
-# @endgist
 
 bucket_name = None
 uptoken = None
@@ -72,7 +69,6 @@ def get_demo_list():
 			resumable_put, resumable_put_file,
 			stat, copy, move, delete, batch,
 			image_info, image_exif, image_view,
-			list_prefix,
 	]
 
 def run_demos(demos):
@@ -247,25 +243,35 @@ def image_info():
 		return
 
 	# @gist image_info
-	base_url = qiniu.auth_token.make_base_url(domain, key2)
-	info, err = qiniu.fop.ImageInfo().call(base_url)
-	if err is not None:
-		error(err)
-		return
-	print info,
+	# 生成base_url
+	url = qiniu.auth_token.make_base_url(domain, key2)
+
+	# 生成fop_url
+	image_info = qiniu.fop.ImageInfo()
+	url = image_info.make_request(url)
+
+	# 对其签名，生成private_url。如果是公有bucket此步可以省略
+	policy = qiniu.auth_token.GetPolicy()
+	url = policy.make_request(url)
+
+	print '可以在浏览器浏览: %s' % url
 	# @endgist
 
 def image_exif():
 	''' 查看图片的exif信息 '''
 	# @gist exif
-	base_url = qiniu.auth_token.make_base_url(domain, key2)
-	exif, err = qiniu.fop.Exif().call(base_url)
-	if err is not None:
-		# 部分图片不存在exif
-		if not err == "no exif data":
-			error(err)
-		return
-	print exif
+	# 生成base_url
+	url = qiniu.auth_token.make_base_url(domain, key2)
+
+	# 生成fop_url
+	image_exif = qiniu.fop.Exif()
+	url = image_exif.make_request(url)
+
+	# 对其签名，生成private_url。如果是公有bucket此步可以省略
+	policy = qiniu.auth_token.GetPolicy()
+	url = policy.make_request(url)
+
+	print '可以在浏览器浏览: %s' % url
 	# @endgist
 
 def image_view():
@@ -273,8 +279,15 @@ def image_view():
 	# @gist image_view
 	iv = qiniu.fop.ImageView()
 	iv.width = 100
-	base_url = qiniu.auth_token.make_base_url(domain, key2)
-	print '可以在浏览器浏览: %s' % iv.make_request(base_url)
+
+	# 生成base_url
+	url = qiniu.auth_token.make_base_url(domain, key2)
+	# 生成fop_url
+	url = iv.make_request(url)
+	# 对其签名，生成private_url。如果是公有bucket此步可以省略
+	policy = qiniu.auth_token.GetPolicy()
+	url = policy.make_request(url)
+	print '可以在浏览器浏览: %s' % url
 	# @endgist
 
 def batch():
@@ -321,17 +334,6 @@ def batch():
 	if not [ret['code'] for ret in rets] == [200, 200]:
 		error("删除失败")
 		return
-	# @endgist
-
-def list_prefix():
-	''' 列出文件操作 '''
-	# @gist list_prefix
-	rsf_client = qiniu.rsf.Rsf()
-	rets, err = rsf_client.list_prefix(bucket_name, prefix="python-demo-put-file")
-	if err is not None:
-		error(err)
-		return
-	print rets,
 	# @endgist
 
 if __name__ == "__main__":
