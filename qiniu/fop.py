@@ -2,6 +2,12 @@
 import json
 import urllib
 
+def _add_query(url, query):
+	if '?' in url:
+		return '%s&%s' % (url, query)
+	else:
+		return '%s?%s' % (url, query)
+
 class BaseCall(object):
 	def call_url(self, url):
 		try:
@@ -19,7 +25,7 @@ class BaseCall(object):
 
 class Exif(BaseCall):
 	def make_request(self, url):
-		return '%s?exif' % url
+		return _add_query(url, "exif")
 
 	def call(self, url):
 		return self.call_url(url)
@@ -81,11 +87,11 @@ class ImageMogr(object):
 		if self.format is not None:
 			target.append("format/%s" % self.format)
 
-		return "%s?imageMogr/%s" % (url , '/'.join(target))
+		return _add_query(url, 'imageMogr/%s' % ('/'.join(target)))
 
 class ImageInfo(BaseCall):
 	def make_request(self, url):
-		return '%s?imageInfo' % url
+		return _add_query(url, "imageInfo")
 
 	def call(self, url):
 		return self.call_url(url)
