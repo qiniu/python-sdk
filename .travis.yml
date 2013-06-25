@@ -9,4 +9,4 @@ before_script:
   - export QINIU_NOEXIST_PIC_KEY="no_exist"
   - export QINIU_BUCKET_NAME="pysdk"
   - export QINIU_DOMAIN="pysdk.qiniudn.com"
-script: nosetests
+script: python setup.py nosetests

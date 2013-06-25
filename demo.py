@@ -152,7 +152,7 @@ def resumable_put_file():
 	rs_client.delete(bucket_name, key)
 	
 	# @gist resumable_put_file
-	localfile = "./%s" % __file__
+	localfile = "%s" % __file__
 	extra = rio.PutExtra(bucket_name)
 	
 	ret, err = rio.put_file(uptoken, key, localfile, extra)
@@ -236,7 +236,7 @@ def image_info():
 	
 	extra = qiniu.io.PutExtra(bucket_name)
 	extra.mime_type = "image/png"
-	localfile = './demo-photo.jpeg'
+	localfile = 'qiniu/photo_test.jpeg'
 	ret, err = qiniu.io.put_file(uptoken, key2, localfile, extra)
 	if err is not None:
 		error(err)
