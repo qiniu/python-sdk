@@ -29,6 +29,9 @@ setup(
 	url=URL,
 	download_url=URL,
 	packages=['qiniu'],
+	package_data={
+		"qiniu": ['photo_test.jpeg'],
+	},
 	platforms='any',
 	classifiers=[
 		'Intended Audience :: Developers',
