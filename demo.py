@@ -247,13 +247,8 @@ def image_info():
 		return
 
 	# @gist image_info
-<<<<<<< HEAD
 	base_url = qiniu.auth_token.make_base_url(domain, key2)
 	info, err = qiniu.fop.ImageInfo().call(base_url)
-=======
-	private_url = make_private_url(domain, key2)
-	info, err = qiniu.fop.ImageInfo().call(private_url)
->>>>>>> feature/1.0.2&1.0.1
 	if err is not None:
 		error(err)
 		return
