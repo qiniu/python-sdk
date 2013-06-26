@@ -22,12 +22,11 @@ key = None
 key2 = None
 key3 = None
 domain = None
-rs_client = None
 
 # ----------------------------------------------------------
 
 def setup(access_key, secret_key, bucketname, bucket_domain):
-	global bucket_name, uptoken, key, key2, domain, key3, rs_client
+	global bucket_name, uptoken, key, key2, domain, key3
 	qiniu.conf.ACCESS_KEY = access_key
 	qiniu.conf.SECRET_KEY = secret_key
 	bucket_name = bucketname
@@ -39,7 +38,6 @@ def setup(access_key, secret_key, bucketname, bucket_domain):
 	key = "python-demo-put-file"
 	key2 = "python-demo-put-file-2"
 	key3 = "python-demo-put-file-3"
-	rs_client = qiniu.rs.Rs()
 
 def _setup():
 	''' 根据环境变量配置信息 '''
@@ -87,7 +85,7 @@ def make_private_url(domain, key):
 def put_file():
 	''' 演示上传文件的过程 '''
 	# 尝试删除
-	rs_client.delete(bucket_name, key)
+	qiniu.rs.Rs().delete(bucket_name, key)
 	
 	# @gist put_file
 	localfile = "%s" % __file__
@@ -103,7 +101,7 @@ def put_file():
 def put_binary():
 	''' 上传二进制数据 '''
 	# 尝试删除
-	rs_client.delete(bucket_name, key)
+	qiniu.rs.Rs().delete(bucket_name, key)
 	
 	# @gist put
 	extra = qiniu.io.PutExtra(bucket_name)
@@ -118,8 +116,7 @@ def put_binary():
 def resumable_put():
 	''' 断点续上传 '''
 	# 尝试删除
-	rs_client = qiniu.rs.Rs()
-	rs_client.delete(bucket_name, key)
+	qiniu.rs.Rs().delete(bucket_name, key)
 	
 	# @gist resumable_put
 	class ResumableUpload(object):
@@ -146,7 +143,7 @@ def resumable_put():
 def resumable_put_file():
 	''' 断点续上传文件 '''
 	# 尝试删除
-	rs_client.delete(bucket_name, key)
+	qiniu.rs.Rs().delete(bucket_name, key)
 	
 	# @gist resumable_put_file
 	localfile = "%s" % __file__
@@ -163,7 +160,7 @@ def resumable_put_file():
 def stat():
 	''' 查看上传文件的内容 '''
 	# @gist stat
-	ret, err = rs_client.stat(bucket_name, key)
+	ret, err = qiniu.rs.Rs().stat(bucket_name, key)
 	if err is not None:
 		error(err)
 		return
@@ -173,16 +170,16 @@ def stat():
 def copy():
 	''' 复制文件 '''
 	# 初始化
-	rs_client.delete(bucket_name, key2)
+	qiniu.rs.Rs().delete(bucket_name, key2)
 	
 	# @gist copy
-	ret, err = rs_client.copy(bucket_name, key, bucket_name, key2)
+	ret, err = qiniu.rs.Rs().copy(bucket_name, key, bucket_name, key2)
 	if err is not None:
 		error(err)
 		return
 	# @endgist
 	
-	stat, err = rs_client.stat(bucket_name, key2)
+	stat, err = qiniu.rs.Rs().stat(bucket_name, key2)
 	if err is not None:
 		error(err)
 		return
@@ -191,23 +188,23 @@ def copy():
 def move():
 	''' 移动文件 '''
 	# 初始化
-	rs_client.delete(bucket_name, key3)
+	qiniu.rs.Rs().delete(bucket_name, key3)
 	
 	# @gist move
-	ret, err = rs_client.move(bucket_name, key2, bucket_name, key3)
+	ret, err = qiniu.rs.Rs().move(bucket_name, key2, bucket_name, key3)
 	if err is not None:
 		error(err)
 		return
 	# @endgist
 	
 	# 查看文件是否移动成功
-	ret, err = rs_client.stat(bucket_name, key3)
+	ret, err = qiniu.rs.Rs().stat(bucket_name, key3)
 	if err is not None:
 		error(err)
 		return
 	
 	# 查看文件是否被删除
-	ret, err = rs_client.stat(bucket_name, key2)
+	ret, err = qiniu.rs.Rs().stat(bucket_name, key2)
 	if err is None:
 		error("删除失败")
 		return
@@ -215,13 +212,13 @@ def move():
 def delete():
 	''' 删除文件 '''
 	# @gist delete
-	ret, err = rs_client.delete(bucket_name, key3)
+	ret, err = qiniu.rs.Rs().delete(bucket_name, key3)
 	if err is not None:
 		error(err)
 		return
 	# @endgist
 	
-	ret, err = rs_client.stat(bucket_name, key3)
+	ret, err = qiniu.rs.Rs().stat(bucket_name, key3)
 	if err is None:
 		error("删除失败")
 		return
@@ -229,7 +226,7 @@ def delete():
 def image_info():
 	''' 上传图片, 并且查看他的信息 '''
 	# 初始化
-	rs_client.delete(bucket_name, key2)
+	qiniu.rs.Rs().delete(bucket_name, key2)
 	
 	extra = qiniu.io.PutExtra(bucket_name)
 	extra.mime_type = "image/png"
@@ -289,7 +286,6 @@ def image_view():
 
 def batch():
 	''' 文件处理的批量操作 '''
-	rs_client = qiniu.rs.Rs()
 	# @gist batch_path
 	path_1 = qiniu.rs.EntryPath(bucket_name, key)
 	path_2 = qiniu.rs.EntryPath(bucket_name, key2)
@@ -298,7 +294,7 @@ def batch():
 	
 	# 查看状态
 	# @gist batch_stat
-	rets, err = rs_client.batch_stat([path_1, path_2, path_3])
+	rets, err = qiniu.rs.Rs().batch_stat([path_1, path_2, path_3])
 	if err is not None:
 		error(err)
 		return
@@ -310,16 +306,16 @@ def batch():
 	# 复制
 	# @gist batch_copy
 	pair_1 = qiniu.rs.EntryPathPair(path_1, path_3)
-	rets, err = rs_client.batch_copy([pair_1])
+	rets, err = qiniu.rs.Rs().batch_copy([pair_1])
 	if not rets[0]['code'] == 200:
 		error("复制失败")
 		return
 	# @endgist
 	
-	rs_client.batch_delete([path_2])
+	qiniu.rs.Rs().batch_delete([path_2])
 	# @gist batch_move
 	pair_2 = qiniu.rs.EntryPathPair(path_3, path_2)
-	rets, err = rs_client.batch_move([pair_2])
+	rets, err = qiniu.rs.Rs().batch_move([pair_2])
 	if not rets[0]['code'] == 200:
 		error("移动失败")
 		return
@@ -327,7 +323,7 @@ def batch():
 	
 	# 删除残留文件
 	# @gist batch_delete
-	rets, err = rs_client.batch_delete([path_1, path_2])
+	rets, err = qiniu.rs.Rs().batch_delete([path_1, path_2])
 	if not [ret['code'] for ret in rets] == [200, 200]:
 		error("删除失败")
 		return

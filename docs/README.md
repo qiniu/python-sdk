@@ -83,7 +83,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
-ret, err = rs_client.stat(bucket_name, key)
+ret, err = qiniu.rs.Rs().stat(bucket_name, key)
 if err is not None:
 	error(err)
 	return
@@ -100,7 +100,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
-ret, err = rs_client.copy(bucket_name, key, bucket_name, key2)
+ret, err = qiniu.rs.Rs().copy(bucket_name, key, bucket_name, key2)
 if err is not None:
 	error(err)
 	return
@@ -116,7 +116,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
-ret, err = rs_client.move(bucket_name, key2, bucket_name, key3)
+ret, err = qiniu.rs.Rs().move(bucket_name, key2, bucket_name, key3)
 if err is not None:
 	error(err)
 	return
@@ -132,7 +132,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
-ret, err = rs_client.move(bucket_name, key2, bucket_name, key3)
+ret, err = qiniu.rs.Rs().move(bucket_name, key2, bucket_name, key3)
 if err is not None:
 	error(err)
 	return
@@ -155,7 +155,7 @@ path_1 = qiniu.rs.EntryPath(bucket_name, key)
 path_2 = qiniu.rs.EntryPath(bucket_name, key2)
 path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
-rets, err = rs_client.batch_stat([path_1, path_2, path_3])
+rets, err = qiniu.rs.Rs().batch_stat([path_1, path_2, path_3])
 if err is not None:
 	error(err)
 	return
@@ -176,7 +176,7 @@ path_2 = qiniu.rs.EntryPath(bucket_name, key2)
 path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
 pair_1 = qiniu.rs.EntryPathPair(path_1, path_3)
-rets, err = rs_client.batch_copy([pair_1])
+rets, err = qiniu.rs.Rs().batch_copy([pair_1])
 if not rets[0]['code'] == 200:
 	error("复制失败")
 	return
@@ -197,7 +197,7 @@ path_2 = qiniu.rs.EntryPath(bucket_name, key2)
 path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
 pair_2 = qiniu.rs.EntryPathPair(path_3, path_2)
-rets, err = rs_client.batch_move([pair_2])
+rets, err = qiniu.rs.Rs().batch_move([pair_2])
 if not rets[0]['code'] == 200:
 	error("移动失败")
 	return
@@ -217,7 +217,7 @@ path_1 = qiniu.rs.EntryPath(bucket_name, key)
 path_2 = qiniu.rs.EntryPath(bucket_name, key2)
 path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
-rets, err = rs_client.batch_delete([path_1, path_2])
+rets, err = qiniu.rs.Rs().batch_delete([path_1, path_2])
 if not [ret['code'] for ret in rets] == [200, 200]:
 	error("删除失败")
 	return
