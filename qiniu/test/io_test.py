@@ -3,12 +3,12 @@ import os
 import unittest
 import string
 import random
-import rs
-import conf
 import zlib
 from base64 import urlsafe_b64encode as encode
 
-import io
+from qiniu import conf
+from qiniu import rs
+from qiniu import io
 
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")

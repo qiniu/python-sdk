@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-import conf
+from qiniu import conf
 
 class TestConfig(unittest.TestCase):
 	def test_USER_AGENT(self):

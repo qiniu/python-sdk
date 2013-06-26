@@ -8,9 +8,9 @@ from hashlib import sha1
 import hmac
 import urllib
 
-from .. import conf
-from .. import rpc
-import rs_token
+from qiniu import conf
+from qiniu import rpc
+from qiniu import rs
 
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
@@ -20,7 +20,7 @@ key = os.getenv("QINIU_PIC_KEY")
 
 class TestToken(unittest.TestCase):
 	def test_put_policy(self):
-		policy = rs_token.PutPolicy(bucket_name)
+		policy = rs.PutPolicy(bucket_name)
 		policy.endUser = "hello!"
 		tokens = policy.token().split(':')
 		self.assertEqual(conf.ACCESS_KEY, tokens[0])
@@ -32,8 +32,8 @@ class TestToken(unittest.TestCase):
 		self.assertEqual(new_hmac, tokens[1])
 
 	def test_get_policy(self):
-		base_url = rs_token.make_base_url(domain, key)
-		policy = rs_token.GetPolicy()
+		base_url = rs.make_base_url(domain, key)
+		policy = rs.GetPolicy()
 		private_url = policy.make_request(base_url)
 
 		f = urllib.urlopen(private_url)

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-import rpc
-import conf
+from qiniu import rpc
+from qiniu import conf
 
 def round_tripper(client, method, path, body):
 	pass

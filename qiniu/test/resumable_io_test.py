@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
-import conf
 import unittest
 import zlib
 
-import auth.up
-import resumable_io
-import rs
+from qiniu import conf
+from qiniu.auth import up
+from qiniu import resumable_io
+from qiniu import rs
 
 bucket = os.getenv("QINIU_BUCKET_NAME")
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
@@ -16,7 +16,7 @@ class TestBlock(unittest.TestCase):
 	def test_block(self):
 		policy = rs.PutPolicy(bucket)
 		uptoken = policy.token()
-		client = auth.up.Client(uptoken)
+		client = up.Client(uptoken)
 
 		rets = [0, 0]
 		data_slice_2 = "\nbye!"

@@ -4,8 +4,8 @@ import os
 import random
 import string
 
-from .. import rs
-from .. import conf
+from qiniu import rs
+from qiniu import conf
 
 def r(length):
 	lib = string.ascii_uppercase

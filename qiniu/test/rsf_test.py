@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
-import rsf
-import conf
+from qiniu import rsf
+from qiniu import conf
 
 import os
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")

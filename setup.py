@@ -27,9 +27,9 @@ setup(
 	maintainer_email=MAINTAINER_EMAIL,
 	license='MIT',
 	url=URL,
-	packages=['qiniu', 'qiniu.auth', 'qiniu.rs'],
+	packages=['qiniu', 'qiniu.test', 'qiniu.auth', 'qiniu.rs', 'qiniu.rs.test'],
 	package_data={
-		"qiniu": ['photo_test.jpeg'],
+		"qiniu.test": ['photo_test.jpeg'],
 	},
 	platforms='any',
 	classifiers=[

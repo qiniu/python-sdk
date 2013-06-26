@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import unittest
 import os
-import fop
+from qiniu import fop
 
 pic = "http://cheneya.qiniudn.com/hello_jpg"
 
