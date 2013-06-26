@@ -64,10 +64,7 @@ Qiniu Resource (Cloud) Storage SDK for Python
 在获取到 Access Key 和 Secret Key 之后，您可以在您的程序中调用如下两行代码进行初始化对接, 要确保`ACCESS_KEY` 和 `SECRET_KEY` 在调用所有七牛API服务之前均已赋值：
 
 ```{python}
-import qiniu.config
-
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(gist/conf.py#config)
 ```
 
 <a name=rs-api></a>
@@ -76,66 +73,41 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 <a name=rs-stat></a>
 ### 3.1 查看单个文件属性信息
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
-
-ret, err = qiniu.rs.Client().stat(bucket_name, key)
-if err is not None:
-	error(err)
-	return
-print ret,
+@gist(../demo.py#stat)
 ```
 
 <a name=rs-copy></a>
 ### 3.2 复制单个文件
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
-
-ret, err = qiniu.rs.Client().copy(bucket_name, key, bucket_name, key2)
-if err is not None:
-	error(err)
-	return
+@gist(../demo.py#copy)
 ```
 
 <a name=rs-move></a>
 ### 3.3 移动单个文件
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
-
-ret, err = qiniu.rs.Client().move(bucket_name, key2, bucket_name, key3)
-if err is not None:
-	error(err)
-	return
+@gist(../demo.py#move)
 ```
 
 <a name=rs-delete></a>
 ### 3.4 删除单个文件
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
-
-ret, err = qiniu.rs.Client().move(bucket_name, key2, bucket_name, key3)
-if err is not None:
-	error(err)
-	return
+@gist(../demo.py#move)
 ```
 
 <a name=batch></a>
@@ -144,83 +116,49 @@ if err is not None:
 <a name=batch-stat></a>
 #### 3.5.1 批量获取文件属性信息
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
+@gist(../demo.py#batch_path)
 
-path_1 = qiniu.rs.EntryPath(bucket_name, key)
-path_2 = qiniu.rs.EntryPath(bucket_name, key2)
-path_3 = qiniu.rs.EntryPath(bucket_name, key3)
-
-rets, err = qiniu.rs.Client().batch_stat([path_1, path_2, path_3])
-if err is not None:
-	error(err)
-	return
+@gist(../demo.py#batch_stat)
 ```
 
 <a name=batch-copy></a>
 #### 3.5.2 批量复制文件
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
+@gist(../demo.py#batch_path)
 
-path_1 = qiniu.rs.EntryPath(bucket_name, key)
-path_2 = qiniu.rs.EntryPath(bucket_name, key2)
-path_3 = qiniu.rs.EntryPath(bucket_name, key3)
-
-pair_1 = qiniu.rs.EntryPathPair(path_1, path_3)
-rets, err = qiniu.rs.Client().batch_copy([pair_1])
-if not rets[0]['code'] == 200:
-	error("复制失败")
-	return
+@gist(../demo.py#batch_copy)
 ```
 
 <a name=batch-move></a>
 #### 3.5.3 批量移动文件
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
+@gist(../demo.py#batch_path)
 
-path_1 = qiniu.rs.EntryPath(bucket_name, key)
-path_2 = qiniu.rs.EntryPath(bucket_name, key2)
-path_3 = qiniu.rs.EntryPath(bucket_name, key3)
-
-pair_2 = qiniu.rs.EntryPathPair(path_3, path_2)
-rets, err = qiniu.rs.Client().batch_move([pair_2])
-if not rets[0]['code'] == 200:
-	error("移动失败")
-	return
+@gist(../demo.py#batch_move)
 ```
 
 <a name=batch-delete></a>
 #### 3.5.4 批量删除文件
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
+@gist(../demo.py#batch_path)
 
-path_1 = qiniu.rs.EntryPath(bucket_name, key)
-path_2 = qiniu.rs.EntryPath(bucket_name, key2)
-path_3 = qiniu.rs.EntryPath(bucket_name, key3)
-
-rets, err = qiniu.rs.Client().batch_delete([path_1, path_2])
-if not [ret['code'] for ret in rets] == [200, 200]:
-	error("删除失败")
-	return
+@gist(../demo.py#batch_delete)
 ```
 
 <a name=get-and-put-api></a>
@@ -232,15 +170,11 @@ if not [ret['code'] for ret in rets] == [200, 200]:
 #### 4.1.1 上传授权uptoken
 uptoken是一个字符串，作为http协议Header的一部分（Authorization字段）发送到我们七牛的服务端，表示这个http请求是经过认证的。
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
-
-policy = qiniu.rs.PutPolicy(bucket_name)
-uptoken = policy.token()
+@gist(../demo.py#uptoken)
 ```
 
 <a name=upload></a>
@@ -254,89 +188,41 @@ uptoken = policy.token()
 
 直接上传二进制流
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_io)
 
-import qiniu.io
-
-extra = qiniu.io.PutExtra(bucket_name)
-extra.mime_type = "text/plain"
-
-ret, err = qiniu.io.put(uptoken, key, "hello!", extra)
-if err is not None:
-	error(err)
-	return
+@gist(../demo.py#put)
 ```
 
 上传本地文件
 
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_io)
 
-import qiniu.io
-
-localfile = "%s" % __file__
-extra = qiniu.io.PutExtra(bucket_name)
-
-ret, err = qiniu.io.put_file(uptoken, key, localfile, extra)
-if err is not None:
-	error(err)
-	return
+@gist(../demo.py#put_file)
 ```
 
 <a name=resumable-io-upload></a>
 ### 4.2.2 断点续上传
 上传二进制流
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_resumable_io)
 
-import qiniu.resumable_io as rio
-
-class ResumableUpload(object):
-	position = 0
-	def __init__(self, string_data):
-		self.data = string_data
-	
-	def read(self, length):
-		data = self.data[self.position: self.position+length]
-		self.position += length
-		return data
-
-a = "resumable upload string"
-extra = rio.PutExtra(bucket_name)
-extra.mime_type = "text/plain"
-ret, err = rio.put(uptoken, key, ResumableUpload(a), len(a), extra)
-if err is not None:
-	error(err)
-	return
-print ret,
+@gist(../demo.py#resumable_put)
 ```
 
 上传本地文件
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_resumable_io)
 
-import qiniu.resumable_io as rio
-
-localfile = "%s" % __file__
-extra = rio.PutExtra(bucket_name)
-
-ret, err = rio.put_file(uptoken, key, localfile, extra)
-if err is not None:
-	error(err)
-	return
-print ret,
+@gist(../demo.py#resumable_put_file)
 ```
 
 <a name=io-download></a>
@@ -365,16 +251,11 @@ print ret,
 私有下载链接可以使用 SDK 提供的如下方法生成：
 
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_rs)
 
-import qiniu.rs
-
-base_url = qiniu.rs.make_base_url(domain, key)
-policy = qiniu.rs.GetPolicy()
-private_url = policy.make_request(base_url)
+@gist(../demo.py#dntoken)
 ```
 
 <a name=fop-api></a>
@@ -386,76 +267,35 @@ private_url = policy.make_request(base_url)
 <a name=fop-image-info></a>
 ### 5.1.1 查看图像属性
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_fop)
+@gist(../demo.py#import_rs)
 
-import qiniu.fop
-import qiniu.rs
-
-# 生成base_url
-url = qiniu.rs.make_base_url(domain, key2)
-
-# 生成fop_url
-image_info = qiniu.fop.ImageInfo()
-url = image_info.make_request(url)
-
-# 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.rs.GetPolicy()
-url = policy.make_request(url)
-
-print '可以在浏览器浏览: %s' % url
+@gist(../demo.py#image_info)
 ```
 
 <a name=fop-exif></a>
 ### 5.1.2 查看图片EXIF信息
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_fop)
+@gist(../demo.py#import_rs)
 
-import qiniu.fop
-import qiniu.rs
-
-# 生成base_url
-url = qiniu.rs.make_base_url(domain, key2)
-
-# 生成fop_url
-image_exif = qiniu.fop.Exif()
-url = image_exif.make_request(url)
-
-# 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.rs.GetPolicy()
-url = policy.make_request(url)
-
-print '可以在浏览器浏览: %s' % url
+@gist(../demo.py#exif)
 ```
 
 
 <a name=fop-image-view></a>
 ### 5.1.3 生成图片预览
 ```{python}
-import qiniu.config
+@gist(gist/conf.py#config)
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+@gist(../demo.py#import_fop)
+@gist(../demo.py#import_rs)
 
-import qiniu.fop
-import qiniu.rs
-
-iv = qiniu.fop.ImageView()
-iv.width = 100
-
-# 生成base_url
-url = qiniu.rs.make_base_url(domain, key2)
-# 生成fop_url
-url = iv.make_request(url)
-# 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.rs.GetPolicy()
-url = policy.make_request(url)
-print '可以在浏览器浏览: %s' % url
+@gist(../demo.py#image_view)
 ```
 
 <a name=contribution></a>
@@ -475,5 +315,4 @@ Copyright (c) 2013 qiniu.com
 基于 MIT 协议发布:
 
 * [www.opensource.org/licenses/MIT](http://www.opensource.org/licenses/MIT)
-
 
