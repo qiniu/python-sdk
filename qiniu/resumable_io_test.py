@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-import config
+import conf
 import unittest
 import zlib
 
@@ -10,8 +10,8 @@ import resumable_io
 import rs
 
 bucket = os.getenv("QINIU_BUCKET_NAME")
-config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
-config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
+conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 
 class TestBlock(unittest.TestCase):
 	def test_block(self):

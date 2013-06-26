@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import unittest
 import rsf
-import config
+import conf
 
 import os
-config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
-config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
+conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 
 class TestRsf(unittest.TestCase):

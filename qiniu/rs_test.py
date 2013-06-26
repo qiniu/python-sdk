@@ -5,14 +5,14 @@ import random
 import string
 
 import rs
-import config
+import conf
 
 def r(length):
 	lib = string.ascii_uppercase
 	return ''.join([random.choice(lib) for i in range(0, length)])
 
-config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
-config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
+conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 key = os.getenv("QINIU_PIC_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 noexist_key = os.getenv("QINIU_NOEXIST_PIC_KEY")

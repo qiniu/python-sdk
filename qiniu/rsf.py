@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import auth_digest
-import config
+import conf
 import urllib
 
 class Rsf(object):
@@ -8,7 +8,7 @@ class Rsf(object):
 	def __init__(self, mac=None):
 		if mac is None:
 			mac = auth_digest.Mac()
-		self.conn = auth_digest.Client(host=config.RSF_HOST, mac=mac)
+		self.conn = auth_digest.Client(host=conf.RSF_HOST, mac=mac)
 		
 	def list_prefix(self, bucket, prefix=None, marker=None, limit=None):
 		'''

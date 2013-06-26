@@ -2,7 +2,7 @@
 import unittest
 
 import rpc
-import config
+import conf
 
 def round_tripper(client, method, path, body):
 	pass
@@ -12,7 +12,7 @@ class ClsTestClient(rpc.Client):
 		round_tripper(self, method, path, body)
 		return super(ClsTestClient, self).round_tripper(method, path, body)
 
-client = ClsTestClient(config.RS_HOST)
+client = ClsTestClient(conf.RS_HOST)
 
 class TestClient(unittest.TestCase):
 	def test_call(self):

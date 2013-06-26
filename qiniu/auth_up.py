@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import config
+import conf
 
 import rpc
 
@@ -11,7 +11,7 @@ class Client(rpc.Client):
 	
 	def __init__(self, up_token, host=None):
 		if host is None:
-			host = config.UP_HOST
+			host = conf.UP_HOST
 		self.up_token = up_token
 		super(Client, self).__init__(host)
 

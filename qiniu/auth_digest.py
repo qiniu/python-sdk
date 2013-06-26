@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import config
+import conf
 from urlparse import urlparse
 import hmac
 from hashlib import sha1
@@ -12,7 +12,7 @@ class Mac(object):
 	secret = None
 	def __init__(self, access=None, secret=None):
 		if access is None and secret is None:
-			access, secret = config.ACCESS_KEY, config.SECRET_KEY
+			access, secret = conf.ACCESS_KEY, conf.SECRET_KEY
 		self.access, self.secret = access, secret
 
 	def __sign(self, data):

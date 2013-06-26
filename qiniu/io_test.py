@@ -4,13 +4,13 @@ import unittest
 import string
 import random
 import auth_token
-import config
+import conf
 from base64 import urlsafe_b64encode as encode
 
 import io
 
-config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
-config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
+conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 
 policy = auth_token.PutPolicy(bucket_name)

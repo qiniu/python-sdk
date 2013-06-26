@@ -5,7 +5,7 @@ import sys
 # @gist import_io
 import qiniu.io
 # @endgist
-import qiniu.config
+import qiniu.conf
 # @gist import_token
 import qiniu.auth_token
 # @endgist
@@ -31,8 +31,8 @@ rs_client = None
 
 def setup(access_key, secret_key, bucketname, bucket_domain):
 	global bucket_name, uptoken, key, key2, domain, key3, rs_client
-	qiniu.config.ACCESS_KEY = access_key
-	qiniu.config.SECRET_KEY = secret_key
+	qiniu.conf.ACCESS_KEY = access_key
+	qiniu.conf.SECRET_KEY = secret_key
 	bucket_name = bucketname
 	domain = bucket_domain
 	# @gist uptoken
