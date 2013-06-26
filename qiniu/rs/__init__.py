@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __all__ = [
-	"Rs", "EntryPath", "EntryPathPair", "uri_stat", "uri_delete", "uri_move", "uri_copy", 
+	"Client", "EntryPath", "EntryPathPair", "uri_stat", "uri_delete", "uri_move", "uri_copy", 
 	"PutPolicy", "GetPolicy", "make_base_url",
 ]
 

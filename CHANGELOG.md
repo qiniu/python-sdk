@@ -6,6 +6,8 @@
 
 - config.py改为conf.py
 - 新增rs和auth包
+- rs.Rs改为rs.Client, rsf.Rsf改为rsf.Client
+- 新增list_prefix的demo
 
 ### v6.0.1
 

@@ -35,7 +35,7 @@ class TestBlock(unittest.TestCase):
 		ret, err = resumable_io.mkfile(client, key, lens, extra)
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")
-		rs.Rs().delete(bucket, key)
+		rs.Client().delete(bucket, key)
 	
 	def test_put(self):
 		policy = rs.PutPolicy(bucket)
@@ -46,7 +46,7 @@ class TestBlock(unittest.TestCase):
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FggslKhqmufiC1VkQvuF2gtvve9P", "hash not match")
-		rs.Rs().delete(bucket, key)
+		rs.Client().delete(bucket, key)
 			
 
 if __name__ == "__main__":

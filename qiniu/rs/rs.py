@@ -4,7 +4,7 @@ from base64 import urlsafe_b64encode
 from ..auth import digest
 from .. import conf
 
-class Rs(object):
+class Client(object):
 	conn = None
 	def __init__(self, mac=None):
 		if mac is None:

@@ -3,7 +3,7 @@ import auth.digest
 import conf
 import urllib
 
-class Rsf(object):
+class Client(object):
 	conn = None
 	def __init__(self, mac=None):
 		if mac is None:
