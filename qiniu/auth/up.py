@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
-import config
+from .. import conf
+from .. import rpc
 
-import rpc
-
-def setup():
-	pass
 
 class Client(rpc.Client):
 	up_token = None
 	
 	def __init__(self, up_token, host=None):
 		if host is None:
-			host = config.UP_HOST
+			host = conf.UP_HOST
 		self.up_token = up_token
 		super(Client, self).__init__(host)
 

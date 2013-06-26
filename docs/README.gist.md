@@ -172,7 +172,7 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_token)
+@gist(../demo.py#import_rs)
 
 @gist(../demo.py#uptoken)
 ```
@@ -253,7 +253,7 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_token)
+@gist(../demo.py#import_rs)
 
 @gist(../demo.py#dntoken)
 ```
@@ -270,7 +270,7 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 @gist(gist/conf.py#config)
 
 @gist(../demo.py#import_fop)
-@gist(../demo.py#import_token)
+@gist(../demo.py#import_rs)
 
 @gist(../demo.py#image_info)
 ```
@@ -281,7 +281,7 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 @gist(gist/conf.py#config)
 
 @gist(../demo.py#import_fop)
-@gist(../demo.py#import_token)
+@gist(../demo.py#import_rs)
 
 @gist(../demo.py#exif)
 ```
@@ -293,7 +293,7 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 @gist(gist/conf.py#config)
 
 @gist(../demo.py#import_fop)
-@gist(../demo.py#import_token)
+@gist(../demo.py#import_rs)
 
 @gist(../demo.py#image_view)
 ```

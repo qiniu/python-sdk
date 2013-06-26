@@ -83,7 +83,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
-ret, err = rs_client.stat(bucket_name, key)
+ret, err = qiniu.rs.Client().stat(bucket_name, key)
 if err is not None:
 	error(err)
 	return
@@ -100,7 +100,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
-ret, err = rs_client.copy(bucket_name, key, bucket_name, key2)
+ret, err = qiniu.rs.Client().copy(bucket_name, key, bucket_name, key2)
 if err is not None:
 	error(err)
 	return
@@ -116,7 +116,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
-ret, err = rs_client.move(bucket_name, key2, bucket_name, key3)
+ret, err = qiniu.rs.Client().move(bucket_name, key2, bucket_name, key3)
 if err is not None:
 	error(err)
 	return
@@ -132,7 +132,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
-ret, err = rs_client.move(bucket_name, key2, bucket_name, key3)
+ret, err = qiniu.rs.Client().move(bucket_name, key2, bucket_name, key3)
 if err is not None:
 	error(err)
 	return
@@ -155,7 +155,7 @@ path_1 = qiniu.rs.EntryPath(bucket_name, key)
 path_2 = qiniu.rs.EntryPath(bucket_name, key2)
 path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
-rets, err = rs_client.batch_stat([path_1, path_2, path_3])
+rets, err = qiniu.rs.Client().batch_stat([path_1, path_2, path_3])
 if err is not None:
 	error(err)
 	return
@@ -176,7 +176,7 @@ path_2 = qiniu.rs.EntryPath(bucket_name, key2)
 path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
 pair_1 = qiniu.rs.EntryPathPair(path_1, path_3)
-rets, err = rs_client.batch_copy([pair_1])
+rets, err = qiniu.rs.Client().batch_copy([pair_1])
 if not rets[0]['code'] == 200:
 	error("复制失败")
 	return
@@ -197,7 +197,7 @@ path_2 = qiniu.rs.EntryPath(bucket_name, key2)
 path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
 pair_2 = qiniu.rs.EntryPathPair(path_3, path_2)
-rets, err = rs_client.batch_move([pair_2])
+rets, err = qiniu.rs.Client().batch_move([pair_2])
 if not rets[0]['code'] == 200:
 	error("移动失败")
 	return
@@ -217,7 +217,7 @@ path_1 = qiniu.rs.EntryPath(bucket_name, key)
 path_2 = qiniu.rs.EntryPath(bucket_name, key2)
 path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
-rets, err = rs_client.batch_delete([path_1, path_2])
+rets, err = qiniu.rs.Client().batch_delete([path_1, path_2])
 if not [ret['code'] for ret in rets] == [200, 200]:
 	error("删除失败")
 	return
@@ -237,9 +237,9 @@ import qiniu.config
 qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-import qiniu.auth_token
+import qiniu.rs
 
-policy = qiniu.auth_token.PutPolicy(bucket_name)
+policy = qiniu.rs.PutPolicy(bucket_name)
 uptoken = policy.token()
 ```
 
@@ -280,7 +280,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.io
 
-localfile = "./%s" % __file__
+localfile = "%s" % __file__
 extra = qiniu.io.PutExtra(bucket_name)
 
 ret, err = qiniu.io.put_file(uptoken, key, localfile, extra)
@@ -329,7 +329,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.resumable_io as rio
 
-localfile = "./%s" % __file__
+localfile = "%s" % __file__
 extra = rio.PutExtra(bucket_name)
 
 ret, err = rio.put_file(uptoken, key, localfile, extra)
@@ -370,10 +370,10 @@ import qiniu.config
 qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-import qiniu.auth_token
+import qiniu.rs
 
-base_url = qiniu.auth_token.make_base_url(domain, key)
-policy = qiniu.auth_token.GetPolicy()
+base_url = qiniu.rs.make_base_url(domain, key)
+policy = qiniu.rs.GetPolicy()
 private_url = policy.make_request(base_url)
 ```
 
@@ -392,17 +392,17 @@ qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
-import qiniu.auth_token
+import qiniu.rs
 
 # 生成base_url
-url = qiniu.auth_token.make_base_url(domain, key2)
+url = qiniu.rs.make_base_url(domain, key2)
 
 # 生成fop_url
 image_info = qiniu.fop.ImageInfo()
 url = image_info.make_request(url)
 
 # 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.auth_token.GetPolicy()
+policy = qiniu.rs.GetPolicy()
 url = policy.make_request(url)
 
 print '可以在浏览器浏览: %s' % url
@@ -417,17 +417,17 @@ qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
-import qiniu.auth_token
+import qiniu.rs
 
 # 生成base_url
-url = qiniu.auth_token.make_base_url(domain, key2)
+url = qiniu.rs.make_base_url(domain, key2)
 
 # 生成fop_url
 image_exif = qiniu.fop.Exif()
 url = image_exif.make_request(url)
 
 # 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.auth_token.GetPolicy()
+policy = qiniu.rs.GetPolicy()
 url = policy.make_request(url)
 
 print '可以在浏览器浏览: %s' % url
@@ -443,17 +443,17 @@ qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
-import qiniu.auth_token
+import qiniu.rs
 
 iv = qiniu.fop.ImageView()
 iv.width = 100
 
 # 生成base_url
-url = qiniu.auth_token.make_base_url(domain, key2)
+url = qiniu.rs.make_base_url(domain, key2)
 # 生成fop_url
 url = iv.make_request(url)
 # 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.auth_token.GetPolicy()
+policy = qiniu.rs.GetPolicy()
 url = policy.make_request(url)
 print '可以在浏览器浏览: %s' % url
 ```

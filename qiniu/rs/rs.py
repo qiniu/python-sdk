@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-import auth_digest
-import config
 from base64 import urlsafe_b64encode
 
-class Rs(object):
+from ..auth import digest
+from .. import conf
+
+class Client(object):
 	conn = None
 	def __init__(self, mac=None):
 		if mac is None:
-			mac = auth_digest.Mac()
-		self.conn = auth_digest.Client(host=config.RS_HOST, mac=mac)
+			mac = digest.Mac()
+		self.conn = digest.Client(host=conf.RS_HOST, mac=mac)
 
 	def stat(self, bucket, key):
 		return self.conn.call(uri_stat(bucket, key))

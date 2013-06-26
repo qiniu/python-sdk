@@ -3,8 +3,8 @@ import os
 import zlib
 from base64 import urlsafe_b64encode
 
-import auth_up
-import config
+import auth.up
+import conf
 
 UNDEFINED_KEY = "?"
 
@@ -85,7 +85,7 @@ def put(uptoken, key, f, fsize, extra):
 	if extra.chunk_size is None:
 		extra.chunk_size = _chunk_size
 
-	client = auth_up.Client(uptoken)
+	client = auth.up.Client(uptoken)
 	for i in xrange(0, block_cnt):
 		try_time = extra.try_times
 		read_length = _block_size
@@ -142,7 +142,7 @@ def block_count(size):
 	return size / _block_size + 1
 
 def mkblock(client, block_size, first_chunk):
-	url = "http://%s/mkblk/%s" % (config.UP_HOST, block_size)
+	url = "http://%s/mkblk/%s" % (conf.UP_HOST, block_size)
 	content_type = "application/octet-stream"
 	return client.call_with(url, first_chunk, content_type, len(first_chunk))
 
@@ -153,7 +153,7 @@ def putblock(client, block_ret, chunk):
 
 def mkfile(client, key, fsize, extra):
 	encoded_entry = urlsafe_b64encode("%s:%s" % (extra.bucket, key))
-	url = ["http://%s/rs-mkfile/%s/fsize/%s" % (config.UP_HOST, encoded_entry, fsize)]
+	url = ["http://%s/rs-mkfile/%s/fsize/%s" % (conf.UP_HOST, encoded_entry, fsize)]
 
 	if extra.mimetype:
 		url.append("mimeType/%s" % urlsafe_b64encode(extra.mimetype))
