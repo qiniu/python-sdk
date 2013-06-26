@@ -5,6 +5,7 @@ import string
 import random
 import rs
 import conf
+import zlib
 from base64 import urlsafe_b64encode as encode
 
 import io
@@ -22,20 +23,45 @@ def r(length):
 	return ''.join([random.choice(lib) for i in range(0, length)])
 
 class TestUp(unittest.TestCase):
-	def test_put(self):
-		key = "test_%s" % r(9)
-		params = "op=3"
-		data = "hello bubby!"
-		ret, err = io.put(policy.token(), key, data, extra)
-		assert err is None
+	def test(self):
+		def test_put():
+			key = "test_%s" % r(9)
+			params = "op=3"
+			data = "hello bubby!"
+			extra.check_crc = 2
+			extra.crc32 = zlib.crc32(data) & 0xFFFFFFFF
+			ret, err = io.put(policy.token(), key, data, extra)
+			assert err is None
+
+		def test_put_same_crc():
+			key = "test_%s" % r(9)
+			params = "op=3"
+			data = "hello bubby!"
+			extra.check_crc = 2
+			ret, err = io.put(policy.token(), key, data, extra)
+			assert err is None
+
+		test_put()
+		test_put_same_crc()
 
 	def test_put_file(self):
 		localfile = "%s" % __file__
 		key = "test_%s" % r(9)
 
+		extra.check_crc = 1
 		ret, err = io.put_file(policy.token(), key, localfile, extra)
 		assert err is None
 		assert ret is not None
+
+	def test_put_crc_fail(self):
+		key = "test_%s" % r(9)
+		params = "op=3"
+		data = "hello bubby!"
+		extra.check_crc = 2
+		extra.crc32 = "wrong crc32"
+		ret, err = io.put(policy.token(), key, data, extra)
+		assert err is not None
+
 
 if __name__ == "__main__":
 	unittest.main()
