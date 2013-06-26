@@ -237,9 +237,9 @@ import qiniu.config
 qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-import qiniu.auth_token
+import qiniu.rs_token
 
-policy = qiniu.auth_token.PutPolicy(bucket_name)
+policy = qiniu.rs_token.PutPolicy(bucket_name)
 uptoken = policy.token()
 ```
 
@@ -370,10 +370,10 @@ import qiniu.config
 qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
-import qiniu.auth_token
+import qiniu.rs_token
 
-base_url = qiniu.auth_token.make_base_url(domain, key)
-policy = qiniu.auth_token.GetPolicy()
+base_url = qiniu.rs_token.make_base_url(domain, key)
+policy = qiniu.rs_token.GetPolicy()
 private_url = policy.make_request(base_url)
 ```
 
@@ -392,17 +392,17 @@ qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
-import qiniu.auth_token
+import qiniu.rs_token
 
 # 生成base_url
-url = qiniu.auth_token.make_base_url(domain, key2)
+url = qiniu.rs_token.make_base_url(domain, key2)
 
 # 生成fop_url
 image_info = qiniu.fop.ImageInfo()
 url = image_info.make_request(url)
 
 # 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.auth_token.GetPolicy()
+policy = qiniu.rs_token.GetPolicy()
 url = policy.make_request(url)
 
 print '可以在浏览器浏览: %s' % url
@@ -417,17 +417,17 @@ qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
-import qiniu.auth_token
+import qiniu.rs_token
 
 # 生成base_url
-url = qiniu.auth_token.make_base_url(domain, key2)
+url = qiniu.rs_token.make_base_url(domain, key2)
 
 # 生成fop_url
 image_exif = qiniu.fop.Exif()
 url = image_exif.make_request(url)
 
 # 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.auth_token.GetPolicy()
+policy = qiniu.rs_token.GetPolicy()
 url = policy.make_request(url)
 
 print '可以在浏览器浏览: %s' % url
@@ -443,17 +443,17 @@ qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
 qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
-import qiniu.auth_token
+import qiniu.rs_token
 
 iv = qiniu.fop.ImageView()
 iv.width = 100
 
 # 生成base_url
-url = qiniu.auth_token.make_base_url(domain, key2)
+url = qiniu.rs_token.make_base_url(domain, key2)
 # 生成fop_url
 url = iv.make_request(url)
 # 对其签名，生成private_url。如果是公有bucket此步可以省略
-policy = qiniu.auth_token.GetPolicy()
+policy = qiniu.rs_token.GetPolicy()
 url = policy.make_request(url)
 print '可以在浏览器浏览: %s' % url
 ```

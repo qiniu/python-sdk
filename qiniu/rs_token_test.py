@@ -10,7 +10,7 @@ import hmac
 import urllib
 
 import rpc
-import auth_token
+import rs_token
 
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
@@ -20,7 +20,7 @@ key = os.getenv("QINIU_PIC_KEY")
 
 class TestToken(unittest.TestCase):
 	def test_put_policy(self):
-		policy = auth_token.PutPolicy(bucket_name)
+		policy = rs_token.PutPolicy(bucket_name)
 		policy.endUser = "hello!"
 		tokens = policy.token().split(':')
 		self.assertEqual(conf.ACCESS_KEY, tokens[0])
@@ -32,8 +32,8 @@ class TestToken(unittest.TestCase):
 		self.assertEqual(new_hmac, tokens[1])
 
 	def test_get_policy(self):
-		base_url = auth_token.make_base_url(domain, key)
-		policy = auth_token.GetPolicy()
+		base_url = rs_token.make_base_url(domain, key)
+		policy = rs_token.GetPolicy()
 		private_url = policy.make_request(base_url)
 
 		f = urllib.urlopen(private_url)

@@ -7,7 +7,7 @@ import qiniu.io
 # @endgist
 import qiniu.conf
 # @gist import_token
-import qiniu.auth_token
+import qiniu.rs_token
 # @endgist
 # @gist import_rs
 import qiniu.rs
@@ -36,7 +36,7 @@ def setup(access_key, secret_key, bucketname, bucket_domain):
 	bucket_name = bucketname
 	domain = bucket_domain
 	# @gist uptoken
-	policy = qiniu.auth_token.PutPolicy(bucket_name)
+	policy = qiniu.rs_token.PutPolicy(bucket_name)
 	uptoken = policy.token()
 	# @endgist
 	key = "python-demo-put-file"
@@ -81,8 +81,8 @@ def run_demos(demos):
 def make_private_url(domain, key):
 	''' 生成私有下载链接 '''
 	# @gist dntoken
-	base_url = qiniu.auth_token.make_base_url(domain, key)
-	policy = qiniu.auth_token.GetPolicy()
+	base_url = qiniu.rs_token.make_base_url(domain, key)
+	policy = qiniu.rs_token.GetPolicy()
 	private_url = policy.make_request(base_url)
 	# @endgist
 	return private_url
@@ -244,14 +244,14 @@ def image_info():
 
 	# @gist image_info
 	# 生成base_url
-	url = qiniu.auth_token.make_base_url(domain, key2)
+	url = qiniu.rs_token.make_base_url(domain, key2)
 
 	# 生成fop_url
 	image_info = qiniu.fop.ImageInfo()
 	url = image_info.make_request(url)
 
 	# 对其签名，生成private_url。如果是公有bucket此步可以省略
-	policy = qiniu.auth_token.GetPolicy()
+	policy = qiniu.rs_token.GetPolicy()
 	url = policy.make_request(url)
 
 	print '可以在浏览器浏览: %s' % url
@@ -261,14 +261,14 @@ def image_exif():
 	''' 查看图片的exif信息 '''
 	# @gist exif
 	# 生成base_url
-	url = qiniu.auth_token.make_base_url(domain, key2)
+	url = qiniu.rs_token.make_base_url(domain, key2)
 
 	# 生成fop_url
 	image_exif = qiniu.fop.Exif()
 	url = image_exif.make_request(url)
 
 	# 对其签名，生成private_url。如果是公有bucket此步可以省略
-	policy = qiniu.auth_token.GetPolicy()
+	policy = qiniu.rs_token.GetPolicy()
 	url = policy.make_request(url)
 
 	print '可以在浏览器浏览: %s' % url
@@ -281,11 +281,11 @@ def image_view():
 	iv.width = 100
 
 	# 生成base_url
-	url = qiniu.auth_token.make_base_url(domain, key2)
+	url = qiniu.rs_token.make_base_url(domain, key2)
 	# 生成fop_url
 	url = iv.make_request(url)
 	# 对其签名，生成private_url。如果是公有bucket此步可以省略
-	policy = qiniu.auth_token.GetPolicy()
+	policy = qiniu.rs_token.GetPolicy()
 	url = policy.make_request(url)
 	print '可以在浏览器浏览: %s' % url
 	# @endgist
