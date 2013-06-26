@@ -395,7 +395,7 @@ import qiniu.fop
 import qiniu.rs
 
 # 生成base_url
-url = qiniu.rs.make_base_url(domain, key2)
+url = qiniu.rs.make_base_url(domain, pic_key)
 
 # 生成fop_url
 image_info = qiniu.fop.ImageInfo()
@@ -420,7 +420,7 @@ import qiniu.fop
 import qiniu.rs
 
 # 生成base_url
-url = qiniu.rs.make_base_url(domain, key2)
+url = qiniu.rs.make_base_url(domain, pic_key)
 
 # 生成fop_url
 image_exif = qiniu.fop.Exif()
@@ -449,7 +449,7 @@ iv = qiniu.fop.ImageView()
 iv.width = 100
 
 # 生成base_url
-url = qiniu.rs.make_base_url(domain, key2)
+url = qiniu.rs.make_base_url(domain, pic_key)
 # 生成fop_url
 url = iv.make_request(url)
 # 对其签名，生成private_url。如果是公有bucket此步可以省略

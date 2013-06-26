@@ -24,15 +24,17 @@ key = None
 key2 = None
 key3 = None
 domain = None
+pic_key = None
 
 # ----------------------------------------------------------
 
-def setup(access_key, secret_key, bucketname, bucket_domain):
-	global bucket_name, uptoken, key, key2, domain, key3
+def setup(access_key, secret_key, bucketname, bucket_domain, pickey):
+	global bucket_name, uptoken, key, key2, domain, key3, pic_key
 	qiniu.conf.ACCESS_KEY = access_key
 	qiniu.conf.SECRET_KEY = secret_key
 	bucket_name = bucketname
 	domain = bucket_domain
+	pic_key = pickey
 	# @gist uptoken
 	policy = qiniu.rs.PutPolicy(bucket_name)
 	uptoken = policy.token()
@@ -49,7 +51,8 @@ def _setup():
 	secret_key = getenv("QINIU_SECRET_KEY")
 	bucket_name = getenv("QINIU_BUCKET_NAME")
 	domain = getenv("QINIU_DOMAIN")
-	setup(access_key, secret_key, bucket_name, domain)
+	pickey = getenv("QINIU_PIC_KEY")
+	setup(access_key, secret_key, bucket_name, domain, pickey)
 
 def getenv(name):
 	env = os.getenv(name)
@@ -227,21 +230,11 @@ def delete():
 		return
 
 def image_info():
-	''' 上传图片, 并且查看他的信息 '''
-	# 初始化
-	qiniu.rs.Client().delete(bucket_name, key2)
+	''' 查看图片的信息 '''
 	
-	extra = qiniu.io.PutExtra(bucket_name)
-	extra.mime_type = "image/png"
-	localfile = 'qiniu/test/photo_test.jpeg'
-	ret, err = qiniu.io.put_file(uptoken, key2, localfile, extra)
-	if err is not None:
-		error(err)
-		return
-
 	# @gist image_info
 	# 生成base_url
-	url = qiniu.rs.make_base_url(domain, key2)
+	url = qiniu.rs.make_base_url(domain, pic_key)
 
 	# 生成fop_url
 	image_info = qiniu.fop.ImageInfo()
@@ -258,7 +251,7 @@ def image_exif():
 	''' 查看图片的exif信息 '''
 	# @gist exif
 	# 生成base_url
-	url = qiniu.rs.make_base_url(domain, key2)
+	url = qiniu.rs.make_base_url(domain, pic_key)
 
 	# 生成fop_url
 	image_exif = qiniu.fop.Exif()
@@ -278,7 +271,7 @@ def image_view():
 	iv.width = 100
 
 	# 生成base_url
-	url = qiniu.rs.make_base_url(domain, key2)
+	url = qiniu.rs.make_base_url(domain, pic_key)
 	# 生成fop_url
 	url = iv.make_request(url)
 	# 对其签名，生成private_url。如果是公有bucket此步可以省略
