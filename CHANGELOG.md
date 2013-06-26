@@ -2,7 +2,7 @@
 
 ### v6.0.1-2
 
-2013-06-26 issue [#39](https://github.com/qiniu/python-sdk/pull/39)
+2013-06-26 issue [#41](https://github.com/qiniu/python-sdk/pull/41)
 
 - config.py改为conf.py
 - 新增rs和auth包
