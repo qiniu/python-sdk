@@ -1,5 +1,14 @@
 ## CHANGE LOG
 
+### v6.0.1-2
+
+2013-06-26 issue [#41](https://github.com/qiniu/python-sdk/pull/41)
+
+- config.py改为conf.py
+- 新增rs和auth包
+- rs.Rs改为rs.Client, rsf.Rsf改为rsf.Client
+- 新增list_prefix的demo
+
 ### v6.0.1
 
 2013-06-25 issue [#36](https://github.com/qiniu/python-sdk/pull/36)

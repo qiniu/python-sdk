@@ -3,18 +3,18 @@ import os
 import unittest
 import string
 import random
-import auth_token
-import config
 import zlib
 from base64 import urlsafe_b64encode as encode
 
-import io
+from qiniu import conf
+from qiniu import rs
+from qiniu import io
 
-config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
-config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
+conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 
-policy = auth_token.PutPolicy(bucket_name)
+policy = rs.PutPolicy(bucket_name)
 extra = io.PutExtra(bucket_name)
 extra.mime_type = "text/plain"
 

@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 import os
-import config
 import unittest
 import zlib
 
-import auth_token
-import auth_up
-import resumable_io
-import rs
+from qiniu import conf
+from qiniu.auth import up
+from qiniu import resumable_io
+from qiniu import rs
 
 bucket = os.getenv("QINIU_BUCKET_NAME")
-config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
-config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
+conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 
 class TestBlock(unittest.TestCase):
 	def test_block(self):
-		policy = auth_token.PutPolicy(bucket)
+		policy = rs.PutPolicy(bucket)
 		uptoken = policy.token()
-		client = auth_up.Client(uptoken)
+		client = up.Client(uptoken)
 
 		rets = [0, 0]
 		data_slice_2 = "\nbye!"
@@ -36,10 +35,10 @@ class TestBlock(unittest.TestCase):
 		ret, err = resumable_io.mkfile(client, key, lens, extra)
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")
-		rs.Rs().delete(bucket, key)
+		rs.Client().delete(bucket, key)
 	
 	def test_put(self):
-		policy = auth_token.PutPolicy(bucket)
+		policy = rs.PutPolicy(bucket)
 		extra = resumable_io.PutExtra(bucket)
 		extra.bucket = bucket
 		key = "sdk_py_resumable_block_5"
@@ -47,7 +46,7 @@ class TestBlock(unittest.TestCase):
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FggslKhqmufiC1VkQvuF2gtvve9P", "hash not match")
-		rs.Rs().delete(bucket, key)
+		rs.Client().delete(bucket, key)
 			
 
 if __name__ == "__main__":

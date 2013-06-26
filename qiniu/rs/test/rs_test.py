@@ -4,15 +4,15 @@ import os
 import random
 import string
 
-import rs
-import config
+from qiniu import rs
+from qiniu import conf
 
 def r(length):
 	lib = string.ascii_uppercase
 	return ''.join([random.choice(lib) for i in range(0, length)])
 
-config.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
-config.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
+conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 key = os.getenv("QINIU_PIC_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 noexist_key = os.getenv("QINIU_NOEXIST_PIC_KEY")
@@ -22,7 +22,7 @@ key4 = "rs_demo_test_key_3_" + r(5)
 
 class TestRs(unittest.TestCase):
 	def test_stat(self):
-		r = rs.Rs()
+		r = rs.Client()
 		ret, err = r.stat(bucket_name, key)
 		assert err is None
 		assert ret is not None
@@ -32,7 +32,7 @@ class TestRs(unittest.TestCase):
 		assert err is not None
 	
 	def test_delete_move_copy(self):
-		r = rs.Rs()
+		r = rs.Client()
 		r.delete(bucket_name, key2)
 		r.delete(bucket_name, key3)
 		
@@ -53,7 +53,7 @@ class TestRs(unittest.TestCase):
 		assert err is not None
 
 	def test_batch_stat(self):
-		r = rs.Rs()
+		r = rs.Client()
 		entries = [
 			rs.EntryPath(bucket_name, key),
 			rs.EntryPath(bucket_name, key2),
@@ -64,7 +64,7 @@ class TestRs(unittest.TestCase):
 		self.assertEqual(ret[1]["code"], 612)
 
 	def test_batch_delete_move_copy(self):
-		r = rs.Rs()
+		r = rs.Client()
 		e1 = rs.EntryPath(bucket_name, key)
 		e2 = rs.EntryPath(bucket_name, key2)
 		e3 = rs.EntryPath(bucket_name, key3)

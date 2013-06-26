@@ -2,7 +2,8 @@
 import json
 import time
 import urllib
-import auth_digest
+
+from ..auth import digest
 
 class PutPolicy(object):
 	scope = None             # 可以是 bucketName 或者 bucketName:key
@@ -19,7 +20,7 @@ class PutPolicy(object):
 
 	def token(self, mac=None):
 		if mac is None:
-			mac = auth_digest.Mac()
+			mac = digest.Mac()
 		token = dict(
 			scope = self.scope,
 			deadline = int(time.time()) + self.expires,
@@ -56,7 +57,7 @@ class GetPolicy(object):
 		 *  return private_url
 		'''
 		if mac is None:
-			mac = auth_digest.Mac()
+			mac = digest.Mac()
 
 		deadline = int(time.time()) + self.expires
 		if '?' in base_url:

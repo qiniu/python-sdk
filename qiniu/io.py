@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from base64 import urlsafe_b64encode
 import rpc
-import config
+import conf
 import zlib
 
 UNDEFINED_KEY = "?"
@@ -38,7 +38,7 @@ def put(uptoken, key, data, extra):
 	files = [
 		("file", key, data)
 	]
-	return rpc.Client(config.UP_HOST).call_with_multipart("/upload", fields, files)
+	return rpc.Client(conf.UP_HOST).call_with_multipart("/upload", fields, files)
 
 def put_file(uptoken, key, localfile, extra):
 	f = open(localfile)

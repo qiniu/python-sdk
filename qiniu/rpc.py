@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import httplib
 import json
-import config
+import conf
 
 class Client(object):
 	_conn = None
@@ -21,7 +21,7 @@ class Client(object):
 	def call_with(self, path, body, content_type=None, content_length=None):
 		ret = None
 
-		self.set_header("User-Agent", config.USER_AGENT)
+		self.set_header("User-Agent", conf.USER_AGENT)
 		if content_type is not None:
 			self.set_header("Content-Type", content_type)
 		

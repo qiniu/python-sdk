@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
-import config
 from urlparse import urlparse
 import hmac
 from hashlib import sha1
 from base64 import urlsafe_b64encode
 
-import rpc
+from .. import rpc
+from .. import conf
 
 class Mac(object):
 	access = None
 	secret = None
 	def __init__(self, access=None, secret=None):
 		if access is None and secret is None:
-			access, secret = config.ACCESS_KEY, config.SECRET_KEY
+			access, secret = conf.ACCESS_KEY, conf.SECRET_KEY
 		self.access, self.secret = access, secret
 
 	def __sign(self, data):
