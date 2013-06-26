@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
-import conf
+from .. import conf
+from .. import rpc
 
-import rpc
-
-def setup():
-	pass
 
 class Client(rpc.Client):
 	up_token = None

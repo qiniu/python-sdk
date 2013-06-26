@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-import conf
 from urlparse import urlparse
 import hmac
 from hashlib import sha1
 from base64 import urlsafe_b64encode
 
-import rpc
+from .. import rpc
+from .. import conf
 
 class Mac(object):
 	access = None

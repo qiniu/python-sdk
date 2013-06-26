@@ -4,8 +4,8 @@ import os
 import random
 import string
 
-import rs
-import conf
+from .. import rs
+from .. import conf
 
 def r(length):
 	lib = string.ascii_uppercase

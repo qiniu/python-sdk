@@ -4,8 +4,7 @@ import conf
 import unittest
 import zlib
 
-import auth_token
-import auth_up
+import auth.up
 import resumable_io
 import rs
 
@@ -15,9 +14,9 @@ conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 
 class TestBlock(unittest.TestCase):
 	def test_block(self):
-		policy = auth_token.PutPolicy(bucket)
+		policy = rs.PutPolicy(bucket)
 		uptoken = policy.token()
-		client = auth_up.Client(uptoken)
+		client = auth.up.Client(uptoken)
 
 		rets = [0, 0]
 		data_slice_2 = "\nbye!"
@@ -39,7 +38,7 @@ class TestBlock(unittest.TestCase):
 		rs.Rs().delete(bucket, key)
 	
 	def test_put(self):
-		policy = auth_token.PutPolicy(bucket)
+		policy = rs.PutPolicy(bucket)
 		extra = resumable_io.PutExtra(bucket)
 		extra.bucket = bucket
 		key = "sdk_py_resumable_block_5"

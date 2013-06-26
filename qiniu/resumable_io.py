@@ -3,7 +3,7 @@ import os
 import zlib
 from base64 import urlsafe_b64encode
 
-import auth_up
+import auth.up
 import conf
 
 _workers = 1
@@ -83,7 +83,7 @@ def put(uptoken, key, f, fsize, extra):
 	if extra.chunk_size is None:
 		extra.chunk_size = _chunk_size
 
-	client = auth_up.Client(uptoken)
+	client = auth.up.Client(uptoken)
 	for i in xrange(0, block_cnt):
 		try_time = extra.try_times
 		read_length = _block_size
