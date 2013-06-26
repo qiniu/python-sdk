@@ -280,7 +280,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.io
 
-localfile = "./%s" % __file__
+localfile = "%s" % __file__
 extra = qiniu.io.PutExtra(bucket_name)
 
 ret, err = qiniu.io.put_file(uptoken, key, localfile, extra)
@@ -329,7 +329,7 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.resumable_io as rio
 
-localfile = "./%s" % __file__
+localfile = "%s" % __file__
 extra = rio.PutExtra(bucket_name)
 
 ret, err = rio.put_file(uptoken, key, localfile, extra)

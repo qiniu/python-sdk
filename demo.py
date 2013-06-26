@@ -93,7 +93,7 @@ def put_file():
 	rs_client.delete(bucket_name, key)
 	
 	# @gist put_file
-	localfile = "./%s" % __file__
+	localfile = "%s" % __file__
 	extra = qiniu.io.PutExtra(bucket_name)
 	
 	ret, err = qiniu.io.put_file(uptoken, key, localfile, extra)
