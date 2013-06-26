@@ -1,5 +1,12 @@
 ## CHANGE LOG
 
+### v6.0.1-2
+
+2013-06-26 issue [#39](https://github.com/qiniu/python-sdk/pull/39)
+
+- config.py改为conf.py
+- auth_token.py改为rs_token.py
+
 ### v6.0.1
 
 2013-06-25 issue [#36](https://github.com/qiniu/python-sdk/pull/36)
