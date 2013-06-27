@@ -8,7 +8,7 @@ except ImportError:
 
 PACKAGE = 'qiniu'
 NAME = 'qiniu'
-DESCRIPTION = 'Qiniu Resource (Cloud) Storage SDK for Python 2.X.'
+DESCRIPTION = 'Qiniu Resource Storage SDK for Python 2.X.'
 LONG_DESCRIPTION = 'see:\nhttps://github.com/qiniu/python-sdk\n'
 AUTHOR = 'Shanghai Qiniu Information Technologies Co., Ltd.'
 AUTHOR_EMAIL = 'support@qiniu.com'
