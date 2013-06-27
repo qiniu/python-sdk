@@ -12,7 +12,7 @@ class TestRsf(unittest.TestCase):
 	def test_list_prefix(self):
 		c = rsf.Client()
 		ret, err = c.list_prefix(bucket_name)
-		assert err is None
+		assert err is 'EOF'
 		self.assertEqual(len(ret.get('items'))>0, True)
 
 
