@@ -326,7 +326,7 @@ def batch():
 	# @endgist
 
 def list_prefix():
-	''' 列出文件操作 '''
+	''' 前缀查询操作 '''
 	rets, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=3)
 	if err is not None:
 		error(err)
