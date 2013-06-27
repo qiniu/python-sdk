@@ -8,7 +8,7 @@ except ImportError:
 
 PACKAGE = 'qiniu'
 NAME = 'qiniu'
-DESCRIPTION = 'Qiniu Resource (Cloud) Storage SDK for Python 2.X.'
+DESCRIPTION = 'Qiniu Resource Storage SDK for Python 2.X.'
 LONG_DESCRIPTION = 'see:\nhttps://github.com/qiniu/python-sdk\n'
 AUTHOR = 'Shanghai Qiniu Information Technologies Co., Ltd.'
 AUTHOR_EMAIL = 'support@qiniu.com'
@@ -28,9 +28,6 @@ setup(
 	license='MIT',
 	url=URL,
 	packages=['qiniu', 'qiniu.test', 'qiniu.auth', 'qiniu.rs', 'qiniu.rs.test'],
-	package_data={
-		"qiniu.test": ['photo_test.jpeg'],
-	},
 	platforms='any',
 	classifiers=[
 		'Intended Audience :: Developers',
