@@ -28,9 +28,6 @@ setup(
 	license='MIT',
 	url=URL,
 	packages=['qiniu', 'qiniu.test', 'qiniu.auth', 'qiniu.rs', 'qiniu.rs.test'],
-	package_data={
-		"qiniu.test": ['photo_test.jpeg'],
-	},
 	platforms='any',
 	classifiers=[
 		'Intended Audience :: Developers',

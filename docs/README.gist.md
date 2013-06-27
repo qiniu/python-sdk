@@ -73,9 +73,9 @@ Qiniu Resource Storage SDK for Python
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#stat)
+@gist(demo.py#stat)
 ```
 
 <a name=rs-copy></a>
@@ -83,9 +83,9 @@ Qiniu Resource Storage SDK for Python
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#copy)
+@gist(demo.py#copy)
 ```
 
 <a name=rs-move></a>
@@ -93,9 +93,9 @@ Qiniu Resource Storage SDK for Python
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#move)
+@gist(demo.py#move)
 ```
 
 <a name=rs-delete></a>
@@ -103,9 +103,9 @@ Qiniu Resource Storage SDK for Python
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#move)
+@gist(demo.py#move)
 ```
 
 <a name=batch></a>
@@ -116,11 +116,11 @@ Qiniu Resource Storage SDK for Python
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#batch_path)
+@gist(demo.py#batch_path)
 
-@gist(../demo.py#batch_stat)
+@gist(demo.py#batch_stat)
 ```
 
 <a name=batch-copy></a>
@@ -128,11 +128,11 @@ Qiniu Resource Storage SDK for Python
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#batch_path)
+@gist(demo.py#batch_path)
 
-@gist(../demo.py#batch_copy)
+@gist(demo.py#batch_copy)
 ```
 
 <a name=batch-move></a>
@@ -140,11 +140,11 @@ Qiniu Resource Storage SDK for Python
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#batch_path)
+@gist(demo.py#batch_path)
 
-@gist(../demo.py#batch_move)
+@gist(demo.py#batch_move)
 ```
 
 <a name=batch-delete></a>
@@ -152,11 +152,11 @@ Qiniu Resource Storage SDK for Python
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#batch_path)
+@gist(demo.py#batch_path)
 
-@gist(../demo.py#batch_delete)
+@gist(demo.py#batch_delete)
 ```
 
 <a name=get-and-put-api></a>
@@ -170,9 +170,9 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#uptoken)
+@gist(demo.py#uptoken)
 ```
 
 <a name=upload></a>
@@ -188,9 +188,9 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_io)
+@gist(demo.py#import_io)
 
-@gist(../demo.py#put)
+@gist(demo.py#put)
 ```
 
 上传本地文件
@@ -198,9 +198,9 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_io)
+@gist(demo.py#import_io)
 
-@gist(../demo.py#put_file)
+@gist(demo.py#put_file)
 ```
 
 <a name=resumable-io-upload></a>
@@ -209,18 +209,18 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_resumable_io)
+@gist(demo.py#import_resumable_io)
 
-@gist(../demo.py#resumable_put)
+@gist(demo.py#resumable_put)
 ```
 
 上传本地文件
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_resumable_io)
+@gist(demo.py#import_resumable_io)
 
-@gist(../demo.py#resumable_put_file)
+@gist(demo.py#resumable_put_file)
 ```
 
 <a name=io-download></a>
@@ -251,9 +251,9 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#dntoken)
+@gist(demo.py#dntoken)
 ```
 
 <a name=fop-api></a>
@@ -267,10 +267,10 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_fop)
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_fop)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#image_info)
+@gist(demo.py#image_info)
 ```
 
 <a name=fop-exif></a>
@@ -278,10 +278,10 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_fop)
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_fop)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#exif)
+@gist(demo.py#exif)
 ```
 
 
@@ -290,10 +290,10 @@ uptoken是一个字符串，作为http协议Header的一部分（Authorization�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(../demo.py#import_fop)
-@gist(../demo.py#import_rs)
+@gist(demo.py#import_fop)
+@gist(demo.py#import_rs)
 
-@gist(../demo.py#image_view)
+@gist(demo.py#image_view)
 ```
 
 <a name=contribution></a>

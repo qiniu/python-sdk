@@ -2,6 +2,9 @@
 import os
 import unittest
 import zlib
+import urllib
+import tempfile
+import shutil
 
 from qiniu import conf
 from qiniu.auth import up
@@ -38,14 +41,21 @@ class TestBlock(unittest.TestCase):
 		rs.Client().delete(bucket, key)
 	
 	def test_put(self):
+		src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
+		dst = tempfile.NamedTemporaryFile()
+		shutil.copyfileobj(src, dst)
+		src.close()
+
 		policy = rs.PutPolicy(bucket)
 		extra = resumable_io.PutExtra(bucket)
 		extra.bucket = bucket
 		key = "sdk_py_resumable_block_5"
-		localfile = os.path.abspath(os.path.dirname(__file__)) + "/photo_test.jpeg"
+		localfile = dst.name
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
+		dst.close()
+
 		assert err is None, err
-		self.assertEqual(ret["hash"], "FggslKhqmufiC1VkQvuF2gtvve9P", "hash not match")
+		self.assertEqual(ret["hash"], "FnyTMUqPNRTdk1Wou7oLqDHkBm_p", "hash not match")
 		rs.Client().delete(bucket, key)
 			
 
