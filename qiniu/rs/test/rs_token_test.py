@@ -38,6 +38,7 @@ class TestToken(unittest.TestCase):
 
 		f = urllib.urlopen(private_url)
 		body = f.read()
+		f.close()
 		self.assertEqual(len(body)>100, True)
 
 
