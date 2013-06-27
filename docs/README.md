@@ -62,10 +62,10 @@ Qiniu Resource Storage SDK for Python
 在获取到 Access Key 和 Secret Key 之后，您可以在您的程序中调用如下两行代码进行初始化对接, 要确保`ACCESS_KEY` 和 `SECRET_KEY` 在调用所有七牛API服务之前均已赋值：
 
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 ```
 
 <a name=rs-api></a>
@@ -74,10 +74,10 @@ qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 <a name=rs-stat></a>
 ### 3.1 查看单个文件属性信息
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -91,10 +91,10 @@ print ret,
 <a name=rs-copy></a>
 ### 3.2 复制单个文件
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -107,10 +107,10 @@ if err is not None:
 <a name=rs-move></a>
 ### 3.3 移动单个文件
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -123,10 +123,10 @@ if err is not None:
 <a name=rs-delete></a>
 ### 3.4 删除单个文件
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -142,10 +142,10 @@ if err is not None:
 <a name=batch-stat></a>
 #### 3.5.1 批量获取文件属性信息
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -162,10 +162,10 @@ if err is not None:
 <a name=batch-copy></a>
 #### 3.5.2 批量复制文件
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -183,10 +183,10 @@ if not rets[0]['code'] == 200:
 <a name=batch-move></a>
 #### 3.5.3 批量移动文件
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -204,10 +204,10 @@ if not rets[0]['code'] == 200:
 <a name=batch-delete></a>
 #### 3.5.4 批量删除文件
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -230,10 +230,10 @@ if not [ret['code'] for ret in rets] == [200, 200]:
 #### 4.1.1 上传授权uptoken
 uptoken是一个字符串，作为http协议Header的一部分（Authorization字段）发送到我们七牛的服务端，表示这个http请求是经过认证的。
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -252,10 +252,10 @@ uptoken = policy.token()
 
 直接上传二进制流
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.io
 
@@ -271,10 +271,10 @@ if err is not None:
 上传本地文件
 
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.io
 
@@ -291,10 +291,10 @@ if err is not None:
 ### 4.2.2 断点续上传
 上传二进制流
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.resumable_io as rio
 
@@ -320,10 +320,10 @@ print ret,
 
 上传本地文件
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.resumable_io as rio
 
@@ -363,10 +363,10 @@ print ret,
 私有下载链接可以使用 SDK 提供的如下方法生成：
 
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.rs
 
@@ -384,10 +384,10 @@ private_url = policy.make_request(base_url)
 <a name=fop-image-info></a>
 ### 5.1.1 查看图像属性
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
 import qiniu.rs
@@ -409,10 +409,10 @@ print '可以在浏览器浏览: %s' % url
 <a name=fop-exif></a>
 ### 5.1.2 查看图片EXIF信息
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
 import qiniu.rs
@@ -435,10 +435,10 @@ print '可以在浏览器浏览: %s' % url
 <a name=fop-image-view></a>
 ### 5.1.3 生成图片预览
 ```{python}
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.fop
 import qiniu.rs
