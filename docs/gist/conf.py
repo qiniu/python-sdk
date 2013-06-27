@@ -1,6 +1,6 @@
 # @gist config
-import qiniu.config
+import qiniu.conf
 
-qiniu.config.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
-qiniu.config.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
+qiniu.conf.ACCESS_KEY = "<YOUR_APP_ACCESS_KEY>"
+qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 # @endgist
