@@ -41,8 +41,18 @@ class TestUp(unittest.TestCase):
 			ret, err = io.put(policy.token(), key, data, extra)
 			assert err is None
 
+		def test_put_unicode_key():
+			key = "test_%s" % r(9) + '你好'
+			key = key.decode('utf8')
+
+			data = "你好"
+			extra.check_crc = 1
+			ret, err = io.put(policy.token(), key, data, extra)
+			assert err is None
+
 		test_put()
 		test_put_same_crc()
+		test_put_unicode_key()
 
 	def test_put_file(self):
 		localfile = "%s" % __file__
