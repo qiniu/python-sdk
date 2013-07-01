@@ -2,13 +2,12 @@
 from base64 import urlsafe_b64encode
 import rpc
 import conf
+import random
+import string
 try:
 	import zlib as binascii
 except ImportError:
 	import binascii
-
-
-UNDEFINED_KEY = "?"
 
 
 class PutExtra(object):
@@ -44,7 +43,7 @@ def put(uptoken, key, data, extra=None):
 
 	fname = key
 	if fname is None:
-		fname = UNDEFINED_KEY
+		fname = _random_str(9)
 	elif fname is '':
 		fname = 'index.html'
 	files = [
@@ -78,3 +77,8 @@ def _get_file_crc32(filepath):
 			crc = binascii.crc32(block, crc) & 0xFFFFFFFF
 			block = f.read(_BLOCK_SIZE)
 	return crc
+
+
+def _random_str(length):
+	lib = string.ascii_lowercase
+	return ''.join([random.choice(lib) for i in range(0, length)])
