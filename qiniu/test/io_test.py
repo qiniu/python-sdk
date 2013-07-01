@@ -122,7 +122,7 @@ class Test_get_file_crc32(unittest.TestCase):
 		with open(file_path) as f:
 			data = f.read()
 		io._BLOCK_SIZE = 4
-		assert binascii.crc32(data) % 0xFFFFFFFF == io._get_file_crc32(file_path)
+		assert binascii.crc32(data) & 0xFFFFFFFF == io._get_file_crc32(file_path)
 
 
 if __name__ == "__main__":
