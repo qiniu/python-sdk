@@ -55,8 +55,8 @@ class Client(object):
 		 *  fields => {key}
 		 *  files => [{filename, data, content_type}]
 		"""
-		content_type, content_length, body = self.encode_multipart_formdata(fields, files)
-		return self.call_with(path, body, content_type, content_length)
+		content_type, body = self.encode_multipart_formdata(fields, files)
+		return self.call_with(path, body, content_type, len(body))
 
 	def call_with_form(self, path, ops):
 		"""
@@ -125,8 +125,7 @@ class Client(object):
 		readers.append(b3)
 
 		content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
-		mr = MultiReader(readers)
-		return content_type, mr.content_length, mr
+		return content_type, MultiReader(readers)
 
 
 class MultiReader(object):
@@ -150,6 +149,9 @@ class MultiReader(object):
 				r = cStringIO.StringIO(buf)
 				self.content_length += len(buf)
 			self.readers.append(r)
+
+	def __len__(self):
+		return self.content_length
 
 	def _get_content_length(self, reader):
 		data_len = 0

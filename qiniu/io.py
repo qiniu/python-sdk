@@ -2,7 +2,11 @@
 from base64 import urlsafe_b64encode
 import rpc
 import conf
-import zlib
+try:
+	import zlib as binascii
+except ImportError:
+	import binascii
+
 
 UNDEFINED_KEY = "?"
 
@@ -54,10 +58,9 @@ def put_file(uptoken, key, localfile, extra=None):
 
 	key, your resource key. if key is None, Qiniu will generate one.
 	"""
+	if extra is not None and extra.check_crc == 1:
+		extra.crc32 = _get_file_crc32(localfile)
 	with open(localfile) as f:
-		if extra is not None and extra.check_crc == 1:
-			extra.crc32 = _file_crc32(f)
-		f.seek(0, 0)
 		return put(uptoken, key, f, extra)
 
 
@@ -65,6 +68,13 @@ def get_url(domain, key, dntoken):
 	return "%s/%s?token=%s" % (domain, key, dntoken)
 
 
-def _file_crc32(f):
-	#TODO 大文件时内存优化
-	return zlib.crc32(f.read()) & 0xFFFFFFFF
+_BLOCK_SIZE = 1024 * 1024 * 4
+
+def _get_file_crc32(filepath):
+	with open(filepath) as f: 
+		block = f.read(_BLOCK_SIZE)
+		crc = 0
+		while len(block) != 0:
+			crc = binascii.crc32(block, crc) & 0xFFFFFFFF
+			block = f.read(_BLOCK_SIZE)
+	return crc

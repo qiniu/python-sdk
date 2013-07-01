@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 import unittest
-import zlib
+try:
+	import zlib as binascii
+except ImportError:
+	import binascii
 import urllib
 import tempfile
 import shutil
@@ -25,7 +28,7 @@ class TestBlock(unittest.TestCase):
 		data_slice_2 = "\nbye!"
 		ret, err = resumable_io.mkblock(client, len(data_slice_2), data_slice_2)
 		assert err is None, err 
-		self.assertEqual(ret["crc32"], zlib.crc32(data_slice_2))
+		self.assertEqual(ret["crc32"], binascii.crc32(data_slice_2))
 
 		extra = resumable_io.PutExtra(bucket)
 		extra.mimetype = "text/plain"

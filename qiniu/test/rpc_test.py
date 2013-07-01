@@ -45,7 +45,7 @@ class TestClient(unittest.TestCase):
 			tpl = "--%s\r\n%s\r\n\r\n%s\r\n--%s--\r\n" % (boundary, dispostion,
 					"auth_string", boundary)
 			self.assertEqual(len(tpl), client._header["Content-Length"])
-			# self.assertEqual(tpl, body)
+			self.assertEqual(len(tpl), len(body))
 
 		round_tripper = tripper
 		client.call_with_multipart("/hello", fields={"auth": "auth_string"})
@@ -105,10 +105,10 @@ def encode_multipart_formdata2(fields, files):
 	L.append('')
 	body = CRLF.join(L)
 	content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
-	return content_type, len(body), body
+	return content_type, body
 
 
-class TestEncodeMultipartFormdata(object):
+class TestEncodeMultipartFormdata(unittest.TestCase):
 	def test_encode(self):
 		fields = {'a': '1', 'b': '2'}
 		files = [
@@ -123,30 +123,30 @@ class TestEncodeMultipartFormdata(object):
 				'mime_type': 'application/octet-stream',
 			}
 		]
-		content_type, content_length, body = rpc.Client('localhost').encode_multipart_formdata(fields, files)
-		t, l, b = encode_multipart_formdata2(
+		content_type, body = rpc.Client('localhost').encode_multipart_formdata(fields, files)
+		t, b = encode_multipart_formdata2(
 			[('a', '1'), ('b', '2')],
 			[('file', 'key1', 'data1'), ('file', 'key2', 'data2')]
 		)
 		assert t == content_type
-		assert l == content_length
+		assert len(b) == len(body)
 
 	def test_unicode(self):
 		def test1():
 			files = [{'filename': '你好', 'data': '你好', 'mime_type': ''}]
-			_, _, body = rpc.Client('localhost').encode_multipart_formdata(None, files)
+			_, body = rpc.Client('localhost').encode_multipart_formdata(None, files)
 			return len(body.read())
 		def test2():
 			files = [{'filename': u'你好', 'data': '你好', 'mime_type': ''}]
-			_, _, body = rpc.Client('localhost').encode_multipart_formdata(None, files)
+			_, body = rpc.Client('localhost').encode_multipart_formdata(None, files)
 			return len(body.read())
 		def test3():
 			files = [{'filename': '你好', 'data': u'你好', 'mime_type': ''}]
-			_, _, body = rpc.Client('localhost').encode_multipart_formdata(None, files)
+			_, body = rpc.Client('localhost').encode_multipart_formdata(None, files)
 			return len(body.read())
 		def test4():
 			files = [{'filename': u'你好', 'data': u'你好', 'mime_type': ''}]
-			_, _, body = rpc.Client('localhost').encode_multipart_formdata(None, files)
+			_, body = rpc.Client('localhost').encode_multipart_formdata(None, files)
 			return len(body.read())
 
 		assert test1() == test2()

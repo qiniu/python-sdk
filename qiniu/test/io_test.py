@@ -3,7 +3,10 @@ import os
 import unittest
 import string
 import random
-import zlib
+try:
+	import zlib as binascii
+except ImportError:
+	import binascii
 import cStringIO
 
 from qiniu import conf
@@ -29,7 +32,7 @@ class TestUp(unittest.TestCase):
 			params = "op=3"
 			data = "hello bubby!"
 			extra.check_crc = 2
-			extra.crc32 = zlib.crc32(data) & 0xFFFFFFFF
+			extra.crc32 = binascii.crc32(data) & 0xFFFFFFFF
 			ret, err = io.put(policy.token(), key, data, extra)
 			assert err is None
 
@@ -109,6 +112,17 @@ class TestUp(unittest.TestCase):
 		extra.crc32 = "wrong crc32"
 		ret, err = io.put(policy.token(), key, data, extra)
 		assert err is not None
+
+
+class Test_get_file_crc32(unittest.TestCase):
+	def test_get_file_crc32(self):
+		file_path = '%s' % __file__
+
+		data = None
+		with open(file_path) as f:
+			data = f.read()
+		io._BLOCK_SIZE = 4
+		assert binascii.crc32(data) % 0xFFFFFFFF == io._get_file_crc32(file_path)
 
 
 if __name__ == "__main__":

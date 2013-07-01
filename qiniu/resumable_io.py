@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
-import zlib
+try:
+	import zlib as binascii
+except ImportError:
+	import binascii
 from base64 import urlsafe_b64encode
 
 import auth.up
@@ -40,7 +43,7 @@ def setup(chunk_size=0, try_times=0):
 
 # ----------------------------------------------------------
 def gen_crc32(data):
-	return zlib.crc32(data) & 0xffffffff
+	return binascii.crc32(data) & 0xffffffff
 
 class PutExtra(object):
 	callback_params = None # 当 uptoken 指定了 CallbackUrl，则 CallbackParams 必须非空
