@@ -6,8 +6,6 @@ from base64 import urlsafe_b64encode
 import auth.up
 import conf
 
-UNDEFINED_KEY = "?"
-
 _workers = 1
 _task_queue_size = _workers * 4
 _chunk_size = 256 * 1024

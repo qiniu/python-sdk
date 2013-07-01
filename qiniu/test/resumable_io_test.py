@@ -34,7 +34,7 @@ class TestBlock(unittest.TestCase):
 		for i in xrange(0, len(extra.progresses)):
 			lens += extra.progresses[i]["offset"]
 
-		key = "sdk_py_resumable_block_4"
+		key = u"sdk_py_resumable_block_4"
 		ret, err = resumable_io.mkfile(client, key, lens, extra)
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")

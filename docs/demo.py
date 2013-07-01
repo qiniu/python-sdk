@@ -95,9 +95,8 @@ def put_file():
 	
 	# @gist put_file
 	localfile = "%s" % __file__
-	extra = qiniu.io.PutExtra(bucket_name)
-	
-	ret, err = qiniu.io.put_file(uptoken, key, localfile, extra)
+
+	ret, err = qiniu.io.put_file(uptoken, key, localfile)
 	if err is not None:
 		error(err)
 		return
@@ -110,7 +109,7 @@ def put_binary():
 	qiniu.rs.Client().delete(bucket_name, key)
 	
 	# @gist put
-	extra = qiniu.io.PutExtra(bucket_name)
+	extra = qiniu.io.PutExtra()
 	extra.mime_type = "text/plain"
 	
 	ret, err = qiniu.io.put(uptoken, key, "hello!", extra)

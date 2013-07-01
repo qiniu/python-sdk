@@ -6,48 +6,65 @@ import zlib
 
 UNDEFINED_KEY = "?"
 
+
 class PutExtra(object):
-	callback_params = None
-	bucket = None
-	custom_meta = None
-	mime_type = None
+	params = {}
+	mime_type = 'application/octet-stream'
 	crc32 = ""
 	check_crc = 0
-	def __init__(self, bucket):
-		self.bucket = bucket
 
-def put(uptoken, key, data, extra):
-	action = ["/rs-put"]
-	action.append(urlsafe_b64encode("%s:%s" % (extra.bucket, key)))
-	if extra.mime_type is not None:
-		action.append("mimeType/%s" % urlsafe_b64encode(extra.mime_type))
 
-	if extra.custom_meta is not None:
-		action.append("meta/%s" % urlsafe_b64encode(extra.custom_meta))
+def put(uptoken, key, data, extra=None):
+	""" put your data to Qiniu
+
+	key, your resource key. if key is None, Qiniu will generate one.
+	data may be str or read()able object.
+	"""
+	fields = {
+	}
+
+	if not extra:
+		extra = PutExtra()
+
+	if extra.params:
+		for key in extra.params:
+			fields[key] = str(extra.params[key])
 
 	if extra.check_crc:
-		action.append("crc32/%s" % extra.crc32)
+		fields["crc32"] = str(extra.crc32)
 
-	fields = [
-		("action", '/'.join(action)),
-		("auth", uptoken),
-	]
-	if extra.callback_params is not None:
-		fields.append(("params", extra.callback_params))
+	if key is not None:
+		fields['key'] = key
 
+	fields["token"] = uptoken
+
+	fname = key
+	if fname is None:
+		fname = UNDEFINED_KEY
+	elif fname is '':
+		fname = 'index.html'
 	files = [
-		("file", key, data)
+		{'filename': fname, 'data': data, 'mime_type': extra.mime_type},
 	]
-	return rpc.Client(conf.UP_HOST).call_with_multipart("/upload", fields, files)
+	return rpc.Client(conf.UP_HOST).call_with_multipart("/", fields, files)
 
-def put_file(uptoken, key, localfile, extra):
-	f = open(localfile)
-	data = f.read()
-	f.close()
-	if extra.check_crc == 1:
-		extra.crc32 = zlib.crc32(data) & 0xFFFFFFFF
-	return put(uptoken, key, data, extra)
+
+def put_file(uptoken, key, localfile, extra=None):
+	""" put a file to Qiniu
+
+	key, your resource key. if key is None, Qiniu will generate one.
+	"""
+	with open(localfile) as f:
+		if extra is not None and extra.check_crc == 1:
+			extra.crc32 = _file_crc32(f)
+		f.seek(0, 0)
+		return put(uptoken, key, f, extra)
+
 
 def get_url(domain, key, dntoken):
 	return "%s/%s?token=%s" % (domain, key, dntoken)
 
+
+def _file_crc32(f):
+	#TODO 大文件时内存优化
+	return zlib.crc32(f.read()) & 0xFFFFFFFF

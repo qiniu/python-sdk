@@ -4,7 +4,7 @@ import unittest
 import string
 import random
 import zlib
-from base64 import urlsafe_b64encode as encode
+import cStringIO
 
 from qiniu import conf
 from qiniu import rs
@@ -15,7 +15,7 @@ conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 
 policy = rs.PutPolicy(bucket_name)
-extra = io.PutExtra(bucket_name)
+extra = io.PutExtra()
 extra.mime_type = "text/plain"
 
 def r(length):
@@ -35,24 +35,63 @@ class TestUp(unittest.TestCase):
 
 		def test_put_same_crc():
 			key = "test_%s" % r(9)
-			params = "op=3"
 			data = "hello bubby!"
 			extra.check_crc = 2
 			ret, err = io.put(policy.token(), key, data, extra)
 			assert err is None
 
-		def test_put_unicode_key():
-			key = "test_%s" % r(9) + '你好'
-			key = key.decode('utf8')
-
-			data = "你好"
-			extra.check_crc = 1
-			ret, err = io.put(policy.token(), key, data, extra)
+		def test_put_no_key():
+			data = r(100)
+			ret, err = io.put(policy.token(), key=None, data=data)
 			assert err is None
+
+		def test_put_unicode1():
+			key = "test_%s" % r(9) + '你好'
+			data = key
+			ret, err = io.put(policy.token(), key, data)
+			assert err is None
+			assert ret[u'key'].endswith(u'你好')
+
+		def test_put_unicode2():
+			key = "test_%s" % r(9) + '你好'
+			data = key
+			data = data.decode('utf8')
+			ret, err = io.put(policy.token(), key, data)
+			assert err is None
+			assert ret[u'key'].endswith(u'你好')
+
+		def test_put_unicode3():
+			key = "test_%s" % r(9) + '你好'
+			data = key
+			key = key.decode('utf8')
+			ret, err = io.put(policy.token(), key, data)
+			assert err is None
+			assert ret[u'key'].endswith(u'你好')
+
+		def test_put_unicode4():
+			key = "test_%s" % r(9) + '你好'
+			data = key
+			key = key.decode('utf8')
+			data = data.decode('utf8')
+			ret, err = io.put(policy.token(), key, data)
+			assert err is None
+			assert ret[u'key'].endswith(u'你好')
+
+		def test_put_StringIO():
+			key = "test_%s" % r(9)
+			data = cStringIO.StringIO('hello buddy!')
+			ret, err = io.put(policy.token(), key, data)
+			assert err is None
+
 
 		test_put()
 		test_put_same_crc()
-		test_put_unicode_key()
+		test_put_no_key()
+		test_put_unicode1()
+		test_put_unicode2()
+		test_put_unicode3()
+		test_put_unicode4()
+		test_put_StringIO()
 
 	def test_put_file(self):
 		localfile = "%s" % __file__
@@ -65,7 +104,6 @@ class TestUp(unittest.TestCase):
 
 	def test_put_crc_fail(self):
 		key = "test_%s" % r(9)
-		params = "op=3"
 		data = "hello bubby!"
 		extra.check_crc = 2
 		extra.crc32 = "wrong crc32"
