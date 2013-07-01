@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 import unittest
+import string
+import random
 try:
 	import zlib as binascii
 except ImportError:
@@ -17,6 +19,11 @@ from qiniu import rs
 bucket = os.getenv("QINIU_BUCKET_NAME")
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+
+
+def r(length):
+	lib = string.ascii_uppercase
+	return ''.join([random.choice(lib) for i in range(0, length)])
 
 class TestBlock(unittest.TestCase):
 	def test_block(self):
@@ -37,7 +44,7 @@ class TestBlock(unittest.TestCase):
 		for i in xrange(0, len(extra.progresses)):
 			lens += extra.progresses[i]["offset"]
 
-		key = u"sdk_py_resumable_block_4"
+		key = u"sdk_py_resumable_block_4_%s" % r(9)
 		ret, err = resumable_io.mkfile(client, key, lens, extra)
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")
@@ -52,7 +59,7 @@ class TestBlock(unittest.TestCase):
 		policy = rs.PutPolicy(bucket)
 		extra = resumable_io.PutExtra(bucket)
 		extra.bucket = bucket
-		key = "sdk_py_resumable_block_5"
+		key = "sdk_py_resumable_block_5_%s" % r(9)
 		localfile = dst.name
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
 		dst.close()
