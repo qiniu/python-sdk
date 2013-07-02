@@ -145,7 +145,7 @@ class MultiReader(object):
 				buf = r
 				if not isinstance(buf, basestring):
 					buf = str(buf)
-				buf = _u2s(buf)
+				buf = encode_unicode(buf)
 				r = cStringIO.StringIO(buf)
 				self.content_length += len(buf)
 			self.readers.append(r)
@@ -165,7 +165,7 @@ class MultiReader(object):
 
 	def read(self, n=-1):
 		if n is None or n == -1:
-			return ''.join([_u2s(r.read()) for r in self.readers])
+			return ''.join([encode_unicode(r.read()) for r in self.readers])
 		else:
 			L = []
 			while len(self.readers) > 0 and n > 0:
@@ -173,12 +173,12 @@ class MultiReader(object):
 				if len(b) == 0:
 					self.readers = self.readers[1:]
 				else:
-					L.append(_u2s(b))
+					L.append(encode_unicode(b))
 					n -= len(b)
 			return ''.join(L)
 
 
-def _u2s(u):
+def encode_unicode(u):
 	if isinstance(u, unicode):
 		u = u.encode('utf8')
 	return u
