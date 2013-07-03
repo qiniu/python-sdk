@@ -30,7 +30,8 @@ class HTTPConnection(httplib.HTTPConnection):
 			if self.debuglevel > 0: print "sendIng a read()able"
 			datablock = data.read(blocksize)
 			while datablock:
-				print 'chunked:', is_chunked
+				if self.debuglevel > 0:
+					print 'chunked:', is_chunked
 				if is_chunked:
 					if self.debuglevel > 0: print 'send: with trunked data'
 					lenstr = string.upper(hex(len(datablock))[2:])
