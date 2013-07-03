@@ -262,7 +262,9 @@ import qiniu.io
 extra = qiniu.io.PutExtra()
 extra.mime_type = "text/plain"
 
-ret, err = qiniu.io.put(uptoken, key, "hello!", extra)
+# data 可以是str或read()able对象
+data = StringIO.StringIO("hello!")
+ret, err = qiniu.io.put(uptoken, key, data, extra)
 if err is not None:
 	error(err)
 	return
