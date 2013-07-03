@@ -49,7 +49,8 @@ class TestUp(unittest.TestCase):
 
 		def test_put_no_key():
 			data = r(100)
-			ret, err = io.put(policy.token(), key=None, data=data, extra)
+			extra.check_crc = 0
+			ret, err = io.put(policy.token(), key=None, data=data, extra=extra)
 			assert err is None
 			assert ret['hash'] == ret['key']
 
