@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import httplib
+import httplib_chunk as httplib
 import json
 import cStringIO
 import conf
@@ -55,8 +55,8 @@ class Client(object):
 		 *  fields => {key}
 		 *  files => [{filename, data, content_type}]
 		"""
-		content_type, body = self.encode_multipart_formdata(fields, files)
-		return self.call_with(path, body, content_type, len(body))
+		content_type, mr = self.encode_multipart_formdata(fields, files)
+		return self.call_with(path, mr, content_type, mr.length())
 
 	def call_with_form(self, path, ops):
 		"""
@@ -138,9 +138,15 @@ class MultiReader(object):
 	def __init__(self, readers):
 		self.readers = []
 		self.content_length = 0
+		self.valid_content_length = True
 		for r in readers:
 			if hasattr(r, 'read'):
-				self.content_length += self._get_content_length(r)
+				if self.valid_content_length:
+					length = self._get_content_length(r)
+					if length is not None:
+						self.content_length += length
+					else:
+						self.valid_content_length = False
 			else:
 				buf = r
 				if not isinstance(buf, basestring):
@@ -150,17 +156,22 @@ class MultiReader(object):
 				self.content_length += len(buf)
 			self.readers.append(r)
 
-	def __len__(self):
-		return self.content_length
+
+	# don't name it __len__, because the length of MultiReader is not alway valid.
+	def length(self):
+		return self.content_length if self.valid_content_length else None
+
 
 	def _get_content_length(self, reader):
-		data_len = 0
-		try:
-			reader.seek(0, 2)
-			data_len= reader.tell()
-			reader.seek(0, 0)
-		except (AttributeError, OSError):
-			print 'can not get content_length'
+		data_len = None
+		if hasattr(reader, 'seek') and hasattr(reader, 'tell'):
+			try:
+				reader.seek(0, 2)
+				data_len= reader.tell()
+				reader.seek(0, 0)
+			except OSError:
+				# Don't send a length if this failed
+				data_len = None
 		return data_len
 
 	def read(self, n=-1):

@@ -11,9 +11,9 @@ bucket_name = os.getenv("QINIU_BUCKET_NAME")
 class TestRsf(unittest.TestCase):
 	def test_list_prefix(self):
 		c = rsf.Client()
-		ret, err = c.list_prefix(bucket_name)
-		assert err is rsf.EOF
-		self.assertEqual(len(ret.get('items'))>0, True)
+		ret, err = c.list_prefix(bucket_name, limit = 1)
+		self.assertEqual(err is rsf.EOF or err is None, True)
+		assert len(ret.get('items')) == 1
 
 
 if __name__ == "__main__":

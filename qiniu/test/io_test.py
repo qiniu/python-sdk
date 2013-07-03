@@ -89,11 +89,12 @@ class TestUp(unittest.TestCase):
 
 		def test_put_urlopen():
 			key = "test_%s" % r(9)
-			data = urllib.urlopen('http://http://cheneya.qiniudn.com/hello_jpg')
+			data = urllib.urlopen('http://cheneya.qiniudn.com/hello_jpg')
 			ret, err = io.put(policy.token(), key, data)
+			print 'error', err
 			assert err is None
 
-		def test_put_no_length();
+		def test_put_no_length():
 			class test_reader(object):
 				def __init__(self):
 					self.data = 'abc'
@@ -108,7 +109,10 @@ class TestUp(unittest.TestCase):
 					return r
 			key = "test_%s" % r(9)
 			data = test_reader()
-			ret, err = io.put(policy.token(), key, data)
+
+			extra.check_crc = 2
+			extra.crc32 = binascii.crc32('abc') & 0xFFFFFFFF
+			ret, err = io.put(policy.token(), key, data, extra)
 			assert err is None
 
 		test_put()
@@ -120,6 +124,7 @@ class TestUp(unittest.TestCase):
 		test_put_unicode4()
 		test_put_StringIO()
 		test_put_urlopen()
+		test_put_no_length()
 
 	def test_put_file(self):
 		localfile = "%s" % __file__
