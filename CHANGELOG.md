@@ -2,10 +2,11 @@
 
 ### v6.0.2
 
-2013-07-01 issue [#53](https://github.com/qiniu/python-sdk/pull/53)
+2013-07-03 issue [#53](https://github.com/qiniu/python-sdk/pull/53)
 
 - 实现最新版的上传API，<http://docs.qiniu.com/api/put.html>
 - 修复[#16](https://github.com/qiniu/python-sdk/issues/16)
+	- put接口可以传入类文件对象（file-like object）
 - 修复[#52](https://github.com/qiniu/python-sdk/issues/52)
 
 ### v6.0.1

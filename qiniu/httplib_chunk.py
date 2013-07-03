@@ -1,5 +1,5 @@
 """
-CHANGELOG with standdard httplib
+Modified from standard httplib
 
 1. HTTPConnection can send trunked data.
 2. Remove httplib's automatic Content-Length insertion when data is a file-like object.

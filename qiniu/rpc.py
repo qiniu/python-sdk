@@ -129,7 +129,7 @@ class Client(object):
 
 
 class MultiReader(object):
-	""" class MultiReader([reader...])
+	""" class MultiReader([readers...])
 
 	MultiReader returns a read()able object that's the logical concatenation of
 	the provided input readers.  They're read sequentially.

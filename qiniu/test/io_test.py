@@ -91,7 +91,6 @@ class TestUp(unittest.TestCase):
 			key = "test_%s" % r(9)
 			data = urllib.urlopen('http://cheneya.qiniudn.com/hello_jpg')
 			ret, err = io.put(policy.token(), key, data)
-			print 'error', err
 			assert err is None
 
 		def test_put_no_length():
