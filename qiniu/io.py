@@ -30,8 +30,8 @@ def put(uptoken, key, data, extra=None):
 		extra = PutExtra()
 
 	if extra.params:
-		for key in extra.params:
-			fields[key] = str(extra.params[key])
+		for k in extra.params:
+			fields[k] = str(extra.params[k])
 
 	if extra.check_crc:
 		fields["crc32"] = str(extra.crc32)
