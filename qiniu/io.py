@@ -63,10 +63,6 @@ def put_file(uptoken, key, localfile, extra=None):
 		return put(uptoken, key, f, extra)
 
 
-def get_url(domain, key, dntoken):
-	return "%s/%s?token=%s" % (domain, key, dntoken)
-
-
 _BLOCK_SIZE = 1024 * 1024 * 4
 
 def _get_file_crc32(filepath):
