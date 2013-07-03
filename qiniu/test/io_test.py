@@ -3,6 +3,7 @@ import os
 import unittest
 import string
 import random
+import urllib
 try:
 	import zlib as binascii
 except ImportError:
@@ -86,6 +87,29 @@ class TestUp(unittest.TestCase):
 			ret, err = io.put(policy.token(), key, data)
 			assert err is None
 
+		def test_put_urlopen():
+			key = "test_%s" % r(9)
+			data = urllib.urlopen('http://http://cheneya.qiniudn.com/hello_jpg')
+			ret, err = io.put(policy.token(), key, data)
+			assert err is None
+
+		def test_put_no_length();
+			class test_reader(object):
+				def __init__(self):
+					self.data = 'abc'
+					self.pos = 0
+				def read(self, n=None):
+					if n is None or n < 0:
+						newpos = len(self.data)
+					else:
+						newpos = min(self.pos+n, len(self.data))
+					r = self.data[self.pos: newpos]
+					self.pos = newpos
+					return r
+			key = "test_%s" % r(9)
+			data = test_reader()
+			ret, err = io.put(policy.token(), key, data)
+			assert err is None
 
 		test_put()
 		test_put_same_crc()
@@ -95,6 +119,7 @@ class TestUp(unittest.TestCase):
 		test_put_unicode3()
 		test_put_unicode4()
 		test_put_StringIO()
+		test_put_urlopen()
 
 	def test_put_file(self):
 		localfile = "%s" % __file__
