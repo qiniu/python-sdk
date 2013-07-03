@@ -9,6 +9,11 @@ Qiniu Resource Storage SDK for Python
 
 参考文档：[七牛云存储 Python SDK 使用指南](https://github.com/qiniu/python-sdk/blob/develop/docs/README.md)
 
+## 单元测试
+
+	source env.sh
+	nosetests
+
 ## 贡献代码
 
 1. Fork
