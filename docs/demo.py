@@ -125,20 +125,10 @@ def resumable_put():
 	qiniu.rs.Client().delete(bucket_name, key)
 	
 	# @gist resumable_put
-	class ResumableUpload(object):
-		position = 0
-		def __init__(self, string_data):
-			self.data = string_data
-		
-		def read(self, length):
-			data = self.data[self.position: self.position+length]
-			self.position += length
-			return data
-
 	a = "resumable upload string"
 	extra = rio.PutExtra(bucket_name)
 	extra.mime_type = "text/plain"
-	ret, err = rio.put(uptoken, key, ResumableUpload(a), len(a), extra)
+	ret, err = rio.put(uptoken, key, StringIO.StringIO(a), len(a), extra)
 	if err is not None:
 		sys.stderr.write('error: %s ' % err)
 		return

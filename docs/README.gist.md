@@ -82,7 +82,6 @@ Python-SDK 被设计为同时适合服务器端和客户端使用。服务端是
 	#或
 	easy_install qiniu
 
-Tornado is listed in PyPI and can be installed with pip or easy_install. Note that the source distribution includes demo applications that are not present when Tornado is installed in this way, so you may wish to download a copy of the source tarball as well.
 Python-SDK可以使用`pip`或`easy_install`从PyPI服务器上安装，但不包括文档和样例。如果需要，请下载源码并安装。
 
 源码安装：
@@ -155,7 +154,7 @@ Python-SDK可以使用`pip`或`easy_install`从PyPI服务器上安装，但不�
 
 ##### 上传策略
 
-[uptoken](http://docs.qiniu.com/api/put.html#uploadToken) 实际上是用 AccessKey/SecretKey 进行数字签名的上传策略(`qiniu/rs/PutPolicy`)，它控制则整个上传流程的行为。让我们快速过一遍你都能够决策啥：
+[uptoken](http://docs.qiniu.com/api/put.html#uploadToken) 实际上是用 AccessKey/SecretKey 进行数字签名的上传策略(`qiniu.rs.PutPolicy`)，它控制则整个上传流程的行为。让我们快速过一遍你都能够决策啥：
 
 ```{python}
 @gist(../qiniu/rs/rs_token.py#PutPolicy)
@@ -197,7 +196,10 @@ PutExtra是上传时的可选信息，默认为None
 * `params` 是一个字典。[自定义变量](http://docs.qiniu.com/api/put.html#xVariables)，key必须以 x: 开头命名，不限个数。可以在 uploadToken 的 callbackBody 选项中求值。
 * `mime_type` 表示数据的MimeType。
 * `crc32` 待检查的crc32值
-* `check_crc` 可选值为0, 1, 2。 `check_crc=0`: 表示不进行 crc32 校验。`check_crc=1`: 对于 put 等同于 `check_crc=2`；对于 put_file 会自动计算 crc32 值。`check_crc == 2`: 表示进行 crc32 校验，且 crc32 值就是上面的 crc32 变量
+* `check_crc` 可选值为0, 1, 2。 
+	`check_crc == 0`: 表示不进行 crc32 校验。
+	`check_crc == 1`: 上传二进制数据时等同于 `check_crc=2`；上传本地文件时会自动计算 crc32 值。
+	`check_crc == 2`: 表示进行 crc32 校验，且 crc32 值就是上面的 `crc32` 变量
 
 <a name="upload-do"></a>
 
@@ -292,7 +294,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 #### 断点续下载
 
-无论是公有资源还是私有资源，获得的下载 url 支持标准的 HTTP 断点续传协议。考虑到多数语言都有相应的断点续下载支持的成熟方法，七牛 C-SDK 并不提供断点续下载相关代码。
+无论是公有资源还是私有资源，获得的下载 url 支持标准的 HTTP 断点续传协议。考虑到多数语言都有相应的断点续下载支持的成熟方法，七牛 Python-SDK 并不提供断点续下载相关代码。
 
 <a name="rs"></a>
 

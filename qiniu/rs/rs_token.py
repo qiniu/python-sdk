@@ -15,10 +15,10 @@ class PutPolicy(object):
 	returnBody = None
 	endUser = None
 	asyncOps = None
-# @endgist
 
 	def __init__(self, scope):
 		self.scope = scope
+# @endgist
 
 	def token(self, mac=None):
 		if mac is None:

@@ -82,7 +82,6 @@ Python-SDK 被设计为同时适合服务器端和客户端使用。服务端是
 	#或
 	easy_install qiniu
 
-Tornado is listed in PyPI and can be installed with pip or easy_install. Note that the source distribution includes demo applications that are not present when Tornado is installed in this way, so you may wish to download a copy of the source tarball as well.
 Python-SDK可以使用`pip`或`easy_install`从PyPI服务器上安装，但不包括文档和样例。如果需要，请下载源码并安装。
 
 源码安装：
@@ -158,7 +157,7 @@ qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 ##### 上传策略
 
-[uptoken](http://docs.qiniu.com/api/put.html#uploadToken) 实际上是用 AccessKey/SecretKey 进行数字签名的上传策略(`qiniu/rs/PutPolicy`)，它控制则整个上传流程的行为。让我们快速过一遍你都能够决策啥：
+[uptoken](http://docs.qiniu.com/api/put.html#uploadToken) 实际上是用 AccessKey/SecretKey 进行数字签名的上传策略(`qiniu.rs.PutPolicy`)，它控制则整个上传流程的行为。让我们快速过一遍你都能够决策啥：
 
 ```{python}
 class PutPolicy(object):
@@ -170,6 +169,9 @@ class PutPolicy(object):
 	returnBody = None
 	endUser = None
 	asyncOps = None
+
+	def __init__(self, scope):
+		self.scope = scope
 ```
 
 * `scope` 限定客户端的权限。如果 `scope` 是 bucket，则客户端只能新增文件到指定的 bucket，不能修改文件。如果 `scope` 为 bucket:key，则客户端可以修改指定的文件。
@@ -216,7 +218,10 @@ class PutExtra(object):
 * `params` 是一个字典。[自定义变量](http://docs.qiniu.com/api/put.html#xVariables)，key必须以 x: 开头命名，不限个数。可以在 uploadToken 的 callbackBody 选项中求值。
 * `mime_type` 表示数据的MimeType。
 * `crc32` 待检查的crc32值
-* `check_crc` 可选值为0, 1, 2。 `check_crc=0`: 表示不进行 crc32 校验。`check_crc=1`: 对于 put 等同于 `check_crc=2`；对于 put_file 会自动计算 crc32 值。`check_crc == 2`: 表示进行 crc32 校验，且 crc32 值就是上面的 crc32 变量
+* `check_crc` 可选值为0, 1, 2。 
+	`check_crc == 0`: 表示不进行 crc32 校验。
+	`check_crc == 1`: 上传二进制数据时等同于 `check_crc=2`；上传本地文件时会自动计算 crc32 值。
+	`check_crc == 2`: 表示进行 crc32 校验，且 crc32 值就是上面的 `crc32` 变量
 
 <a name="upload-do"></a>
 
@@ -281,20 +286,10 @@ qiniu.conf.SECRET_KEY = "<YOUR_APP_SECRET_KEY>"
 
 import qiniu.resumable_io as rio
 
-class ResumableUpload(object):
-	position = 0
-	def __init__(self, string_data):
-		self.data = string_data
-	
-	def read(self, length):
-		data = self.data[self.position: self.position+length]
-		self.position += length
-		return data
-
 a = "resumable upload string"
 extra = rio.PutExtra(bucket_name)
 extra.mime_type = "text/plain"
-ret, err = rio.put(uptoken, key, ResumableUpload(a), len(a), extra)
+ret, err = rio.put(uptoken, key, StringIO.StringIO(a), len(a), extra)
 if err is not None:
 	sys.stderr.write('error: %s ' % err)
 	return
@@ -365,7 +360,7 @@ private_url = policy.make_request(base_url)
 
 #### 断点续下载
 
-无论是公有资源还是私有资源，获得的下载 url 支持标准的 HTTP 断点续传协议。考虑到多数语言都有相应的断点续下载支持的成熟方法，七牛 C-SDK 并不提供断点续下载相关代码。
+无论是公有资源还是私有资源，获得的下载 url 支持标准的 HTTP 断点续传协议。考虑到多数语言都有相应的断点续下载支持的成熟方法，七牛 Python-SDK 并不提供断点续下载相关代码。
 
 <a name="rs"></a>
 
