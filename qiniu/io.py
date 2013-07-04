@@ -13,7 +13,7 @@ except ImportError:
 # @gist PutExtra
 class PutExtra(object):
 	params = {}
-	mime_type = 'application/octet-stream'
+	mime_type = ''
 	crc32 = ""
 	check_crc = 0
 # @endgist
