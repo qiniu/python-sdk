@@ -559,6 +559,26 @@ if err is not None:
 	return
 print rets2
 ```
+
+一个典型的对整个bucket遍历的操作为：
+
+```{python}
+def list_all(bucket, rs=None, prefix=None, limit=None):
+	if rs is None:
+		rs = qiniu.rsf.Client()
+	marker = None
+	err = None
+	while err is None:
+		ret, err = rs.list_prefix(bucket_name, prefix=prefix, limit=limit, marker=marker)
+		marker = ret.get('marker', None)
+		for item in ret['items']:
+			#do something
+			pass
+	if err is not qiniu.rsf.EOF:
+		# 错误处理
+		pass
+```
+
 <a name="fop"></a>
 ### 云处理
 

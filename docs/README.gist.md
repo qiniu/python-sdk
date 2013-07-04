@@ -420,6 +420,13 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 @gist(demo.py#list_prefix)
 ```
+
+一个典型的对整个bucket遍历的操作为：
+
+```{python}
+@gist(demo.py#list_all)
+```
+
 <a name="fop"></a>
 ### 云处理
 

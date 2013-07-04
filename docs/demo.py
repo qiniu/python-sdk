@@ -68,7 +68,7 @@ def get_demo_list():
 			resumable_put, resumable_put_file,
 			stat, copy, move, delete, batch,
 			image_info, image_exif, image_view,
-			list_prefix,
+			list_prefix, list_prefix_all,
 	]
 
 def run_demos(demos):
@@ -331,6 +331,27 @@ def list_prefix():
 		return
 	print rets2
 	# @endgist
+
+def list_prefix_all():
+	''' 列出所有 '''
+	list_all(bucket_name, prefix='test_Z', limit=10)
+
+# @gist list_all
+def list_all(bucket, rs=None, prefix=None, limit=None):
+	if rs is None:
+		rs = qiniu.rsf.Client()
+	marker = None
+	err = None
+	while err is None:
+		ret, err = rs.list_prefix(bucket_name, prefix=prefix, limit=limit, marker=marker)
+		marker = ret.get('marker', None)
+		for item in ret['items']:
+			#do something
+			pass
+	if err is not qiniu.rsf.EOF:
+		# 错误处理
+		pass
+# @endgist
 
 if __name__ == "__main__":
 	_setup()
