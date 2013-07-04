@@ -25,7 +25,6 @@ SDK 下载地址：<https://github.com/qiniu/python-sdk/tags>
 	- [下载文件](#io-get)
 		- [下载公有文件](#io-get-public)
 		- [下载私有文件](#io-get-private)
-		- [HTTPS 支持](#io-https-get)
 		- [断点续下载](#resumable-io-get)
 	- [资源操作](#rs)
 		- [获取文件信息](#rs-stat)
@@ -404,6 +403,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 <a name="rsf"></a>
 ### 高级管理操作
 
+<a name="list-prefix"></a>
 #### 列出文件
 
 请求某个存储空间（bucket）下的文件列表，如果有前缀，可以按前缀（prefix）进行过滤；如果前一次返回marker就表示还有资源，下一步请求需要将marker参数填上。
@@ -416,11 +416,11 @@ ret是一个字典，含有`hash`，`key`等信息。
 @gist(demo.py#list_prefix)
 ```
 <a name="fop"></a>
-
 ### 云处理
-<a name="fop-image"></a>
 
+<a name="fop-image"></a>
 #### 图像
+
 <a name="fop-image-info"></a>
 ##### 查看图像属性
 ```{python}
