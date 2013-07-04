@@ -16,8 +16,9 @@ import qiniu.fop
 # @gist import_resumable_io
 import qiniu.resumable_io as rio
 # @endgist
-
+# @gist import_rsf
 import qiniu.rsf
+# @endgist
 
 bucket_name = None
 uptoken = None
@@ -335,6 +336,8 @@ def list_prefix():
 		error(err)
 		return
 	print rets
+	
+	# 从上一次list_prefix的位置继续列出文件
 	rets2, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=1, marker=rets['marker'])
 	if err is not None:
 		error(err)

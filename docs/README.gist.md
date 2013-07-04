@@ -12,11 +12,10 @@ SDK 下载地址：<https://github.com/qiniu/python-sdk/tags>
 
 - [概述](#overview)
 - [准备开发环境](#prepare)
-	- [环境依赖](#dependences)
 	- [安装](#install)
 	- [ACCESS_KEY 和 SECRET_KEY](#appkey)
 - [使用SDK](#sdk-usage)
-	- [初始化环境与清理](#init)
+	- [初始化环境](#init)
 	- [上传文件](#io-put)
 		- [上传流程](#io-put-flow)
 			- [上传策略](#io-put-policy)
@@ -297,7 +296,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 ### 资源操作
 
-\<资源操作介绍\>
+<!--TODO:资源操作介绍-->
 
 <a name="rs-stat"></a>
 #### 获取文件信息
@@ -412,7 +411,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(demo.py#import_rsf)
 
 @gist(demo.py#list_prefix)
 ```
