@@ -11,6 +11,8 @@ Qiniu Resource Storage SDK for Python
 
 ## 单元测试
 
+需安装[nosetests](https://nose.readthedocs.org/en/latest/)测试工具。
+
 	source env.sh
 	nosetests
 
