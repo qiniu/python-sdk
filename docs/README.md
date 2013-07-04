@@ -21,6 +21,7 @@ SDK 下载地址：<https://github.com/qiniu/python-sdk/tags>
 			- [上传策略](#io-put-policy)
 			- [上传凭证](#upload-token)
 			- [PutExtra](#put-extra)
+			- [上传文件](#upload-do)
 			- [断点续上传、分块并行上传](#resumable-io-put)
 	- [下载文件](#io-get)
 		- [下载公有文件](#io-get-public)
@@ -43,6 +44,8 @@ SDK 下载地址：<https://github.com/qiniu/python-sdk/tags>
 			- [查看图像属性](#fop-image-info)
 			- [查看图片EXIF信息](#fop-exif)
 			- [生成图片预览](#fop-image-view)
+- [贡献代码](#contribution)
+- [许可证](#license)
 
 <a name="overview"></a>
 
@@ -180,7 +183,7 @@ class PutPolicy(object):
 
 <a name="upload-token"></a>
 
-##### 生成上传凭证
+##### 上传凭证
 
 服务端生成 [uptoken](http://docs.qiniu.com/api/put.html#uploadToken) 代码如下：
 
@@ -319,11 +322,11 @@ print ret,
 
 <a name="io-get"></a>
 
-#### 下载文件
+### 下载文件
 
 <a name="io-get-public"></a>
 
-##### 下载公有文件
+#### 下载公有文件
 
 每个 bucket 都会绑定一个或多个域名（domain）。如果这个 bucket 是公开的，那么该 bucket 中的所有文件可以通过一个公开的下载 url 可以访问到：
 
@@ -333,7 +336,7 @@ print ret,
 
 <a name="io-get-private"></a>
 
-##### 下载私有文件
+#### 下载私有文件
 
 如果某个 bucket 是私有的，那么这个 bucket 中的所有文件只能通过一个的临时有效的 downloadUrl 访问：
 
@@ -360,7 +363,7 @@ private_url = policy.make_request(base_url)
 
 <a name="resumable-io-get"></a>
 
-##### 断点续下载
+#### 断点续下载
 
 无论是公有资源还是私有资源，获得的下载 url 支持标准的 HTTP 断点续传协议。考虑到多数语言都有相应的断点续下载支持的成熟方法，七牛 C-SDK 并不提供断点续下载相关代码。
 
@@ -642,7 +645,7 @@ url = policy.make_request(url)
 print '可以在浏览器浏览: %s' % url
 ```
 
-
+<a name="contribution"></a>
 ## 贡献代码
 
 + Fork
@@ -651,11 +654,12 @@ print '可以在浏览器浏览: %s' % url
 + 将您的修改记录提交到远程 git 仓库 (git push origin my-new-feature)
 + 然后到 github 网站的该 git 远程仓库的 my-new-feature 分支下发起 Pull Request
 
+<a name="license"></a>
 ## 许可证
 
 > Copyright (c) 2013 qiniu.com
 
-## 基于 MIT 协议发布:
+基于 MIT 协议发布:
 
 > [www.opensource.org/licenses/MIT](http://www.opensource.org/licenses/MIT)
  
