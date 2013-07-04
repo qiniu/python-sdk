@@ -25,7 +25,6 @@ SDK 下载地址：<https://github.com/qiniu/python-sdk/tags>
 	- [下载文件](#io-get)
 		- [下载公有文件](#io-get-public)
 		- [下载私有文件](#io-get-private)
-		- [HTTPS 支持](#io-https-get)
 		- [断点续下载](#resumable-io-get)
 	- [资源操作](#rs)
 		- [获取文件信息](#rs-stat)
@@ -238,7 +237,7 @@ extra.mime_type = "text/plain"
 data = StringIO.StringIO("hello!")
 ret, err = qiniu.io.put(uptoken, key, data, extra)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 ```
 
@@ -256,7 +255,7 @@ localfile = "%s" % __file__
 
 ret, err = qiniu.io.put_file(uptoken, key, localfile)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 ```
 
@@ -294,7 +293,7 @@ extra = rio.PutExtra(bucket_name)
 extra.mime_type = "text/plain"
 ret, err = rio.put(uptoken, key, ResumableUpload(a), len(a), extra)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 print ret,
 ```
@@ -313,7 +312,7 @@ extra = rio.PutExtra(bucket_name)
 
 ret, err = rio.put_file(uptoken, key, localfile, extra)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 print ret,
 ```
@@ -384,7 +383,7 @@ import qiniu.rs
 
 ret, err = qiniu.rs.Client().stat(bucket_name, key)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 print ret,
 ```
@@ -403,7 +402,7 @@ import qiniu.rs
 
 ret, err = qiniu.rs.Client().copy(bucket_name, key, bucket_name, key2)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 ```
 
@@ -421,7 +420,7 @@ import qiniu.rs
 
 ret, err = qiniu.rs.Client().move(bucket_name, key2, bucket_name, key3)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 ```
 
@@ -439,7 +438,7 @@ import qiniu.rs
 
 ret, err = qiniu.rs.Client().delete(bucket_name, key3)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 ```
 
@@ -466,7 +465,7 @@ path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
 rets, err = qiniu.rs.Client().batch_stat([path_1, path_2, path_3])
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 ```
 
@@ -487,7 +486,7 @@ path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 pair_1 = qiniu.rs.EntryPathPair(path_1, path_3)
 rets, err = qiniu.rs.Client().batch_copy([pair_1])
 if not rets[0]['code'] == 200:
-	error("复制失败")
+	sys.stderr.write('error: %s ' % "复制失败")
 	return
 ```
 
@@ -508,7 +507,7 @@ path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 pair_2 = qiniu.rs.EntryPathPair(path_3, path_2)
 rets, err = qiniu.rs.Client().batch_move([pair_2])
 if not rets[0]['code'] == 200:
-	error("移动失败")
+	sys.stderr.write('error: %s ' % "移动失败")
 	return
 ```
 
@@ -528,7 +527,7 @@ path_3 = qiniu.rs.EntryPath(bucket_name, key3)
 
 rets, err = qiniu.rs.Client().batch_delete([path_1, path_2])
 if not [ret['code'] for ret in rets] == [200, 200]:
-	error("删除失败")
+	sys.stderr.write('error: %s ' % "删除失败")
 	return
 ```
 
@@ -536,6 +535,7 @@ if not [ret['code'] for ret in rets] == [200, 200]:
 <a name="rsf"></a>
 ### 高级管理操作
 
+<a name="list-prefix"></a>
 #### 列出文件
 
 请求某个存储空间（bucket）下的文件列表，如果有前缀，可以按前缀（prefix）进行过滤；如果前一次返回marker就表示还有资源，下一步请求需要将marker参数填上。
@@ -550,23 +550,23 @@ import qiniu.rsf
 
 rets, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=2)
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 print rets
 
 # 从上一次list_prefix的位置继续列出文件
 rets2, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=1, marker=rets['marker'])
 if err is not None:
-	error(err)
+	sys.stderr.write('error: %s ' % err)
 	return
 print rets2
 ```
 <a name="fop"></a>
-
 ### 云处理
-<a name="fop-image"></a>
 
+<a name="fop-image"></a>
 #### 图像
+
 <a name="fop-image-info"></a>
 ##### 查看图像属性
 ```{python}
