@@ -10,11 +10,13 @@ except ImportError:
 	import binascii
 
 
+# @gist PutExtra
 class PutExtra(object):
 	params = {}
 	mime_type = 'application/octet-stream'
 	crc32 = ""
 	check_crc = 0
+# @endgist
 
 
 def put(uptoken, key, data, extra=None):

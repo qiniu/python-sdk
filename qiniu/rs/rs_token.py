@@ -5,6 +5,7 @@ import urllib
 
 from ..auth import digest
 
+# @gist PutPolicy
 class PutPolicy(object):
 	scope = None             # 可以是 bucketName 或者 bucketName:key
 	expires = 3600           # 默认是 3600 秒
@@ -13,7 +14,8 @@ class PutPolicy(object):
 	returnUrl = None
 	returnBody = None
 	endUser = None
-	asyncOps = None         
+	asyncOps = None
+# @endgist
 
 	def __init__(self, scope):
 		self.scope = scope

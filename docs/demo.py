@@ -328,12 +328,19 @@ def batch():
 	# @endgist
 
 def list_prefix():
-	''' 前缀查询操作 '''
-	rets, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=3)
+	''' 列出文件操作 '''
+	# @gist list_prefix
+	rets, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=2)
 	if err is not None:
 		error(err)
 		return
 	print rets
+	rets2, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=1, marker=rets['marker'])
+	if err is not None:
+		error(err)
+		return
+	print rets2
+	# @endgist
 
 if __name__ == "__main__":
 	_setup()
