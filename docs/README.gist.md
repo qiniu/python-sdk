@@ -178,9 +178,9 @@ Python-SDK可以使用`pip`或`easy_install`从PyPI服务器上安装，但不�
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#uptoken)
+@gist(gist/demo.py#uptoken)
 ```
 
 <a name="put-extra"></a>
@@ -211,9 +211,9 @@ PutExtra是上传时的可选信息，默认为None
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_io)
+@gist(gist/demo.py#import_io)
 
-@gist(demo.py#put)
+@gist(gist/demo.py#put)
 ```
 
 上传本地文件
@@ -221,9 +221,9 @@ PutExtra是上传时的可选信息，默认为None
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_io)
+@gist(gist/demo.py#import_io)
 
-@gist(demo.py#put_file)
+@gist(gist/demo.py#put_file)
 ```
 
 ret是一个字典，含有`hash`，`key`等信息。
@@ -240,18 +240,18 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_resumable_io)
+@gist(gist/demo.py#import_resumable_io)
 
-@gist(demo.py#resumable_put)
+@gist(gist/demo.py#resumable_put)
 ```
 
 上传本地文件
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_resumable_io)
+@gist(gist/demo.py#import_resumable_io)
 
-@gist(demo.py#resumable_put_file)
+@gist(gist/demo.py#resumable_put_file)
 ```
 
 <a name="io-get"></a>
@@ -281,9 +281,9 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#dntoken)
+@gist(gist/demo.py#dntoken)
 ```
 
 生成 downloadUrl 后，服务端下发 downloadUrl 给客户端。客户端收到 downloadUrl 后，和公有资源类似，直接用任意的 HTTP 客户端就可以下载该资源了。唯一需要注意的是，在 downloadUrl 失效却还没有完成下载时，需要重新向服务器申请授权。
@@ -308,9 +308,9 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#stat)
+@gist(gist/demo.py#stat)
 ```
 
 
@@ -320,9 +320,9 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#copy)
+@gist(gist/demo.py#copy)
 ```
 
 
@@ -332,9 +332,9 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#move)
+@gist(gist/demo.py#move)
 ```
 
 
@@ -344,9 +344,9 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#delete)
+@gist(gist/demo.py#delete)
 ```
 
 
@@ -361,11 +361,11 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#batch_path)
+@gist(gist/demo.py#batch_path)
 
-@gist(demo.py#batch_stat)
+@gist(gist/demo.py#batch_stat)
 ```
 
 <a name="batch-copy"></a>
@@ -373,11 +373,11 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#batch_path)
+@gist(gist/demo.py#batch_path)
 
-@gist(demo.py#batch_copy)
+@gist(gist/demo.py#batch_copy)
 ```
 
 <a name="batch-move"></a>
@@ -385,11 +385,11 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#batch_path)
+@gist(gist/demo.py#batch_path)
 
-@gist(demo.py#batch_move)
+@gist(gist/demo.py#batch_move)
 ```
 
 <a name="batch-delete"></a>
@@ -397,11 +397,11 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#batch_path)
+@gist(gist/demo.py#batch_path)
 
-@gist(demo.py#batch_delete)
+@gist(gist/demo.py#batch_delete)
 ```
 
 
@@ -416,15 +416,15 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_rsf)
+@gist(gist/demo.py#import_rsf)
 
-@gist(demo.py#list_prefix)
+@gist(gist/demo.py#list_prefix)
 ```
 
 一个典型的对整个bucket遍历的操作为：
 
 ```{python}
-@gist(demo.py#list_all)
+@gist(gist/demo.py#list_all)
 ```
 
 <a name="fop"></a>
@@ -438,10 +438,10 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_fop)
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_fop)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#image_info)
+@gist(gist/demo.py#image_info)
 ```
 
 <a name="fop-exif"></a>
@@ -449,10 +449,10 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_fop)
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_fop)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#exif)
+@gist(gist/demo.py#exif)
 ```
 
 
@@ -461,10 +461,10 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```{python}
 @gist(gist/conf.py#config)
 
-@gist(demo.py#import_fop)
-@gist(demo.py#import_rs)
+@gist(gist/demo.py#import_fop)
+@gist(gist/demo.py#import_rs)
 
-@gist(demo.py#image_view)
+@gist(gist/demo.py#image_view)
 ```
 
 <a name="contribution"></a>

@@ -10,5 +10,5 @@ before_script:
   - export PYTHONPATH="$PYTHONPATH:."
 script:
   - python setup.py nosetests
-  - python docs/demo.py
+  - python docs/gist/demo.py
   - python docs/gist/conf.py
