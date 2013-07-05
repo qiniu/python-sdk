@@ -11,6 +11,6 @@ before_script:
   - export QINIU_TEST_DOMAIN="pysdk.qiniudn.com"
   - export PYTHONPATH="$PYTHONPATH:."
 script:
-  - nosetests --with-coverage --cover-package=qiniu
-  - python docs/demo.py
+  - python setup.py nosetests
+  - python docs/gist/demo.py
   - python docs/gist/conf.py
