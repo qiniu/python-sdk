@@ -20,6 +20,8 @@ Qiniu Resource Storage SDK for Python
 	然后将在`test-env.sh`中填入相关信息。
 2. 需安装[nosetests](https://nose.readthedocs.org/en/latest/)测试工具。
 
+运行测试：
+
 	source test-env.sh
 	nosetests
 
