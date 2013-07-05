@@ -216,7 +216,7 @@ class PutExtra(object):
 ```
 
 * `params` 是一个字典。[自定义变量](http://docs.qiniu.com/api/put.html#xVariables)，key必须以 x: 开头命名，不限个数。可以在 uploadToken 的 callbackBody 选项中求值。
-* `mime_type` 表示数据的MimeType。
+* `mime_type` 表示数据的MimeType，当不指定时七牛服务器会自动检测。
 * `crc32` 待检查的crc32值
 * `check_crc` 可选值为0, 1, 2。 
 	`check_crc == 0`: 表示不进行 crc32 校验。
