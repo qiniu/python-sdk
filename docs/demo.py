@@ -52,7 +52,7 @@ def _setup():
 	secret_key = getenv("QINIU_SECRET_KEY")
 	bucket_name = getenv("QINIU_BUCKET_NAME")
 	domain = getenv("QINIU_DOMAIN")
-	pickey = getenv("QINIU_PIC_KEY")
+	pickey = 'QINIU_UNIT_TEST_PIC'
 	setup(access_key, secret_key, bucket_name, domain, pickey)
 
 def getenv(name):

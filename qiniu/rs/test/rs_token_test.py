@@ -16,7 +16,7 @@ conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 bucket_name = os.getenv("QINIU_BUCKET_NAME")
 domain = os.getenv("QINIU_DOMAIN")
-key = os.getenv("QINIU_PIC_KEY")
+key = 'QINIU_UNIT_TEST_PIC'
 
 class TestToken(unittest.TestCase):
 	def test_put_policy(self):
