@@ -2,52 +2,79 @@
 from base64 import urlsafe_b64encode
 import rpc
 import conf
-import zlib
+import random
+import string
+try:
+	import zlib as binascii
+except ImportError:
+	import binascii
 
-UNDEFINED_KEY = "?"
 
 class PutExtra(object):
-	callback_params = None
-	bucket = None
-	custom_meta = None
-	mime_type = None
+	params = {}
+	mime_type = 'application/octet-stream'
 	crc32 = ""
 	check_crc = 0
-	def __init__(self, bucket):
-		self.bucket = bucket
 
-def put(uptoken, key, data, extra):
-	action = ["/rs-put"]
-	action.append(urlsafe_b64encode("%s:%s" % (extra.bucket, key)))
-	if extra.mime_type is not None:
-		action.append("mimeType/%s" % urlsafe_b64encode(extra.mime_type))
 
-	if extra.custom_meta is not None:
-		action.append("meta/%s" % urlsafe_b64encode(extra.custom_meta))
+def put(uptoken, key, data, extra=None):
+	""" put your data to Qiniu
+
+	If key is None, the server will generate one.
+	data may be str or read()able object.
+	"""
+	fields = {
+	}
+
+	if not extra:
+		extra = PutExtra()
+
+	if extra.params:
+		for k in extra.params:
+			fields[k] = str(extra.params[k])
 
 	if extra.check_crc:
-		action.append("crc32/%s" % extra.crc32)
+		fields["crc32"] = str(extra.crc32)
 
-	fields = [
-		("action", '/'.join(action)),
-		("auth", uptoken),
-	]
-	if extra.callback_params is not None:
-		fields.append(("params", extra.callback_params))
+	if key is not None:
+		fields['key'] = key
 
+	fields["token"] = uptoken
+
+	fname = key
+	if fname is None:
+		fname = _random_str(9)
+	elif fname is '':
+		fname = 'index.html'
 	files = [
-		("file", key, data)
+		{'filename': fname, 'data': data, 'mime_type': extra.mime_type},
 	]
-	return rpc.Client(conf.UP_HOST).call_with_multipart("/upload", fields, files)
+	return rpc.Client(conf.UP_HOST).call_with_multipart("/", fields, files)
 
-def put_file(uptoken, key, localfile, extra):
-	f = open(localfile)
-	data = f.read()
-	f.close()
-	if extra.check_crc == 1:
-		extra.crc32 = zlib.crc32(data) & 0xFFFFFFFF
-	return put(uptoken, key, data, extra)
 
-def get_url(domain, key, dntoken):
-	return "%s/%s?token=%s" % (domain, key, dntoken)
+def put_file(uptoken, key, localfile, extra=None):
+	""" put a file to Qiniu
 
+	If key is None, the server will generate one.
+	"""
+	if extra is not None and extra.check_crc == 1:
+		extra.crc32 = _get_file_crc32(localfile)
+	with open(localfile) as f:
+		return put(uptoken, key, f, extra)
+
+
+_BLOCK_SIZE = 1024 * 1024 * 4
+
+def _get_file_crc32(filepath):
+	with open(filepath) as f: 
+		block = f.read(_BLOCK_SIZE)
+		crc = 0
+		while len(block) != 0:
+			crc = binascii.crc32(block, crc) & 0xFFFFFFFF
+			block = f.read(_BLOCK_SIZE)
+	return crc
+
+
+def _random_str(length):
+	lib = string.ascii_lowercase
+	return ''.join([random.choice(lib) for i in range(0, length)])
