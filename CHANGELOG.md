@@ -1,5 +1,12 @@
 ## CHANGE LOG
 
+### v6.1.1
+
+2013-07-05 issue [#60](https://github.com/qiniu/python-sdk/pull/60)
+
+- 整理文档
+
+
 ### v6.1.0
 
 2013-07-03 issue [#58](https://github.com/qiniu/python-sdk/pull/58)
