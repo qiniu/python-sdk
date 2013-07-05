@@ -51,9 +51,9 @@ def _setup():
 	if access_key is None:
 		exit("请配置环境变量 QINIU_ACCESS_KEY")
 	secret_key = getenv("QINIU_SECRET_KEY")
-	bucket_name = getenv("QINIU_BUCKET_NAME")
-	domain = getenv("QINIU_DOMAIN")
-	pickey = getenv("QINIU_PIC_KEY")
+	bucket_name = getenv("QINIU_TEST_BUCKET")
+	domain = getenv("QINIU_TEST_DOMAIN")
+	pickey = 'QINIU_UNIT_TEST_PIC'
 	setup(access_key, secret_key, bucket_name, domain, pickey)
 
 def getenv(name):

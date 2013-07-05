@@ -1,6 +1,0 @@
-export QINIU_ACCESS_KEY="X0XpjFmLMTJpHB_ESHjeolCtipk-1U3Ok7LVTdoN"
-export QINIU_SECRET_KEY="wenlwkU1AYwNBf7Q9cCoG4VT_GYyrHE9AS_R2u81"
-export QINIU_PIC_KEY="hello_jpg"
-export QINIU_NOEXIST_PIC_KEY="no_exist"
-export QINIU_BUCKET_NAME="pysdk"
-export QINIU_DOMAIN="pysdk.qiniudn.com"

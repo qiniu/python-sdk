@@ -4,6 +4,7 @@
 
 *.py[cod]
 
+my-test-env.sh
 
 ##
 ## from https://github.com/github/gitignore/blob/master/Python.gitignore

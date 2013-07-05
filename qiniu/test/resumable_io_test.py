@@ -16,7 +16,7 @@ from qiniu.auth import up
 from qiniu import resumable_io
 from qiniu import rs
 
-bucket = os.getenv("QINIU_BUCKET_NAME")
+bucket = os.getenv("QINIU_TEST_BUCKET")
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 
