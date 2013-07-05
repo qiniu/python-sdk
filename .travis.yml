@@ -2,6 +2,8 @@ language: python
 python:
   - "2.6"
   - "2.7"
+install:
+  - "pip install coverage --use-mirrors"
 before_script:
   - export QINIU_ACCESS_KEY="X0XpjFmLMTJpHB_ESHjeolCtipk-1U3Ok7LVTdoN"
   - export QINIU_SECRET_KEY="wenlwkU1AYwNBf7Q9cCoG4VT_GYyrHE9AS_R2u81"
@@ -9,6 +11,6 @@ before_script:
   - export QINIU_TEST_DOMAIN="pysdk.qiniudn.com"
   - export PYTHONPATH="$PYTHONPATH:."
 script:
-  - python setup.py nosetests
+  - nosetests --with-coverage --cover-package=qiniu
   - python docs/demo.py
   - python docs/gist/conf.py
