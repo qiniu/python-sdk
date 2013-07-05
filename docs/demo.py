@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+import StringIO
 
 # @gist import_io
 import qiniu.io
@@ -51,7 +52,7 @@ def _setup():
 	secret_key = getenv("QINIU_SECRET_KEY")
 	bucket_name = getenv("QINIU_BUCKET_NAME")
 	domain = getenv("QINIU_DOMAIN")
-	pickey = getenv("QINIU_PIC_KEY")
+	pickey = 'QINIU_UNIT_TEST_PIC'
 	setup(access_key, secret_key, bucket_name, domain, pickey)
 
 def getenv(name):
@@ -112,7 +113,9 @@ def put_binary():
 	extra = qiniu.io.PutExtra()
 	extra.mime_type = "text/plain"
 	
-	ret, err = qiniu.io.put(uptoken, key, "hello!", extra)
+	# data 可以是str或read()able对象
+	data = StringIO.StringIO("hello!")
+	ret, err = qiniu.io.put(uptoken, key, data, extra)
 	if err is not None:
 		error(err)
 		return

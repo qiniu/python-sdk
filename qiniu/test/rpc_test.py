@@ -45,7 +45,7 @@ class TestClient(unittest.TestCase):
 			tpl = "--%s\r\n%s\r\n\r\n%s\r\n--%s--\r\n" % (boundary, dispostion,
 					"auth_string", boundary)
 			self.assertEqual(len(tpl), client._header["Content-Length"])
-			self.assertEqual(len(tpl), len(body))
+			self.assertEqual(len(tpl), body.length())
 
 		round_tripper = tripper
 		client.call_with_multipart("/hello", fields={"auth": "auth_string"})
@@ -123,13 +123,13 @@ class TestEncodeMultipartFormdata(unittest.TestCase):
 				'mime_type': 'application/octet-stream',
 			}
 		]
-		content_type, body = rpc.Client('localhost').encode_multipart_formdata(fields, files)
+		content_type, mr = rpc.Client('localhost').encode_multipart_formdata(fields, files)
 		t, b = encode_multipart_formdata2(
 			[('a', '1'), ('b', '2')],
 			[('file', 'key1', 'data1'), ('file', 'key2', 'data2')]
 		)
 		assert t == content_type
-		assert len(b) == len(body)
+		assert len(b) == mr.length()
 
 	def test_unicode(self):
 		def test1():
