@@ -110,7 +110,8 @@ class Client(object):
 			L.append('')
 			L.append('--' + BOUNDARY)
 			disposition = "Content-Disposition: form-data;"
-			L.append('%s name="file"; filename="%s"' % (disposition, file_info.get('filename')))
+			filename = _qiniu_escape(file_info.get('filename'))
+			L.append('%s name="file"; filename="%s"' % (disposition, filename))
 			L.append('Content-Type: %s' % file_info.get('content_type', 'application/octet-stream'))
 			L.append('')
 			L.append('')
@@ -126,6 +127,12 @@ class Client(object):
 
 		content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
 		return content_type, MultiReader(readers)
+
+def _qiniu_escape(s):
+	edits = [('\\', '\\\\'), ('\"', '\\\"')]
+	for (search, replace) in edits:
+		s = s.replace(search, replace)
+	return s
 
 
 class MultiReader(object):

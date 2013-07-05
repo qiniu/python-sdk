@@ -54,6 +54,20 @@ class TestUp(unittest.TestCase):
 			assert err is None
 			assert ret['hash'] == ret['key']
 
+		def test_put_quote_key():
+			data = r(100)
+			key = 'a\\b\\c"你好' + r(9)
+			ret, err = io.put(policy.token(), key, data)
+			print err
+			assert err is None
+			assert ret['key'].encode('utf8') == key
+
+			data = r(100)
+			key = u'a\\b\\c"你好' + r(9)
+			ret, err = io.put(policy.token(), key, data)
+			assert err is None
+			assert ret['key'] == key
+
 		def test_put_unicode1():
 			key = "test_%s" % r(9) + '你好'
 			data = key
@@ -125,6 +139,7 @@ class TestUp(unittest.TestCase):
 		test_put()
 		test_put_same_crc()
 		test_put_no_key()
+		test_put_quote_key()
 		test_put_unicode1()
 		test_put_unicode2()
 		test_put_unicode3()
