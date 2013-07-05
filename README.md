@@ -11,13 +11,14 @@ Qiniu Resource Storage SDK for Python
 
 ## 单元测试
 
-您需要拥有一对有效的 Access Key 和 Secret Key 用来进行签名认证。可以通过如下步骤获得：
+1. 您需要拥有一对有效的 Access Key 和 Secret Key 用来进行签名认证。可以通过如下步骤获得：
 
-1. [开通七牛开发者帐号](https://portal.qiniu.com/signup)
-2. [登录七牛开发者自助平台，查看 Access Key 和 Secret Key](https://portal.qiniu.com/setting/key) 。
-3. 在开发者后台新建一个空间
+	1. [开通七牛开发者帐号](https://portal.qiniu.com/signup)
+	2. [登录七牛开发者自助平台，查看 Access Key 和 Secret Key](https://portal.qiniu.com/setting/key) 。
+	3. 在开发者后台新建一个空间
 
-然后将在`test-env.sh`中填入相关信息。
+	然后将在`test-env.sh`中填入相关信息。
+2. 需安装[nosetests](https://nose.readthedocs.org/en/latest/)测试工具。
 
 	source test-env.sh
 	nosetests
