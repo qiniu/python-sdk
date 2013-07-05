@@ -42,5 +42,11 @@ class TestToken(unittest.TestCase):
 		self.assertEqual(len(body)>100, True)
 
 
+class Test_make_base_url(unittest.TestCase):
+	def test_unicode(self):
+		url1 = rs.make_base_url('1.com', '你好')
+		url2 = rs.make_base_url('1.com', u'你好')
+		assert url1 == url2
+
 if __name__ == "__main__":
 	unittest.main()
