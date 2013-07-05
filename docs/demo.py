@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+import StringIO
 
 # @gist import_io
 import qiniu.io
@@ -49,9 +50,9 @@ def _setup():
 	if access_key is None:
 		exit("请配置环境变量 QINIU_ACCESS_KEY")
 	secret_key = getenv("QINIU_SECRET_KEY")
-	bucket_name = getenv("QINIU_BUCKET_NAME")
-	domain = getenv("QINIU_DOMAIN")
-	pickey = getenv("QINIU_PIC_KEY")
+	bucket_name = getenv("QINIU_TEST_BUCKET")
+	domain = getenv("QINIU_TEST_DOMAIN")
+	pickey = 'QINIU_UNIT_TEST_PIC'
 	setup(access_key, secret_key, bucket_name, domain, pickey)
 
 def getenv(name):
@@ -95,9 +96,8 @@ def put_file():
 	
 	# @gist put_file
 	localfile = "%s" % __file__
-	extra = qiniu.io.PutExtra(bucket_name)
-	
-	ret, err = qiniu.io.put_file(uptoken, key, localfile, extra)
+
+	ret, err = qiniu.io.put_file(uptoken, key, localfile)
 	if err is not None:
 		error(err)
 		return
@@ -110,10 +110,12 @@ def put_binary():
 	qiniu.rs.Client().delete(bucket_name, key)
 	
 	# @gist put
-	extra = qiniu.io.PutExtra(bucket_name)
+	extra = qiniu.io.PutExtra()
 	extra.mime_type = "text/plain"
 	
-	ret, err = qiniu.io.put(uptoken, key, "hello!", extra)
+	# data 可以是str或read()able对象
+	data = StringIO.StringIO("hello!")
+	ret, err = qiniu.io.put(uptoken, key, data, extra)
 	if err is not None:
 		error(err)
 		return

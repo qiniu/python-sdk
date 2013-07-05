@@ -14,9 +14,9 @@ from qiniu import rs
 
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
-bucket_name = os.getenv("QINIU_BUCKET_NAME")
-domain = os.getenv("QINIU_DOMAIN")
-key = os.getenv("QINIU_PIC_KEY")
+bucket_name = os.getenv("QINIU_TEST_BUCKET")
+domain = os.getenv("QINIU_TEST_DOMAIN")
+key = 'QINIU_UNIT_TEST_PIC'
 
 class TestToken(unittest.TestCase):
 	def test_put_policy(self):
@@ -41,6 +41,12 @@ class TestToken(unittest.TestCase):
 		f.close()
 		self.assertEqual(len(body)>100, True)
 
+
+class Test_make_base_url(unittest.TestCase):
+	def test_unicode(self):
+		url1 = rs.make_base_url('1.com', '你好')
+		url2 = rs.make_base_url('1.com', u'你好')
+		assert url1 == url2
 
 if __name__ == "__main__":
 	unittest.main()
