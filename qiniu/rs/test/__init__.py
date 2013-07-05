@@ -12,7 +12,7 @@ key = 'QINIU_UNIT_TEST_PIC'
 def setUp():
 	qiniu.conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 	qiniu.conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
-	bucket_name = os.getenv("QINIU_BUCKET_NAME")
+	bucket_name = os.getenv("QINIU_TEST_BUCKET")
 
 	policy = qiniu.rs.PutPolicy(bucket_name)
 	uptoken = policy.token()

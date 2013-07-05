@@ -6,7 +6,7 @@ from qiniu import conf
 import os
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
-bucket_name = os.getenv("QINIU_BUCKET_NAME")
+bucket_name = os.getenv("QINIU_TEST_BUCKET")
 
 class TestRsf(unittest.TestCase):
 	def test_list_prefix(self):

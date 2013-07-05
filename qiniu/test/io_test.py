@@ -16,7 +16,7 @@ from qiniu import io
 
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
-bucket_name = os.getenv("QINIU_BUCKET_NAME")
+bucket_name = os.getenv("QINIU_TEST_BUCKET")
 
 policy = rs.PutPolicy(bucket_name)
 extra = io.PutExtra()
