@@ -7,11 +7,11 @@ import qiniu.rs
 import qiniu.conf
 
 pic = "http://cheneya.qiniudn.com/hello_jpg"
+key = 'QINIU_UNIT_TEST_PIC'
 
 def setUp():
 	qiniu.conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 	qiniu.conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
-	key = os.getenv("QINIU_PIC_KEY")
 	bucket_name = os.getenv("QINIU_BUCKET_NAME")
 
 	policy = qiniu.rs.PutPolicy(bucket_name)

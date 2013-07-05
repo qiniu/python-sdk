@@ -20,7 +20,7 @@ class PutExtra(object):
 def put(uptoken, key, data, extra=None):
 	""" put your data to Qiniu
 
-	key, your resource key. if key is None, Qiniu will generate one.
+	If key is None, the server will generate one.
 	data may be str or read()able object.
 	"""
 	fields = {
@@ -30,8 +30,8 @@ def put(uptoken, key, data, extra=None):
 		extra = PutExtra()
 
 	if extra.params:
-		for key in extra.params:
-			fields[key] = str(extra.params[key])
+		for k in extra.params:
+			fields[k] = str(extra.params[k])
 
 	if extra.check_crc:
 		fields["crc32"] = str(extra.crc32)
@@ -55,7 +55,7 @@ def put(uptoken, key, data, extra=None):
 def put_file(uptoken, key, localfile, extra=None):
 	""" put a file to Qiniu
 
-	key, your resource key. if key is None, Qiniu will generate one.
+	If key is None, the server will generate one.
 	"""
 	if extra is not None and extra.check_crc == 1:
 		extra.crc32 = _get_file_crc32(localfile)
