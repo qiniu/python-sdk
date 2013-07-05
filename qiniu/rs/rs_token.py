@@ -4,6 +4,7 @@ import time
 import urllib
 
 from ..auth import digest
+from ..import rpc
 
 class PutPolicy(object):
 	scope = None             # 可以是 bucketName 或者 bucketName:key
@@ -76,4 +77,5 @@ def make_base_url(domain, key):
 	 * key => str
 	 * return base_url
 	'''
+	key = rpc.encode_unicode(key)
 	return 'http://%s/%s' % (domain, urllib.quote(key))
