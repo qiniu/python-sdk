@@ -16,8 +16,9 @@ import qiniu.fop
 # @gist import_resumable_io
 import qiniu.resumable_io as rio
 # @endgist
-
+# @gist import_rsf
 import qiniu.rsf
+# @endgist
 
 bucket_name = None
 uptoken = None
@@ -62,15 +63,12 @@ def getenv(name):
 		exit(1)
 	return env
 
-def error(obj):
-	sys.stderr.write('error: %s ' % obj)
-
 def get_demo_list():
 	return [put_file, put_binary,
 			resumable_put, resumable_put_file,
 			stat, copy, move, delete, batch,
 			image_info, image_exif, image_view,
-			list_prefix,
+			list_prefix, list_prefix_all,
 	]
 
 def run_demos(demos):
@@ -99,7 +97,7 @@ def put_file():
 
 	ret, err = qiniu.io.put_file(uptoken, key, localfile)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	# @endgist
 	
@@ -117,7 +115,7 @@ def put_binary():
 	data = StringIO.StringIO("hello!")
 	ret, err = qiniu.io.put(uptoken, key, data, extra)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	# @endgist
 
@@ -127,22 +125,12 @@ def resumable_put():
 	qiniu.rs.Client().delete(bucket_name, key)
 	
 	# @gist resumable_put
-	class ResumableUpload(object):
-		position = 0
-		def __init__(self, string_data):
-			self.data = string_data
-		
-		def read(self, length):
-			data = self.data[self.position: self.position+length]
-			self.position += length
-			return data
-
 	a = "resumable upload string"
 	extra = rio.PutExtra(bucket_name)
 	extra.mime_type = "text/plain"
-	ret, err = rio.put(uptoken, key, ResumableUpload(a), len(a), extra)
+	ret, err = rio.put(uptoken, key, StringIO.StringIO(a), len(a), extra)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	print ret,
 	# @endgist
@@ -159,7 +147,7 @@ def resumable_put_file():
 	
 	ret, err = rio.put_file(uptoken, key, localfile, extra)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	print ret,
 	# @endgist
@@ -170,7 +158,7 @@ def stat():
 	# @gist stat
 	ret, err = qiniu.rs.Client().stat(bucket_name, key)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	print ret,
 	# @endgist
@@ -183,13 +171,13 @@ def copy():
 	# @gist copy
 	ret, err = qiniu.rs.Client().copy(bucket_name, key, bucket_name, key2)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	# @endgist
 	
 	stat, err = qiniu.rs.Client().stat(bucket_name, key2)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	print 'new file:', stat,
 
@@ -201,20 +189,20 @@ def move():
 	# @gist move
 	ret, err = qiniu.rs.Client().move(bucket_name, key2, bucket_name, key3)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	# @endgist
 	
 	# 查看文件是否移动成功
 	ret, err = qiniu.rs.Client().stat(bucket_name, key3)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	
 	# 查看文件是否被删除
 	ret, err = qiniu.rs.Client().stat(bucket_name, key2)
 	if err is None:
-		error("删除失败")
+		sys.stderr.write('error: %s ' % "删除失败")
 		return
 
 def delete():
@@ -222,13 +210,13 @@ def delete():
 	# @gist delete
 	ret, err = qiniu.rs.Client().delete(bucket_name, key3)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	# @endgist
 	
 	ret, err = qiniu.rs.Client().stat(bucket_name, key3)
 	if err is None:
-		error("删除失败")
+		sys.stderr.write('error: %s ' % "删除失败")
 		return
 
 def image_info():
@@ -294,11 +282,11 @@ def batch():
 	# @gist batch_stat
 	rets, err = qiniu.rs.Client().batch_stat([path_1, path_2, path_3])
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	# @endgist
 	if not [ret['code'] for ret in rets] == [200, 612, 612]:
-		error("批量获取状态与预期不同")
+		sys.stderr.write('error: %s ' % "批量获取状态与预期不同")
 		return
 	
 	# 复制
@@ -306,7 +294,7 @@ def batch():
 	pair_1 = qiniu.rs.EntryPathPair(path_1, path_3)
 	rets, err = qiniu.rs.Client().batch_copy([pair_1])
 	if not rets[0]['code'] == 200:
-		error("复制失败")
+		sys.stderr.write('error: %s ' % "复制失败")
 		return
 	# @endgist
 	
@@ -315,7 +303,7 @@ def batch():
 	pair_2 = qiniu.rs.EntryPathPair(path_3, path_2)
 	rets, err = qiniu.rs.Client().batch_move([pair_2])
 	if not rets[0]['code'] == 200:
-		error("移动失败")
+		sys.stderr.write('error: %s ' % "移动失败")
 		return
 	# @endgist
 	
@@ -323,17 +311,47 @@ def batch():
 	# @gist batch_delete
 	rets, err = qiniu.rs.Client().batch_delete([path_1, path_2])
 	if not [ret['code'] for ret in rets] == [200, 200]:
-		error("删除失败")
+		sys.stderr.write('error: %s ' % "删除失败")
 		return
 	# @endgist
 
 def list_prefix():
-	''' 前缀查询操作 '''
-	rets, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=3)
+	''' 列出文件操作 '''
+	# @gist list_prefix
+	rets, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=2)
 	if err is not None:
-		error(err)
+		sys.stderr.write('error: %s ' % err)
 		return
 	print rets
+
+	# 从上一次list_prefix的位置继续列出文件
+	rets2, err = qiniu.rsf.Client().list_prefix(bucket_name, prefix="test", limit=1, marker=rets['marker'])
+	if err is not None:
+		sys.stderr.write('error: %s ' % err)
+		return
+	print rets2
+	# @endgist
+
+def list_prefix_all():
+	''' 列出所有 '''
+	list_all(bucket_name, prefix='test_Z', limit=10)
+
+# @gist list_all
+def list_all(bucket, rs=None, prefix=None, limit=None):
+	if rs is None:
+		rs = qiniu.rsf.Client()
+	marker = None
+	err = None
+	while err is None:
+		ret, err = rs.list_prefix(bucket_name, prefix=prefix, limit=limit, marker=marker)
+		marker = ret.get('marker', None)
+		for item in ret['items']:
+			#do something
+			pass
+	if err is not qiniu.rsf.EOF:
+		# 错误处理
+		pass
+# @endgist
 
 if __name__ == "__main__":
 	_setup()
