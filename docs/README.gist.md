@@ -208,6 +208,7 @@ PutExtra是上传时的可选信息，默认为None
 上传文件到七牛（通常是客户端完成，但也可以发生在服务端）：
 
 直接上传二进制流
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -237,6 +238,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 我们来看支持了断点上续传、分块并行上传的基本样例：
 
 上传二进制流
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -246,6 +248,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```
 
 上传本地文件
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -358,6 +361,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="batch-stat"></a>
 ##### 批量获取文件信息
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -370,6 +374,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="batch-copy"></a>
 ##### 批量复制文件
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -382,6 +387,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="batch-move"></a>
 ##### 批量移动文件
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -394,6 +400,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="batch-delete"></a>
 ##### 批量删除文件
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -435,6 +442,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="fop-image-info"></a>
 ##### 查看图像属性
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -446,6 +454,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="fop-exif"></a>
 ##### 查看图片EXIF信息
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -458,6 +467,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="fop-image-view"></a>
 ##### 生成图片预览
+
 ```{python}
 @gist(gist/conf.py#config)
 

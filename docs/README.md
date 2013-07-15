@@ -230,6 +230,7 @@ class PutExtra(object):
 上传文件到七牛（通常是客户端完成，但也可以发生在服务端）：
 
 直接上传二进制流
+
 ```{python}
 import qiniu.conf
 
@@ -278,6 +279,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 我们来看支持了断点上续传、分块并行上传的基本样例：
 
 上传二进制流
+
 ```{python}
 import qiniu.conf
 
@@ -297,6 +299,7 @@ print ret,
 ```
 
 上传本地文件
+
 ```{python}
 import qiniu.conf
 
@@ -449,6 +452,7 @@ if err is not None:
 
 <a name="batch-stat"></a>
 ##### 批量获取文件信息
+
 ```{python}
 import qiniu.conf
 
@@ -469,6 +473,7 @@ if err is not None:
 
 <a name="batch-copy"></a>
 ##### 批量复制文件
+
 ```{python}
 import qiniu.conf
 
@@ -490,6 +495,7 @@ if not rets[0]['code'] == 200:
 
 <a name="batch-move"></a>
 ##### 批量移动文件
+
 ```{python}
 import qiniu.conf
 
@@ -511,6 +517,7 @@ if not rets[0]['code'] == 200:
 
 <a name="batch-delete"></a>
 ##### 批量删除文件
+
 ```{python}
 import qiniu.conf
 
@@ -587,6 +594,7 @@ def list_all(bucket, rs=None, prefix=None, limit=None):
 
 <a name="fop-image-info"></a>
 ##### 查看图像属性
+
 ```{python}
 import qiniu.conf
 
@@ -612,6 +620,7 @@ print '可以在浏览器浏览: %s' % url
 
 <a name="fop-exif"></a>
 ##### 查看图片EXIF信息
+
 ```{python}
 import qiniu.conf
 
@@ -638,6 +647,7 @@ print '可以在浏览器浏览: %s' % url
 
 <a name="fop-image-view"></a>
 ##### 生成图片预览
+
 ```{python}
 import qiniu.conf
 
