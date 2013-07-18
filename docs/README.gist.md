@@ -1,8 +1,6 @@
 ---
-title: Python SDK 使用指南 | 七牛云存储
+title: Python SDK 使用指南
 ---
-
-# Python SDK 使用指南
 
 此 Python SDK 适用于2.x版本，基于 [七牛云存储官方API](http://docs.qiniu.com/) 构建。使用此 SDK 构建您的网络应用程序，能让您以非常便捷地方式将数据安全地存储到七牛云存储上。无论您的网络应用是一个网站程序，还是包括从云端（服务端程序）到终端（手持设备应用）的架构的服务或应用，通过七牛云存储及其 SDK，都能让您应用程序的终端用户高速上传和下载，同时也让您的服务端更加轻盈。
 
@@ -208,6 +206,7 @@ PutExtra是上传时的可选信息，默认为None
 上传文件到七牛（通常是客户端完成，但也可以发生在服务端）：
 
 直接上传二进制流
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -237,6 +236,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 我们来看支持了断点上续传、分块并行上传的基本样例：
 
 上传二进制流
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -246,6 +246,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 ```
 
 上传本地文件
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -358,6 +359,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="batch-stat"></a>
 ##### 批量获取文件信息
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -370,6 +372,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="batch-copy"></a>
 ##### 批量复制文件
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -382,6 +385,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="batch-move"></a>
 ##### 批量移动文件
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -394,6 +398,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="batch-delete"></a>
 ##### 批量删除文件
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -435,6 +440,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="fop-image-info"></a>
 ##### 查看图像属性
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -446,6 +452,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="fop-exif"></a>
 ##### 查看图片EXIF信息
+
 ```{python}
 @gist(gist/conf.py#config)
 
@@ -458,6 +465,7 @@ ret是一个字典，含有`hash`，`key`等信息。
 
 <a name="fop-image-view"></a>
 ##### 生成图片预览
+
 ```{python}
 @gist(gist/conf.py#config)
 
