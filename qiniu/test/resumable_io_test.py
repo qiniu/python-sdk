@@ -3,6 +3,7 @@ import os
 import unittest
 import string
 import random
+import platform
 try:
 	import zlib as binascii
 except ImportError:
@@ -52,7 +53,11 @@ class TestBlock(unittest.TestCase):
 
 	def test_put(self):
 		src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
-		tmpf = os.tmpnam()
+		ostype = platform.system()
+		if ostype.lower().find("windows") != -1:
+			tmpf = "".join([os.getcwd(), os.tmpnam()])
+		else:
+			tmpf = os.tmpnam()
 		dst = open(tmpf, 'wb')
 		shutil.copyfileobj(src, dst)
 		src.close()
