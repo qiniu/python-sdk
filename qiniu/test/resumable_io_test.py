@@ -52,7 +52,7 @@ class TestBlock(unittest.TestCase):
 
 	def test_put(self):
 		src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
-        tmpf = os.tmpnam()
+        	tmpf = os.tmpnam()
 		dst = open(tmpf, 'wb')
 		shutil.copyfileobj(src, dst)
 		src.close()
@@ -64,7 +64,7 @@ class TestBlock(unittest.TestCase):
 		localfile = dst.name
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
 		dst.close()
-        os.remove(tmpf)
+        	os.remove(tmpf)
 
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FnyTMUqPNRTdk1Wou7oLqDHkBm_p", "hash not match")
