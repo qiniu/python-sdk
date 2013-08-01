@@ -171,7 +171,7 @@ class Test_get_file_crc32(unittest.TestCase):
 		file_path = '%s' % __file__
 
 		data = None
-		with open(file_path) as f:
+		with open(file_path, 'rb') as f:
 			data = f.read()
 		io._BLOCK_SIZE = 4
 		assert binascii.crc32(data) & 0xFFFFFFFF == io._get_file_crc32(file_path)
