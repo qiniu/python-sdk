@@ -61,14 +61,14 @@ def put_file(uptoken, key, localfile, extra=None):
 	"""
 	if extra is not None and extra.check_crc == 1:
 		extra.crc32 = _get_file_crc32(localfile)
-	with open(localfile) as f:
+	with open(localfile, 'rb') as f:
 		return put(uptoken, key, f, extra)
 
 
 _BLOCK_SIZE = 1024 * 1024 * 4
 
 def _get_file_crc32(filepath):
-	with open(filepath) as f: 
+	with open(filepath, 'rb') as f:
 		block = f.read(_BLOCK_SIZE)
 		crc = 0
 		while len(block) != 0:
