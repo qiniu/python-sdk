@@ -54,7 +54,7 @@ class TestBlock(unittest.TestCase):
 	def test_put(self):
 		src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
 		ostype = platform.system()
-		if ostype.lower().find("windows"):
+		if ostype.lower().find("windows") != -1:
 			tmpf = "".join([os.getcwd(), os.tmpnam()])
 		else:
 			tmpf = os.tmpnam()
