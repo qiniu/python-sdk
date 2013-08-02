@@ -2,7 +2,7 @@
 
 ### v6.1.2
 
-2013-08-01 issue [#63](https://github.com/qiniu/python-sdk/pull/63) [#64](https://github.com/qiniu/python-sdk/pull/64)
+2013-08-01 issue [#66](https://github.com/qiniu/python-sdk/pull/66)
 
 - 修复在Windows环境下put_file无法读取文件的bug
 - 修复在Windows环境下创建临时文件的权限问题
