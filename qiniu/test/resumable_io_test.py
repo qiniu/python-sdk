@@ -3,6 +3,7 @@ import os
 import unittest
 import string
 import random
+import platform
 try:
 	import zlib as binascii
 except ImportError:
@@ -34,7 +35,7 @@ class TestBlock(unittest.TestCase):
 		rets = [0, 0]
 		data_slice_2 = "\nbye!"
 		ret, err = resumable_io.mkblock(client, len(data_slice_2), data_slice_2)
-		assert err is None, err 
+		assert err is None, err
 		self.assertEqual(ret["crc32"], binascii.crc32(data_slice_2))
 
 		extra = resumable_io.PutExtra(bucket)
@@ -49,10 +50,15 @@ class TestBlock(unittest.TestCase):
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")
 		rs.Client().delete(bucket, key)
-	
+
 	def test_put(self):
 		src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
-		dst = tempfile.NamedTemporaryFile()
+		ostype = platform.system()
+		if ostype.lower().find("windows") != -1:
+			tmpf = "".join([os.getcwd(), os.tmpnam()])
+		else:
+			tmpf = os.tmpnam()
+		dst = open(tmpf, 'wb')
 		shutil.copyfileobj(src, dst)
 		src.close()
 
@@ -63,11 +69,12 @@ class TestBlock(unittest.TestCase):
 		localfile = dst.name
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
 		dst.close()
+		os.remove(tmpf)
 
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FnyTMUqPNRTdk1Wou7oLqDHkBm_p", "hash not match")
 		rs.Client().delete(bucket, key)
-			
+
 
 if __name__ == "__main__":
 	unittest.main()
