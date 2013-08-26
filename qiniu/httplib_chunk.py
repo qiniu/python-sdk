@@ -8,7 +8,7 @@ Modified from standard httplib
 # -*- coding: utf-8 -*-
 
 import httplib
-from httplib import _CS_REQ_STARTED, _CS_REQ_SENT
+from httplib import _CS_REQ_STARTED, _CS_REQ_SENT, CannotSendHeader, NotConnected
 import string
 import os
 from array import array
