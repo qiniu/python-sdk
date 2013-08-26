@@ -1,5 +1,11 @@
 ## CHANGE LOG
 
+### v6.1.3
+
+2013-08-26 issue []
+
+- bug fix, httplib_thunk.py 中的无效符号引用
+
 ### v6.1.2
 
 2013-08-01 issue [#66](https://github.com/qiniu/python-sdk/pull/66)
