@@ -47,7 +47,7 @@ def put(uptoken, key, data, extra=None):
 	if fname is None:
 		fname = _random_str(9)
 	elif fname is '':
-		fname = 'index.html'
+		fname = 'somefile'
 	files = [
 		{'filename': fname, 'data': data, 'mime_type': extra.mime_type},
 	]
