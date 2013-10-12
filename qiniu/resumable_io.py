@@ -153,7 +153,11 @@ def putblock(client, block_ret, chunk):
 	return client.call_with(url, chunk, content_type, len(chunk))
 
 def mkfile(client, key, fsize, extra):
-	encoded_entry = urlsafe_b64encode("%s:%s" % (extra.bucket, key))
+	if key:	
+		encoded_entry = urlsafe_b64encode("%s:%s" % (extra.bucket, key))
+	else:
+		encoded_entry = urlsafe_b64encode("%s" % extra.bucket)
+
 	url = ["http://%s/rs-mkfile/%s/fsize/%s" % (conf.UP_HOST, encoded_entry, fsize)]
 
 	if extra.mimetype:
