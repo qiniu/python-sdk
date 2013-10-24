@@ -2,9 +2,12 @@
 
 ### v6.1.3
 
-2013-08-26 issue []
+2013-10-24 issue [#77](https://github.com/qiniu/python-sdk/pull/77)
 
 - bug fix, httplib_thunk.py 中的无效符号引用
+- PutPolicy：增加 saveKey、persistentOps/persistentNotifyUrl、fsizeLimit（文件大小限制）等支持
+- 断点续传：使用新的 mkfile 协议
+
 
 ### v6.1.2
 
@@ -14,11 +17,13 @@
 - 修复在Windows环境下创建临时文件的权限问题
 - 修复在Windows环境下对二进制文件计算crc32的bug
 
+
 ### v6.1.1
 
 2013-07-05 issue [#60](https://github.com/qiniu/python-sdk/pull/60)
 
 - 整理文档
+
 
 ### v6.1.0
 
