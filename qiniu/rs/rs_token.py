@@ -17,6 +17,13 @@ class PutPolicy(object):
 	endUser = None
 	asyncOps = None
 
+	saveKey = None
+	insertOnly = None
+	detectMime = None
+	fsizeLimit = None
+	persistentNotifyUrl = None
+	persistentOps = None
+
 	def __init__(self, scope):
 		self.scope = scope
 # @endgist
@@ -46,7 +53,25 @@ class PutPolicy(object):
 
 		if self.asyncOps is not None:
 			token["asyncOps"] = self.asyncOps
-		
+
+		if self.saveKey is not None:
+			token["saveKey"] = self.saveKey
+
+		if self.insertOnly is not None:
+			token["exclusive"] = self.insertOnly
+
+		if self.detectMime is not None:
+			token["detectMime"] = self.detectMime
+
+		if self.fsizeLimit is not None:
+			token["fsizeLimit"] = self.fsizeLimit
+
+		if self.persistentOps is not None:
+			token["persistentOps"] = self.persistentOps
+
+		if self.persistentNotifyUrl is not None:
+			token["persistentNotifyUrl"] = self.persistentNotifyUrl
+
 		b = json.dumps(token, separators=(',',':'))
 		return mac.sign_with_data(b)
 
@@ -54,7 +79,7 @@ class GetPolicy(object):
 	expires = 3600
 	def __init__(self):
 		pass
-	
+
 	def make_request(self, base_url, mac=None):
 		'''
 		 *  return private_url
