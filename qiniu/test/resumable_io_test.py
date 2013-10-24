@@ -65,9 +65,11 @@ class TestBlock(unittest.TestCase):
 		policy = rs.PutPolicy(bucket)
 		extra = resumable_io.PutExtra(bucket)
 		extra.bucket = bucket
+		extra.params = {"x:foo": "test"}
 		key = "sdk_py_resumable_block_5_%s" % r(9)
 		localfile = dst.name
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
+		assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
 		dst.close()
 		os.remove(tmpf)
 

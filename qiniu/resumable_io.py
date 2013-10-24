@@ -46,9 +46,7 @@ def gen_crc32(data):
 	return binascii.crc32(data) & 0xffffffff
 
 class PutExtra(object):
-	callback_params = None # 当 uptoken 指定了 CallbackUrl，则 CallbackParams 必须非空
-	bucket = None          # 当前是必选项，但未来会去掉
-	custom_meta = None     # 可选。用户自定义 Meta，不能超过 256 字节
+	params = None          # 自定义用户变量, key需要x: 开头
 	mimetype = None        # 可选。在 uptoken 没有指定 DetectMime 时，用户客户端可自己指定 MimeType
 	chunk_size = None      # 可选。每次上传的Chunk大小
 	try_times = None       # 可选。尝试次数
@@ -153,17 +151,17 @@ def putblock(client, block_ret, chunk):
 	return client.call_with(url, chunk, content_type, len(chunk))
 
 def mkfile(client, key, fsize, extra):
-	encoded_entry = urlsafe_b64encode("%s:%s" % (extra.bucket, key))
-	url = ["http://%s/rs-mkfile/%s/fsize/%s" % (conf.UP_HOST, encoded_entry, fsize)]
+	url = ["http://%s/mkfile/%s" % (conf.UP_HOST, fsize)]
 
 	if extra.mimetype:
 		url.append("mimeType/%s" % urlsafe_b64encode(extra.mimetype))
 
-	if extra.custom_meta:
-		url.append("meta/%s" % urlsafe_b64encode(extra.custom_meta))
+	if key is not None:
+		url.append("key/%s" % urlsafe_b64encode(key))
 
-	if extra.callback_params:
-		url.append("params/%s" % urlsafe_b64encode(extra.callback_params))
+	if extra.params:
+		for k, v in extra.params.iteritems():
+			url.append("%s/%s" % (k, urlsafe_b64encode(v)))
 
 	url = "/".join(url)
 	body = ",".join([i["ctx"] for i in extra.progresses])
