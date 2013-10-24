@@ -2,9 +2,10 @@
 
 ### v6.1.3
 
-2013-08-26 issue []
+2013-10-24 issue [#77](https://github.com/qiniu/python-sdk/pull/77)
 
 - bug fix, httplib_thunk.py 中的无效符号引用
+- 断点续传：使用新的 mkfile 协议
 
 ### v6.1.2
 
