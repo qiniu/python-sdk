@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Modified from standard httplib
 
@@ -5,7 +6,6 @@ Modified from standard httplib
 2. Remove httplib's automatic Content-Length insertion when data is a file-like object.
 """
 
-# -*- coding: utf-8 -*-
 
 import httplib
 from httplib import _CS_REQ_STARTED, _CS_REQ_SENT, CannotSendHeader, NotConnected
