@@ -58,7 +58,7 @@ class TestBlock(unittest.TestCase):
 
     def test_put(self):
         src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
-        tmpf = tempfile.mkstemp()
+        tmpfd, tmpf = tempfile.mkstemp()
         dst = open(tmpf, 'wb')
         shutil.copyfileobj(src, dst)
         src.close()
@@ -72,7 +72,8 @@ class TestBlock(unittest.TestCase):
         ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
         assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         dst.close()
-        os.remove(tmpf)
+        os.close(tmpfd)
+        os.unlink(tmpf)
 
         assert err is None, err
         self.assertEqual(ret["hash"],
