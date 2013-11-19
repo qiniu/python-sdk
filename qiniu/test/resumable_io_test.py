@@ -5,9 +5,9 @@ import string
 import random
 import platform
 try:
-	import zlib as binascii
+    import zlib as binascii
 except ImportError:
-	import binascii
+    import binascii
 import urllib
 import tempfile
 import shutil
@@ -23,60 +23,65 @@ conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 
 
 def r(length):
-	lib = string.ascii_uppercase
-	return ''.join([random.choice(lib) for i in range(0, length)])
+    lib = string.ascii_uppercase
+    return ''.join([random.choice(lib) for i in range(0, length)])
+
 
 class TestBlock(unittest.TestCase):
-	def test_block(self):
-		policy = rs.PutPolicy(bucket)
-		uptoken = policy.token()
-		client = up.Client(uptoken)
 
-		rets = [0, 0]
-		data_slice_2 = "\nbye!"
-		ret, err = resumable_io.mkblock(client, len(data_slice_2), data_slice_2)
-		assert err is None, err
-		self.assertEqual(ret["crc32"], binascii.crc32(data_slice_2))
+    def test_block(self):
+        policy = rs.PutPolicy(bucket)
+        uptoken = policy.token()
+        client = up.Client(uptoken)
 
-		extra = resumable_io.PutExtra(bucket)
-		extra.mimetype = "text/plain"
-		extra.progresses = [ret]
-		lens = 0
-		for i in xrange(0, len(extra.progresses)):
-			lens += extra.progresses[i]["offset"]
+        rets = [0, 0]
+        data_slice_2 = "\nbye!"
+        ret, err = resumable_io.mkblock(
+            client, len(data_slice_2), data_slice_2)
+        assert err is None, err
+        self.assertEqual(ret["crc32"], binascii.crc32(data_slice_2))
 
-		key = u"sdk_py_resumable_block_4_%s" % r(9)
-		ret, err = resumable_io.mkfile(client, key, lens, extra)
-		assert err is None, err
-		self.assertEqual(ret["hash"], "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")
-		rs.Client().delete(bucket, key)
+        extra = resumable_io.PutExtra(bucket)
+        extra.mimetype = "text/plain"
+        extra.progresses = [ret]
+        lens = 0
+        for i in xrange(0, len(extra.progresses)):
+            lens += extra.progresses[i]["offset"]
 
-	def test_put(self):
-		src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
-		ostype = platform.system()
-		if ostype.lower().find("windows") != -1:
-			tmpf = "".join([os.getcwd(), os.tmpnam()])
-		else:
-			tmpf = os.tmpnam()
-		dst = open(tmpf, 'wb')
-		shutil.copyfileobj(src, dst)
-		src.close()
+        key = u"sdk_py_resumable_block_4_%s" % r(9)
+        ret, err = resumable_io.mkfile(client, key, lens, extra)
+        assert err is None, err
+        self.assertEqual(ret["hash"],
+                         "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")
+        rs.Client().delete(bucket, key)
 
-		policy = rs.PutPolicy(bucket)
-		extra = resumable_io.PutExtra(bucket)
-		extra.bucket = bucket
-		extra.params = {"x:foo": "test"}
-		key = "sdk_py_resumable_block_5_%s" % r(9)
-		localfile = dst.name
-		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
-		assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
-		dst.close()
-		os.remove(tmpf)
+    def test_put(self):
+        src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
+        ostype = platform.system()
+        if ostype.lower().find("windows") != -1:
+            tmpf = "".join([os.getcwd(), os.tmpnam()])
+        else:
+            tmpf = os.tmpnam()
+        dst = open(tmpf, 'wb')
+        shutil.copyfileobj(src, dst)
+        src.close()
 
-		assert err is None, err
-		self.assertEqual(ret["hash"], "FnyTMUqPNRTdk1Wou7oLqDHkBm_p", "hash not match")
-		rs.Client().delete(bucket, key)
+        policy = rs.PutPolicy(bucket)
+        extra = resumable_io.PutExtra(bucket)
+        extra.bucket = bucket
+        extra.params = {"x:foo": "test"}
+        key = "sdk_py_resumable_block_5_%s" % r(9)
+        localfile = dst.name
+        ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
+        assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
+        dst.close()
+        os.remove(tmpf)
+
+        assert err is None, err
+        self.assertEqual(ret["hash"],
+                         "FnyTMUqPNRTdk1Wou7oLqDHkBm_p", "hash not match")
+        rs.Client().delete(bucket, key)
 
 
 if __name__ == "__main__":
-	unittest.main()
+    unittest.main()
