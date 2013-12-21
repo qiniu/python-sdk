@@ -100,7 +100,8 @@ def put(uptoken, key, f, fsize, extra):
 				return None, err_put_failed
 			print err, ".. retry"
 
-	return mkfile(client, key, fsize, extra)
+	mkfile_client = auth.up.Client(uptoken, extra.progresses[-1]["host"])
+	return mkfile(mkfile_client, key, fsize, extra)
 
 # ----------------------------------------------------------
 
