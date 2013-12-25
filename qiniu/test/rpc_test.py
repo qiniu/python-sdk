@@ -76,17 +76,17 @@ class TestMultiReader(unittest.TestCase):
     def test_multi_reader1(self):
         a = StringIO('你好')
         b = StringIO('abcdefg')
-        c = StringIO(u'悲剧')
+        c = StringIO('悲剧')
         mr = rpc.MultiReader([a, b, c])
         data = mr.read()
-        assert data.index('悲剧'.encode()) > data.index(b'abcdefg')
+        assert data.index('悲剧'.encode()) > data.index('abcdefg'.encode())
 
     def test_multi_reader2(self):
         a = StringIO('你好')
         b = StringIO('abcdefg')
-        c = StringIO(u'悲剧')
+        c = StringIO('悲剧')
         mr = rpc.MultiReader([a, b, c])
-        data = mr.read(8)
+        data = mr.read(8).decode()
         assert len(data) is 8
 
 

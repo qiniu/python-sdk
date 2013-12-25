@@ -14,18 +14,18 @@ class Mac(object):
 
     def __init__(self, access=None, secret=None):
         if access is None and secret is None:
-            access, secret = conf.ACCESS_KEY.encode(), conf.SECRET_KEY.encode()
+            access, secret = conf.ACCESS_KEY, conf.SECRET_KEY
         self.access, self.secret = access, secret
 
     def __sign(self, data):
-        hashed = hmac.new(self.secret, data, sha1)
-        return urlsafe_b64encode(hashed.digest())
+        hashed = hmac.new(self.secret.encode(), data.encode(), sha1)
+        return urlsafe_b64encode(hashed.digest()).decode()
 
     def sign(self, data):
-        return '%s:%s' % (self.access, self.__sign(data.encode()))
+        return '%s:%s' % (self.access, self.__sign(data))
 
     def sign_with_data(self, b):
-        data = urlsafe_b64encode(b.encode())
+        data = urlsafe_b64encode(b.encode()).decode()
         return '%s:%s:%s' % (self.access, self.__sign(data), data)
 
     def sign_request(self, path, body, content_type):
@@ -44,7 +44,7 @@ class Mac(object):
             if content_type in incBody:
                 data += body
 
-        return '%s:%s' % (self.access, self.__sign(data.encode()))
+        return '%s:%s' % (self.access, self.__sign(data))
 
 
 class Client(rpc.Client):

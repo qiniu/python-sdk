@@ -38,7 +38,7 @@ class TestBlock(unittest.TestCase):
         ret, err = resumable_io.mkblock(
             client, len(data_slice_2), data_slice_2)
         assert err is None, err
-        self.assertEqual(ret["crc32"], binascii.crc32(data_slice_2))
+        self.assertEqual(ret["crc32"], binascii.crc32(data_slice_2.encode()))
 
         extra = resumable_io.PutExtra(bucket)
         extra.mimetype = "text/plain"
@@ -47,7 +47,7 @@ class TestBlock(unittest.TestCase):
         for i in range(0, len(extra.progresses)):
             lens += extra.progresses[i]["offset"]
 
-        key = u"sdk_py_resumable_block_4_%s" % r(9)
+        key = "sdk_py_resumable_block_4_%s" % r(9)
         ret, err = resumable_io.mkfile(client, key, lens, extra)
         assert err is None, err
         self.assertEqual(

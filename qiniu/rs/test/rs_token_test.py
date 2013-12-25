@@ -40,7 +40,7 @@ class TestToken(unittest.TestCase):
 
         # chcek first part of token
         self.assertEqual(conf.ACCESS_KEY, tokens[0])
-        data = json.loads(decode(tokens[2]))
+        data = json.loads(decode(tokens[2].encode()).decode())
 
         # check if same
         self.assertEqual(data["scope"], bucket_name)
@@ -57,8 +57,9 @@ class TestToken(unittest.TestCase):
                          policy.persistentNotifyUrl)
         self.assertEqual(data["persistentOps"], policy.persistentOps)
 
-        new_hmac = encode(hmac.new(conf.SECRET_KEY, tokens[2], sha1).digest())
-        self.assertEqual(new_hmac, tokens[1])
+        new_hmac = encode(hmac.new(conf.SECRET_KEY.encode(),
+                                   tokens[2].encode(), sha1).digest())
+        self.assertEqual(new_hmac.decode(), tokens[1])
 
     def test_get_policy(self):
         base_url = rs.make_base_url(domain, key)

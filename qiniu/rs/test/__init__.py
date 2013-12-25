@@ -21,8 +21,7 @@ def setUp():
     f = urlopen(pic)
     _, err = qiniu.io.put(uptoken, key, f)
     f.close()
-    # incorrect error handling
-    # if err is None or err.startswith('file exists'):
-    #     print(err)
-    #     assert err is None or err.startswith('file exists')
+    if err is None or err.startswith('file exists'):
+        print(err)
+        assert err is None or err.startswith('file exists')
     print(err)

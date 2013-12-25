@@ -4,8 +4,8 @@ import json
 from io import StringIO
 
 from . import conf
-from . import httplib_chunk as httplib
-# from http import client as httplib
+# from . import httplib_chunk as httplib
+from http import client as httplib
 
 
 class Client(object):
@@ -43,13 +43,11 @@ class Client(object):
         except ValueError:
             pass
 
-        if resp.status / 100 != 2:
-            err_msg = ret if b"error" not in ret else ret["error"]
+        if resp.status // 100 != 2:
+            err_msg = ret if "error" not in ret else ret["error"]
             detail = resp.getheader("x-log", None)
             if detail is not None:
-                # incorrect operator
-                # err_msg += ", detail:%s" % detail
-                pass
+                err_msg += ", detail:%s" % detail
             return None, err_msg
 
         return ret, None

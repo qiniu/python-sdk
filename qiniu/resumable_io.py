@@ -173,14 +173,17 @@ def mkfile(client, key, fsize, extra):
     url = ["http://%s/mkfile/%s" % (conf.UP_HOST, fsize)]
 
     if extra.mimetype:
-        url.append("mimeType/%s" % urlsafe_b64encode(extra.mimetype))
+        url.append("mimeType/%s" %
+                   urlsafe_b64encode(extra.mimetype.encode()).decode())
 
     if key is not None:
-        url.append("key/%s" % urlsafe_b64encode(key))
+        url.append("key/%s" %
+                   urlsafe_b64encode(key.encode()).decode())
 
     if extra.params:
-        for k, v in extra.params.iteritems():
-            url.append("%s/%s" % (k, urlsafe_b64encode(v)))
+        for k, v in extra.params.items():
+            url.append("%s/%s" %
+                       (k, urlsafe_b64encode(v.encode()).decode()))
 
     url = "/".join(url)
     body = ",".join([i["ctx"] for i in extra.progresses])
