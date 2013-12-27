@@ -3,7 +3,7 @@ import os
 import unittest
 import string
 import random
-import urllib
+from urllib.request import urlopen
 try:
     import zlib as binascii
 except ImportError:
@@ -61,7 +61,7 @@ class TestUp(unittest.TestCase):
             key = 'a\\b\\c"你好' + r(9)
             ret, err = io.put(policy.token(), key, data)
             assert err is None
-            assert ret['key'].encode('utf8') == key
+            assert ret['key'] == key
 
             data = r(100)
             key = u'a\\b\\c"你好' + r(9)
@@ -79,7 +79,7 @@ class TestUp(unittest.TestCase):
         def test_put_unicode2():
             key = "test_%s" % r(9) + '你好'
             data = key
-            data = data.decode('utf8')
+            data = data
             ret, err = io.put(policy.token(), key, data)
             assert err is None
             assert ret[u'key'].endswith(u'你好')
@@ -87,7 +87,7 @@ class TestUp(unittest.TestCase):
         def test_put_unicode3():
             key = "test_%s" % r(9) + '你好'
             data = key
-            key = key.decode('utf8')
+            key = key
             ret, err = io.put(policy.token(), key, data)
             assert err is None
             assert ret[u'key'].endswith(u'你好')
@@ -95,8 +95,8 @@ class TestUp(unittest.TestCase):
         def test_put_unicode4():
             key = "test_%s" % r(9) + '你好'
             data = key
-            key = key.decode('utf8')
-            data = data.decode('utf8')
+            key = key
+            data = data
             ret, err = io.put(policy.token(), key, data)
             assert err is None
             assert ret[u'key'].endswith(u'你好')
@@ -110,7 +110,7 @@ class TestUp(unittest.TestCase):
 
         def test_put_urlopen():
             key = "test_%s" % r(9)
-            data = urllib.urlopen('http://cheneya.qiniudn.com/hello_jpg')
+            data = urlopen('http://cheneya.qiniudn.com/hello_jpg')
             ret, err = io.put(policy.token(), key, data)
             assert err is None
             assert ret['key'] == key
@@ -133,8 +133,9 @@ class TestUp(unittest.TestCase):
             data = test_reader()
 
             extra.check_crc = 2
-            extra.crc32 = binascii.crc32('abc') & 0xFFFFFFFF
+            extra.crc32 = binascii.crc32(b'abc') & 0xFFFFFFFF
             ret, err = io.put(policy.token(), key, data, extra)
+            print(ret, err)
             assert err is None
             assert ret['key'] == key
 

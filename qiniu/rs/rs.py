@@ -76,20 +76,20 @@ class EntryPathPair:
 
 
 def uri_stat(bucket, key):
-    return "/stat/%s" % urlsafe_b64encode(("%s:%s" % (bucket, key)).encode())
+    return "/stat/%s" % urlsafe_b64encode(("%s:%s" % (bucket, key)).encode()).decode()
 
 
 def uri_delete(bucket, key):
-    return "/delete/%s" % urlsafe_b64encode(("%s:%s" % (bucket, key)).encode())
+    return "/delete/%s" % urlsafe_b64encode(("%s:%s" % (bucket, key)).encode()).decode()
 
 
 def uri_move(bucket_src, key_src, bucket_dest, key_dest):
-    src = urlsafe_b64encode(("%s:%s" % (bucket_src, key_src)).encode())
-    dest = urlsafe_b64encode(("%s:%s" % (bucket_dest, key_dest)).encode())
+    src = urlsafe_b64encode(("%s:%s" % (bucket_src, key_src)).encode()).decode()
+    dest = urlsafe_b64encode(("%s:%s" % (bucket_dest, key_dest)).encode()).decode()
     return "/move/%s/%s" % (src, dest)
 
 
 def uri_copy(bucket_src, key_src, bucket_dest, key_dest):
-    src = urlsafe_b64encode(("%s:%s" % (bucket_src, key_src)).encode())
-    dest = urlsafe_b64encode(("%s:%s" % (bucket_dest, key_dest)).encode())
+    src = urlsafe_b64encode(("%s:%s" % (bucket_src, key_src)).encode()).decode()
+    dest = urlsafe_b64encode(("%s:%s" % (bucket_dest, key_dest)).encode()).decode()
     return "/copy/%s/%s" % (src, dest)

@@ -6,6 +6,7 @@ from io import StringIO
 from . import conf
 # from . import httplib_chunk as httplib
 from http import client as httplib
+from http.client import HTTPResponse
 
 
 class Client(object):
@@ -154,7 +155,10 @@ class MultiReader(object):
         for r in readers:
             if hasattr(r, 'read'):
                 if self.valid_content_length:
-                    length = self._get_content_length(r)
+                    if isinstance(r, HTTPResponse):
+                        length = r.length
+                    else:
+                        length = self._get_content_length(r)
                     if length is not None:
                         self.content_length += length
                     else:
@@ -162,7 +166,7 @@ class MultiReader(object):
             else:
                 buf = r
                 r = StringIO(buf)
-                self.content_length += len(buf)
+                self.content_length += len(buf.encode())
             self.readers.append(r)
 
     # don't name it __len__, because the length of MultiReader is not alway
