@@ -4,8 +4,8 @@ import json
 from io import StringIO
 
 from . import conf
-# from . import httplib_chunk as httplib
-from http import client as httplib
+from . import httplib_chunk as httplib
+# from http import client as httplib
 from http.client import HTTPResponse
 
 
