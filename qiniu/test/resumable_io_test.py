@@ -79,7 +79,7 @@ class TestBlock(unittest.TestCase):
 		rs.Client().delete(bucket, key)
 
 	def test_streaming_put(self):
-		src = '!' * 1024 * 1024 * 1  # 1Mb of BANG!
+		src = '!' * 1024 * 100  # 100Kb of BANG!
 		test_io = cStringIO.StringIO(src)
 
 		policy = rs.PutPolicy(bucket)
@@ -98,7 +98,7 @@ class TestBlock(unittest.TestCase):
 		assert err is None, err
 		self.assertEqual(
 			ret["hash"],
-			"lvSN2clB6Ps2xmoVrnHXW-GgudhL",
+			"FnaNkpjNfrYmbuU7LU_PX2YBVrTk",
 			"hash not match"
 		)
 		rs.Client().delete(bucket, key)
