@@ -79,7 +79,7 @@ class TestBlock(unittest.TestCase):
 		rs.Client().delete(bucket, key)
 
 	def test_streaming_put(self):
-		src = '!' * 1024 * 1024 * 5  # 5Mb of BANG!
+		src = '!' * 1024 * 1024 * 1  # 1Mb of BANG!
 		test_io = cStringIO.StringIO(src)
 
 		policy = rs.PutPolicy(bucket)
