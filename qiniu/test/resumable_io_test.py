@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import unittest
+import cStringIO
 import string
 import random
 import platform
@@ -75,6 +76,31 @@ class TestBlock(unittest.TestCase):
 
 		assert err is None, err
 		self.assertEqual(ret["hash"], "FnyTMUqPNRTdk1Wou7oLqDHkBm_p", "hash not match")
+		rs.Client().delete(bucket, key)
+
+	def test_streaming_put(self):
+		src = '!' * 1024 * 1024 * 5  # 5Mb of BANG!
+		test_io = cStringIO.StringIO(src)
+
+		policy = rs.PutPolicy(bucket)
+		extra = resumable_io.PutExtra(bucket)
+		extra.bucket = bucket
+		extra.params = {"x:foo": "test"}
+		key = "sdk_py_resumable_block_5_%s" % r(9)
+		ret, err = resumable_io.streaming_put(
+			policy.token(),
+			key,
+			test_io,
+			extra
+		)
+		assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
+
+		assert err is None, err
+		self.assertEqual(
+			ret["hash"],
+			"lvSN2clB6Ps2xmoVrnHXW-GgudhL",
+			"hash not match"
+		)
 		rs.Client().delete(bucket, key)
 
 
