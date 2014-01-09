@@ -91,6 +91,8 @@ def put(uptoken, key, f, fsize, extra):
 			read_length = fsize - i*_block_size
 		data_slice = f.read(read_length)
 		while True:
+			if isinstance(data_slice, unicode):
+				data_slice = data_slice.encode('utf8')
 			err = resumable_block_put(data_slice, i, extra, uptoken)
 			if err is None:
 				break
