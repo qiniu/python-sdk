@@ -77,8 +77,8 @@ class PutPolicy(object):
 
 class GetPolicy(object):
 	expires = 3600
-	def __init__(self):
-		pass
+	def __init__(self, expires=3600):
+		self.expires = expires
 
 	def make_request(self, base_url, mac=None):
 		'''
