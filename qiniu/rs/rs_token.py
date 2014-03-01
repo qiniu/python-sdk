@@ -105,4 +105,4 @@ def make_base_url(domain, key):
 	 * return base_url
 	'''
 	key = rpc.encode_unicode(key)
-	return 'http://%s/%s' % (domain, urllib.quote(key))
+	return 'http://%s/%s' % (domain, urllib.quote(key, safe=''))
