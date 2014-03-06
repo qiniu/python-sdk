@@ -4,6 +4,23 @@ from base64 import urlsafe_b64encode
 from ..auth import digest
 from .. import conf
 
+_uri_op = lambda bucket, key: urlsafe_b64encode("%s:%s" % (bucket, key))
+
+def uri_stat(bucket, key):
+	return "/stat/%s" % _uri_op(bucket, key)
+
+def uri_delete(bucket, key):
+	return "/delete/%s" % _uri_op(bucket, key)
+
+def uri_move(bucket_src, key_src, bucket_dest, key_dest):
+	return "/move/%s/%s" % (_uri_op(bucket_src, key_src),
+                                _uri_op(bucket_dest, key_dest))
+
+def uri_copy(bucket_src, key_src, bucket_dest, key_dest):
+        return "/copy/%s/%s" % (_uri_op(bucket_src, key_src),
+                                _uri_op(bucket_dest, key_dest))
+
+
 class Client(object):
 	conn = None
 	def __init__(self, mac=None):
@@ -26,31 +43,24 @@ class Client(object):
 	def batch(self, ops):
 		return self.conn.call_with_form("/batch", dict(op=ops))
 
-	def batch_stat(self, entries):
+	def batch_stat(self, entries, batch_type=uri_stat):
 		ops = []
 		for entry in entries:
-			ops.append(uri_stat(entry.bucket, entry.key))
+			ops.append(batch_type(entry.bucket, entry.key))
 		return self.batch(ops)
 
 	def batch_delete(self, entries):
-		ops = []
-		for entry in entries:
-			ops.append(uri_delete(entry.bucket, entry.key))
-		return self.batch(ops)
+		return self.batch_stat(entries, uri_delete)
 
-	def batch_move(self, entries):
+	def batch_move(self, entries, batch_type=uri_move):
 		ops = []
 		for entry in entries:
-			ops.append(uri_move(entry.src.bucket, entry.src.key, 
+			ops.append(batch_type(entry.src.bucket, entry.src.key, 
 				entry.dest.bucket, entry.dest.key))
 		return self.batch(ops)
 
 	def batch_copy(self, entries):
-		ops = []
-		for entry in entries:
-			ops.append(uri_copy(entry.src.bucket, entry.src.key, 
-				entry.dest.bucket, entry.dest.key))
-		return self.batch(ops)
+		return self.batch_move(entries, uri_copy)
 
 class EntryPath(object):
 	bucket = None
@@ -65,19 +75,3 @@ class EntryPathPair:
 	def __init__(self, src, dest):
 		self.src = src
 		self.dest = dest
-
-def uri_stat(bucket, key):
-	return "/stat/%s" % urlsafe_b64encode("%s:%s" % (bucket, key))
-
-def uri_delete(bucket, key):
-	return "/delete/%s" % urlsafe_b64encode("%s:%s" % (bucket, key))
-
-def uri_move(bucket_src, key_src, bucket_dest, key_dest):
-	src = urlsafe_b64encode("%s:%s" % (bucket_src, key_src))
-	dest = urlsafe_b64encode("%s:%s" % (bucket_dest, key_dest))
-	return "/move/%s/%s" % (src, dest)
-
-def uri_copy(bucket_src, key_src, bucket_dest, key_dest):
-	src = urlsafe_b64encode("%s:%s" % (bucket_src, key_src))
-	dest = urlsafe_b64encode("%s:%s" % (bucket_dest, key_dest))
-	return "/copy/%s/%s" % (src, dest)
