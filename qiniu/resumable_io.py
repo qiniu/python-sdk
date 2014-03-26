@@ -91,6 +91,8 @@ def put(uptoken, key, f, fsize, extra):
 			read_length = fsize - i*_block_size
 		data_slice = f.read(read_length)
 		while True:
+			if isinstance(data_slice, unicode):
+				data_slice = data_slice.encode('utf8')
 			err = resumable_block_put(data_slice, i, extra, uptoken)
 			if err is None:
 				break
@@ -103,12 +105,45 @@ def put(uptoken, key, f, fsize, extra):
 	mkfile_client = auth.up.Client(uptoken, extra.progresses[-1]["host"])
 	return mkfile(mkfile_client, key, fsize, extra)
 
+def streaming_put(uptoken, key, f, extra):
+	""" [真] 上传二进制流, 通过将data "切片" 分段上传 """
+	if not isinstance(extra, PutExtra):
+		raise ValueError("extra must the instance of PutExtra")
+
+	extra.progresses = extra.progresses or []
+	extra.try_times = extra.try_times or _try_times
+	extra.chunk_size = extra.chunk_size or _chunk_size
+
+	data_slice = f.read(_block_size)
+	i = 0
+	fsize = 0
+
+	while data_slice:
+		for __ in range(extra.try_times):
+			err = resumable_block_put(data_slice, i, extra, uptoken)
+			if err is None:
+				break
+			print(err, ".. retry")
+		else:
+			return None, err_put_failed
+
+		fsize += len(data_slice)
+		i += 1
+		data_slice = f.read(_block_size)
+
+	mkfile_client = auth.up.Client(uptoken, extra.progresses[-1]["host"])
+	return mkfile(mkfile_client, key, fsize, extra)
+
 # ----------------------------------------------------------
 
 def resumable_block_put(block, index, extra, uptoken):
 	block_size = len(block)
 
 	mkblk_client = auth.up.Client(uptoken, conf.UP_HOST)
+
+	if len(extra.progresses) == index:
+		extra.progresses.append(None)
+
 	if extra.progresses[index] is None or "ctx" not in extra.progresses[index]:
 		end_pos = extra.chunk_size-1
 		if block_size < extra.chunk_size:
