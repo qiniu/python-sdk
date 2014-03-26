@@ -14,6 +14,7 @@ _task_queue_size = _workers * 4
 _chunk_size = 256 * 1024
 _try_times = 3
 _block_size = 4 * 1024 * 1024
+_block_mask = _block_size - 1
 
 class Error(Exception):
 	value = None
@@ -141,7 +142,7 @@ def resumable_block_put(block, index, extra, uptoken):
 
 def block_count(size):
 	global _block_size
-	return size / _block_size + 1
+	return (size + _block_mask) / _block_size
 
 def mkblock(client, block_size, first_chunk):
 	url = "http://%s/mkblk/%s" % (conf.UP_HOST, block_size)
