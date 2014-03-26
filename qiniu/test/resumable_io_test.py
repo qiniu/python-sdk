@@ -78,21 +78,20 @@ class TestBlock(unittest.TestCase):
 		rs.Client().delete(bucket, key)
 
 	def test_put_4m(self):
-		src = urllib.urlopen("http://for-temp.qiniudn.com/FnIVmMd_oaUV3MLDM6F9in4RMz2U")
 		ostype = platform.system()
 		if ostype.lower().find("windows") != -1:
 			tmpf = "".join([os.getcwd(), os.tmpnam()])
 		else:
 			tmpf = os.tmpnam()
 		dst = open(tmpf, 'wb')
-		shutil.copyfileobj(src, dst)
-		src.close()
+		dst.write("abcd" * 1024 * 1024)
+		dst.flush()
 
 		policy = rs.PutPolicy(bucket)
 		extra = resumable_io.PutExtra(bucket)
 		extra.bucket = bucket
 		extra.params = {"x:foo": "test"}
-		key = "sdk_py_resumable_block_4m_%s" % r(9)
+		key = "sdk_py_resumable_block_6_%s" % r(9)
 		localfile = dst.name
 		ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
 		assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
