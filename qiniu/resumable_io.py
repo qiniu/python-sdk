@@ -14,6 +14,7 @@ _task_queue_size = _workers * 4
 _chunk_size = 256 * 1024
 _try_times = 3
 _block_size = 4 * 1024 * 1024
+_block_mask = _block_size - 1
 
 class Error(Exception):
 	value = None
@@ -84,7 +85,6 @@ def put(uptoken, key, f, fsize, extra):
 	if extra.chunk_size is None:
 		extra.chunk_size = _chunk_size
 
-	client = auth.up.Client(uptoken)
 	for i in xrange(0, block_cnt):
 		try_time = extra.try_times
 		read_length = _block_size
@@ -92,7 +92,7 @@ def put(uptoken, key, f, fsize, extra):
 			read_length = fsize - i*_block_size
 		data_slice = f.read(read_length)
 		while True:
-			err = resumable_block_put(client, data_slice, i, extra)
+			err = resumable_block_put(data_slice, i, extra, uptoken)
 			if err is None:
 				break
 
@@ -101,13 +101,15 @@ def put(uptoken, key, f, fsize, extra):
 				return None, err_put_failed
 			print err, ".. retry"
 
-	return mkfile(client, key, fsize, extra)
+	mkfile_client = auth.up.Client(uptoken, extra.progresses[-1]["host"])
+	return mkfile(mkfile_client, key, fsize, extra)
 
 # ----------------------------------------------------------
 
-def resumable_block_put(client, block, index, extra):
+def resumable_block_put(block, index, extra, uptoken):
 	block_size = len(block)
 
+	mkblk_client = auth.up.Client(uptoken, conf.UP_HOST)
 	if extra.progresses[index] is None or "ctx" not in extra.progresses[index]:
 		end_pos = extra.chunk_size-1
 		if block_size < extra.chunk_size:
@@ -115,7 +117,7 @@ def resumable_block_put(client, block, index, extra):
 		chunk = block[: end_pos]
 		crc32 = gen_crc32(chunk)
 		chunk = bytearray(chunk)
-		extra.progresses[index], err = mkblock(client, block_size, chunk)
+		extra.progresses[index], err = mkblock(mkblk_client, block_size, chunk)
 		if not extra.progresses[index]["crc32"] == crc32:
 			return err_unmatched_checksum
 		if err is not None:
@@ -123,12 +125,14 @@ def resumable_block_put(client, block, index, extra):
 			return err
 		extra.notify(index, end_pos + 1, extra.progresses[index])
 
+	bput_client = auth.up.Client(uptoken, extra.progresses[index]["host"])
 	while extra.progresses[index]["offset"] < block_size:
 		offset = extra.progresses[index]["offset"]
 		chunk = block[offset: offset+extra.chunk_size-1]
 		crc32 = gen_crc32(chunk)
 		chunk = bytearray(chunk)
-		extra.progresses[index], err = putblock(client, extra.progresses[index], chunk)
+
+		extra.progresses[index], err = putblock(bput_client, extra.progresses[index], chunk)
 		if not extra.progresses[index]["crc32"] == crc32:
 			return err_unmatched_checksum
 		if err is not None:
@@ -138,7 +142,7 @@ def resumable_block_put(client, block, index, extra):
 
 def block_count(size):
 	global _block_size
-	return size / _block_size + 1
+	return (size + _block_mask) / _block_size
 
 def mkblock(client, block_size, first_chunk):
 	url = "http://%s/mkblk/%s" % (conf.UP_HOST, block_size)

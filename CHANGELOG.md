@@ -1,5 +1,15 @@
 ## CHANGE LOG
 
+### v6.1.4
+
+2013-10-24 issue [#95](https://github.com/qiniu/python-sdk/pull/95)
+
+- [#78] 增加 putpolicy 选项:saveKey,insertOnly,detectMime,fsizeLimit,persistentNotifyUrl,persistentOps
+- [#80] 增加 gettoken 过期时间参数，增加 rsf 返回为空的EOF判断
+- [#86] 修正 断点续传的bug
+- [#93] 修正 4M 分块计算bug
+- [#96] 修正 mime_type typo
+
 ### v6.1.3
 
 2013-10-24 issue [#77](https://github.com/qiniu/python-sdk/pull/77)
