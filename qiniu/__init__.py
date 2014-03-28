@@ -7,4 +7,4 @@ For detailed document, please see:
 '''
 
 # -*- coding: utf-8 -*-
-__version__ = '6.1.3'
+__version__ = '6.1.4'
