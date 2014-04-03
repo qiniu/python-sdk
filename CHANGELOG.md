@@ -4,7 +4,7 @@
 
 2014-03-28 issue [#95](https://github.com/qiniu/python-sdk/pull/95)
 
-- #78 增加 putpolicy 选项:saveKey,insertOnly,detectMime,fsizeLimit,persistentNotifyUrl,persistentOps
+- [#78] 增加 putpolicy 选项:saveKey,insertOnly,detectMime,fsizeLimit,persistentNotifyUrl,persistentOps
 - [#80] 增加 gettoken 过期时间参数，增加 rsf 返回为空的EOF判断
 - [#86] 修正 断点续传的bug
 - [#93] 修正 4M 分块计算bug
