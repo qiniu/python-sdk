@@ -23,6 +23,9 @@ class Client(object):
 	def copy(self, bucket_src, key_src, bucket_dest, key_dest):
 		return self.conn.call(uri_copy(bucket_src, key_src, bucket_dest, key_dest))
 
+	def fetch(self, bucket_src,key_dest,from_url):
+		return self.conn.call(uri_fetch(bucket_src, key_dest, from_url))
+
 	def batch(self, ops):
 		return self.conn.call_with_form("/batch", dict(op=ops))
 
@@ -51,6 +54,13 @@ class Client(object):
 			ops.append(uri_copy(entry.src.bucket, entry.src.key, 
 				entry.dest.bucket, entry.dest.key))
 		return self.batch(ops)
+
+	def batch_fetch(self, entries):
+		ops = []
+		for entry in entries:
+			ops.append(uri_fetch(entry.src.bucket, entry.src.key, entry.src.from_url))
+		return self.batch(ops)
+
 
 class EntryPath(object):
 	bucket = None
@@ -81,3 +91,8 @@ def uri_copy(bucket_src, key_src, bucket_dest, key_dest):
 	src = urlsafe_b64encode("%s:%s" % (bucket_src, key_src))
 	dest = urlsafe_b64encode("%s:%s" % (bucket_dest, key_dest))
 	return "/copy/%s/%s" % (src, dest)
+
+def uri_fetch(bucket_src, key_dest, from_url):
+	src = urlsafe_b64encode(from_url)
+	dest = urlsafe_b64encode("%s:%s" % (bucket_src, key_dest))
+	return "/fetch/%s/to/%s" % (src, dest)
