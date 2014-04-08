@@ -16,7 +16,7 @@ encoded_entry = b64e(entry)
 
 
 api_host = "iovip.qbox.me"
-api_path = "/prefetch/%s" % (encoded_entry,)
+api_path = "/prefetch/%s" % (encoded_entry)
 
 mac = digest.Mac(access=access_key, secret=secret_key)
 client = digest.Client(host=api_host, mac=mac)

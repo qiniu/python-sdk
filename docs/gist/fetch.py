@@ -8,14 +8,13 @@ from qiniu.auth import digest
 access_key = ""
 secret_key = ""
 
-target_url = ""
+src_url = ""
 dest_bucket = ""
 dest_key = ""
 
-encoded_url = b64e(target_url)
+encoded_url = b64e(src_url)
 dest_entry = "%s:%s" % (dest_bucket, dest_key)
 encoded_entry = b64e(dest_entry)
-
 
 api_host = "iovip.qbox.me"
 api_path = "/fetch/%s/to/%s" % (encoded_url, encoded_entry)
