@@ -1,5 +1,11 @@
 ## CHANGE LOG
 
+### v6.1.5
+
+2014-04-08 issue [#98](https://github.com/qiniu/python-sdk/pull/98)
+
+- [#98] 增加fetch、prefetch、pfop三个接口的范例代码
+
 ### v6.1.4
 
 2014-03-28 issue [#95](https://github.com/qiniu/python-sdk/pull/95)
