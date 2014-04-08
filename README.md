@@ -15,9 +15,9 @@ Qiniu Resource Storage SDK for Python
 
 * 直接安装:
 
-    pip install qiniu
-    #或
-    easy_install qiniu
+    pip install qiniu  
+    或  
+    easy_install qiniu  
 
 Python-SDK可以使用`pip`或`easy_install`从PyPI服务器上安装，但不包括文档和样例。如果需要，请下载源码并安装。
 
