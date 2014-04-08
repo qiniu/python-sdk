@@ -11,6 +11,6 @@ before_script:
   - export QINIU_TEST_DOMAIN="pysdk.qiniudn.com"
   - export PYTHONPATH="$PYTHONPATH:."
 script:
-  - python setup.py nosetests
+  - python setup.py test
   - python docs/gist/demo.py
   - python docs/gist/conf.py
