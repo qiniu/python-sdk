@@ -5,11 +5,12 @@ import string
 import random
 import platform
 try:
-    import zlib as binascii
+    import zlib
+    binascii = zlib
 except ImportError:
+    zlib = None
     import binascii
 import urllib
-import tempfile
 import shutil
 
 from qiniu import conf
@@ -24,7 +25,7 @@ conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
 
 def r(length):
     lib = string.ascii_uppercase
-    return ''.join([random.choice(lib) for i in range(0, length)])
+    return ''.join([random.choice(lib) for _ in range(0, length)])
 
 
 class TestBlock(unittest.TestCase):
@@ -34,7 +35,7 @@ class TestBlock(unittest.TestCase):
         uptoken = policy.token()
         client = up.Client(uptoken)
 
-        rets = [0, 0]
+        # rets = [0, 0]
         data_slice_2 = "\nbye!"
         ret, err = resumable_io.mkblock(
             client, len(data_slice_2), data_slice_2)

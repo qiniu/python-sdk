@@ -9,7 +9,6 @@ import hmac
 import urllib
 
 from qiniu import conf
-from qiniu import rpc
 from qiniu import rs
 
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")

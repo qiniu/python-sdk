@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-from base64 import urlsafe_b64encode
 import rpc
 import conf
 import random
 import string
 try:
-    import zlib as binascii
+    import zlib
+    binascii = zlib
 except ImportError:
+    zlib = None
     import binascii
 
 

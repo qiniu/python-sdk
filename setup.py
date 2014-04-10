@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 
 try:
-    from setuptools import setup
+    import setuptools
+    setup = setuptools.setup
 except ImportError:
+    setuptools = None
     from distutils.core import setup
 
 PACKAGE = 'qiniu'
@@ -11,8 +13,8 @@ NAME = 'qiniu'
 DESCRIPTION = 'Qiniu Resource Storage SDK for Python 2.X.'
 LONG_DESCRIPTION = 'see:\nhttps://github.com/qiniu/python-sdk\n'
 AUTHOR = 'Shanghai Qiniu Information Technologies Co., Ltd.'
-AUTHOR_EMAIL = 'support@qiniu.com'
-MAINTAINER_EMAIL = 'fengliyuan@qiniu.com'
+AUTHOR_EMAIL = 'sdk@qiniu.com'
+MAINTAINER_EMAIL = 'support@qiniu.com'
 URL = 'https://github.com/qiniu/python-sdk'
 VERSION = __import__(PACKAGE).__version__
 

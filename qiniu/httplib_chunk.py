@@ -10,7 +10,6 @@ Modified from standard httplib
 import httplib
 from httplib import _CS_REQ_STARTED, _CS_REQ_SENT, CannotSendHeader, NotConnected
 import string
-import os
 from array import array
 
 
@@ -56,6 +55,7 @@ class HTTPConnection(httplib.HTTPConnection):
             # Don't send a length if this failed
             if self.debuglevel > 0:
                 print "Cannot stat!!"
+                print te
 
         if thelen is not None:
             self.putheader('Content-Length', thelen)
