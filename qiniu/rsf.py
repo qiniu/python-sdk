@@ -24,7 +24,7 @@ class Client(object):
 
         1. 首次请求 marker = None
         2. 无论 err 值如何，均应该先看 ret.get('items') 是否有内容
-        3. 如果后续没有更多数据，err 返回 EOF，markerOut 返回 None（但不通过该特征来判断是否结束） 
+        3. 如果后续没有更多数据，err 返回 EOF，markerOut 返回 None（但不通过该特征来判断是否结束）
         '''
         ops = {
             'bucket': bucket,
