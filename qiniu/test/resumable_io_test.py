@@ -35,7 +35,7 @@ class TestBlock(unittest.TestCase):
         uptoken = policy.token()
         client = up.Client(uptoken)
 
-        #rets = [0, 0]
+        # rets = [0, 0]
         data_slice_2 = "\nbye!"
         ret, err = resumable_io.mkblock(
             client, len(data_slice_2), data_slice_2)
