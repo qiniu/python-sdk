@@ -5,7 +5,7 @@ python:
 install:
   - "pip install coverage --use-mirrors"
   - "pip install pep8 --use-mirrors"
-  - "pip install pyflakes"
+  - "pip install pyflakes --use-mirrors"
 before_script:
   - "pep8 --max-line-length=160 ."
   - "pyflakes ."
