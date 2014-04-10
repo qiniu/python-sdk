@@ -1,4 +1,4 @@
-#coding=utf-8
+# coding=utf-8
 import os
 try:
     import zlib as binascii
@@ -91,8 +91,8 @@ def put(uptoken, key, f, fsize, extra):
     for i in xrange(block_cnt):
         try_time = extra.try_times
         read_length = _block_size
-        if (i+1)*_block_size > fsize:
-            read_length = fsize - i*_block_size
+        if (i + 1) * _block_size > fsize:
+            read_length = fsize - i * _block_size
         data_slice = f.read(read_length)
         while True:
             err = resumable_block_put(data_slice, i, extra, uptoken)
@@ -137,7 +137,8 @@ def mkblock(client, block_size, first_chunk):
 
 
 def putblock(client, block_ret, chunk):
-    url = "%s/bput/%s/%s" % (block_ret["host"], block_ret["ctx"], block_ret["offset"])
+    url = "%s/bput/%s/%s" % (block_ret["host"],
+                             block_ret["ctx"], block_ret["offset"])
     content_type = "application/octet-stream"
     return client.call_with(url, chunk, content_type, len(chunk))
 
