@@ -1,8 +1,10 @@
 # coding=utf-8
 import os
 try:
-    import zlib as binascii
+    import zlib
+    binascii = zlib
 except ImportError:
+    zlib = None
     import binascii
 from base64 import urlsafe_b64encode
 

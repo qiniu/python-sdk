@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 
 try:
-    from setuptools import setup
+    import setuptools
+    setup = setuptools.setup
 except ImportError:
+    setuptools = None
     from distutils.core import setup
 
 PACKAGE = 'qiniu'

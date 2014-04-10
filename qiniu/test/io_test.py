@@ -5,8 +5,10 @@ import string
 import random
 import urllib
 try:
-    import zlib as binascii
+    import zlib
+    binascii = zlib
 except ImportError:
+    zlib = None
     import binascii
 import cStringIO
 
@@ -34,7 +36,7 @@ class TestUp(unittest.TestCase):
     def test(self):
         def test_put():
             key = "test_%s" % r(9)
-            params = "op=3"
+            #params = "op=3"
             data = "hello bubby!"
             extra.check_crc = 2
             extra.crc32 = binascii.crc32(data) & 0xFFFFFFFF
