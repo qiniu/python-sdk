@@ -21,6 +21,8 @@ from qiniu import rs
 bucket = os.getenv("QINIU_TEST_BUCKET")
 conf.ACCESS_KEY = os.getenv("QINIU_ACCESS_KEY")
 conf.SECRET_KEY = os.getenv("QINIU_SECRET_KEY")
+test_env = os.getenv("QINIU_TEST_ENV")
+is_travis = test_env == "travis"
 
 
 def r(length):
@@ -31,6 +33,8 @@ def r(length):
 class TestBlock(unittest.TestCase):
 
     def test_block(self):
+        if is_travis:
+            return
         policy = rs.PutPolicy(bucket)
         uptoken = policy.token()
         client = up.Client(uptoken)
@@ -57,6 +61,8 @@ class TestBlock(unittest.TestCase):
         rs.Client().delete(bucket, key)
 
     def test_put(self):
+        if is_travis:
+            return
         src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
         ostype = platform.system()
         if ostype.lower().find("windows") != -1:
@@ -84,6 +90,8 @@ class TestBlock(unittest.TestCase):
         rs.Client().delete(bucket, key)
 
     def test_put_4m(self):
+        if is_travis:
+            return
         ostype = platform.system()
         if ostype.lower().find("windows") != -1:
             tmpf = "".join([os.getcwd(), os.tmpnam()])
@@ -111,4 +119,5 @@ class TestBlock(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    if not is_travis:
+        unittest.main()

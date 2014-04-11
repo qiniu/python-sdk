@@ -13,6 +13,7 @@ before_script:
   - export QINIU_SECRET_KEY="wenlwkU1AYwNBf7Q9cCoG4VT_GYyrHE9AS_R2u81"
   - export QINIU_TEST_BUCKET="pysdk"
   - export QINIU_TEST_DOMAIN="pysdk.qiniudn.com"
+  - export QINIU_TEST_ENV="travis"
   - export PYTHONPATH="$PYTHONPATH:."
 script:
   - python setup.py nosetests
