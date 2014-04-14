@@ -172,6 +172,12 @@ class TestUp(unittest.TestCase):
         ret, err = io.put(policy.token(), key, data, extra)
         assert err is not None
 
+    def test_put_fail_reqid(self):
+        key = "test_%s" % r(9)
+        data = "hello bubby!"
+        ret, err = io.put("", key, data, extra)
+        assert "reqid" in err
+
 
 class Test_get_file_crc32(unittest.TestCase):
 
