@@ -46,8 +46,6 @@ class Client(object):
             detail = resp.getheader("x-log", None)
             if reqid is not None:
                 err_msg += ", reqid:%s" % reqid
-            if detail is not None:
-                err_msg += ", detail:%s" % detail
 
             return None, err_msg
 
