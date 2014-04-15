@@ -43,7 +43,7 @@ class Client(object):
         if resp.status / 100 != 2:
             err_msg = ret if "error" not in ret else ret["error"]
             reqid = resp.getheader("X-Reqid", None)
-            detail = resp.getheader("x-log", None)
+            # detail = resp.getheader("x-log", None)
             if reqid is not None:
                 err_msg += ", reqid:%s" % reqid
 
