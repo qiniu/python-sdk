@@ -8,4 +8,9 @@ RSF_HOST = "rsf.qbox.me"
 UP_HOST = "up.qiniu.com"
 
 from . import __version__
-USER_AGENT = "qiniu python-sdk v%s" % __version__
+import platform
+
+sys_info = "%s/%s" % (platform.system(), platform.machine())
+py_ver = platform.python_version()
+
+USER_AGENT = "QiniuPython/%s (%s) Python/%s" % (__version__, sys_info, py_ver)
