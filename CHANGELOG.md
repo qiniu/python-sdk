@@ -1,17 +1,12 @@
 ## CHANGE LOG
 
-### v6.1.6
+### v6.1.5
 
-2014-04-15 issue [#104](https://github.com/qiniu/python-sdk/pull/104)
+2014-04-28 issue [#105](https://github.com/qiniu/python-sdk/pull/105)
 - [#100] 遵循PEP8语法规范
 - [#101] 增加pyflakes语法检测
 - [#103] 错误信息中加入Reqid信息，以便追溯
 - [#104] 完善User-Agent头信息，以便追溯
-
-### v6.1.5
-
-2014-04-08 issue [#98](https://github.com/qiniu/python-sdk/pull/98)
-
 - [#98] 增加fetch、prefetch、pfop三个接口的范例代码
 
 ### v6.1.4
