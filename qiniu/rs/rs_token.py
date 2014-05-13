@@ -65,7 +65,7 @@ class PutPolicy(object):
 
         if self.detectMime is not None:
             token["detectMime"] = self.detectMime
-        
+
         if self.mimeLimit is not None:
             token["mimeLimit"] = self.mimeLimit
 
