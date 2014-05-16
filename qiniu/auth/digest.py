@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-from urlparse import urlparse
+from __future__ import absolute_import
+
+try:
+    from urllib.parse import urlparse
+except:
+    from urlparse import urlparse
+
 import hmac
 from hashlib import sha1
 from base64 import urlsafe_b64encode
@@ -18,14 +24,14 @@ class Mac(object):
         self.access, self.secret = access, secret
 
     def __sign(self, data):
-        hashed = hmac.new(self.secret, data, sha1)
-        return urlsafe_b64encode(hashed.digest())
+        hashed = hmac.new(self.secret.encode(), data.encode(), sha1)
+        return urlsafe_b64encode(hashed.digest()).decode()
 
     def sign(self, data):
         return '%s:%s' % (self.access, self.__sign(data))
 
     def sign_with_data(self, b):
-        data = urlsafe_b64encode(b)
+        data = urlsafe_b64encode(b.encode()).decode()
         return '%s:%s:%s' % (self.access, self.__sign(data), data)
 
     def sign_request(self, path, body, content_type):

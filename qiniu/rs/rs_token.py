@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+
+try:
+    from urllib.parse import quote
+except:
+    from urllib import quote
+
 import json
 import time
-import urllib
 
 from ..auth import digest
-from ..import rpc
+from .. import rpc
 
 # @gist PutPolicy
 
@@ -113,4 +119,4 @@ def make_base_url(domain, key):
      * return base_url
     '''
     key = rpc.encode_unicode(key)
-    return 'http://%s/%s' % (domain, urllib.quote(key))
+    return 'http://%s/%s' % (domain, quote(key))

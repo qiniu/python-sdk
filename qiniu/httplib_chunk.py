@@ -6,14 +6,20 @@ Modified from standard httplib
 """
 
 # -*- coding: utf-8 -*-
+from __future__ import print_function
+from __future__ import unicode_literals
 
-import httplib
-from httplib import _CS_REQ_STARTED, _CS_REQ_SENT, CannotSendHeader, NotConnected
-import string
+try:
+    from http import client
+    from http.client import _CS_REQ_STARTED, _CS_REQ_SENT, CannotSendHeader, NotConnected
+except:
+    import httplib as client
+    from httplib import _CS_REQ_STARTED, _CS_REQ_SENT, CannotSendHeader, NotConnected
+
 from array import array
 
 
-class HTTPConnection(httplib.HTTPConnection):
+class HTTPConnection(client.HTTPConnection):
 
     def send(self, data, is_chunked=False):
         """Send `data' to the server."""
@@ -24,19 +30,19 @@ class HTTPConnection(httplib.HTTPConnection):
                 raise NotConnected()
 
         if self.debuglevel > 0:
-            print "send:", repr(data)
+            print("send:", repr(data))
         blocksize = 8192
         if hasattr(data, 'read') and not isinstance(data, array):
             if self.debuglevel > 0:
-                print "sendIng a read()able"
+                print("sendIng a read()able")
             datablock = data.read(blocksize)
             while datablock:
                 if self.debuglevel > 0:
-                    print 'chunked:', is_chunked
+                    print('chunked:', is_chunked)
                 if is_chunked:
                     if self.debuglevel > 0:
-                        print 'send: with trunked data'
-                    lenstr = string.upper(hex(len(datablock))[2:])
+                        print('send: with trunked data')
+                    lenstr = str.upper(hex(len(datablock))[2:])
                     self.sock.sendall('%s\r\n%s\r\n' % (lenstr, datablock))
                 else:
                     self.sock.sendall(datablock)
@@ -51,11 +57,11 @@ class HTTPConnection(httplib.HTTPConnection):
         thelen = None
         try:
             thelen = str(len(body))
-        except (TypeError, AttributeError), te:
+        except (TypeError, AttributeError) as te:
             # Don't send a length if this failed
             if self.debuglevel > 0:
-                print "Cannot stat!!"
-                print te
+                print("Cannot stat!!")
+                print(te)
 
         if thelen is not None:
             self.putheader('Content-Length', thelen)
@@ -80,7 +86,7 @@ class HTTPConnection(httplib.HTTPConnection):
             is_chunked = not self._set_content_length(body)
             if is_chunked:
                 self.putheader('Transfer-Encoding', 'chunked')
-        for hdr, value in headers.iteritems():
+        for hdr, value in headers.items():
             self.putheader(hdr, value)
 
         self.endheaders(body, is_chunked=is_chunked)
@@ -106,8 +112,8 @@ class HTTPConnection(httplib.HTTPConnection):
         Appends an extra \\r\\n to the buffer.
         A message_body may be specified, to be appended to the request.
         """
-        self._buffer.extend(("", ""))
-        msg = "\r\n".join(self._buffer)
+        self._buffer.extend((b"", b""))
+        msg = b"\r\n".join(self._buffer)
         del self._buffer[:]
         # If msg and message_body are sent in a single send() call,
         # it will avoid performance problems caused by the interaction

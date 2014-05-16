@@ -1,8 +1,19 @@
 # -*- coding: utf-8 -*-
-import httplib_chunk as httplib
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
+try:
+    from io import StringIO
+except:
+    try:
+        import cStringIO as StringIO
+    except ImportError:
+        import StringIO
+
 import json
-import cStringIO
-import conf
+
+from . import conf
+from . import httplib_chunk as httplib
 
 
 class Client(object):
@@ -34,8 +45,8 @@ class Client(object):
         resp = self.round_tripper("POST", path, body)
         try:
             ret = resp.read()
-            ret = json.loads(ret)
-        except IOError, e:
+            ret = json.loads(ret.decode())
+        except IOError as e:
             return None, e
         except ValueError:
             pass
@@ -160,10 +171,8 @@ class MultiReader(object):
                         self.valid_content_length = False
             else:
                 buf = r
-                if not isinstance(buf, basestring):
-                    buf = str(buf)
+                r = StringIO(buf)
                 buf = encode_unicode(buf)
-                r = cStringIO.StringIO(buf)
                 self.content_length += len(buf)
             self.readers.append(r)
 
@@ -186,7 +195,7 @@ class MultiReader(object):
 
     def read(self, n=-1):
         if n is None or n == -1:
-            return ''.join([encode_unicode(r.read()) for r in self.readers])
+            data = b''.join([encode_unicode(r.read()) for r in self.readers])
         else:
             L = []
             while len(self.readers) > 0 and n > 0:
@@ -194,12 +203,19 @@ class MultiReader(object):
                 if len(b) == 0:
                     self.readers = self.readers[1:]
                 else:
+                    if isinstance(b, str):
+                        b = b.encode()
                     L.append(encode_unicode(b))
                     n -= len(b)
-            return ''.join(L)
+            data = b''.join(L)
+        return data
 
 
 def encode_unicode(u):
-    if isinstance(u, unicode):
-        u = u.encode('utf8')
+    if conf.PY2:
+        if not isinstance(u, unicode):
+            u = u.decode('utf8')
+    else:
+        if isinstance(u, str):
+            u = u.encode('utf8')
     return u

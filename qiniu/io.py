@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
-import rpc
-import conf
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
+from . import rpc
+from . import conf
+
 import random
 import string
 try:
@@ -52,6 +56,7 @@ def put(uptoken, key, data, extra=None):
     files = [
         {'filename': fname, 'data': data, 'mime_type': extra.mime_type},
     ]
+
     return rpc.Client(conf.UP_HOST).call_with_multipart("/", fields, files)
 
 
