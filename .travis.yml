@@ -1,7 +1,6 @@
 language: python
 python:
-  - "2.6"
-  - "2.7"
+  - "3.3"
 install:
   - "pip install coverage --use-mirrors"
   - "pip install pep8 --use-mirrors"
@@ -15,7 +14,4 @@ before_script:
   - export QINIU_TEST_DOMAIN="pysdk.qiniudn.com"
   - export QINIU_TEST_ENV="travis"
   - export PYTHONPATH="$PYTHONPATH:."
-script:
-  - python setup.py nosetests
-  - python docs/gist/demo.py
-  - python docs/gist/conf.py
+
