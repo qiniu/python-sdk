@@ -12,6 +12,7 @@ except ImportError:
     import binascii
 import urllib
 import shutil
+import StringIO
 
 from qiniu import conf
 from qiniu.auth import up
@@ -80,11 +81,11 @@ class TestBlock(unittest.TestCase):
         key = "sdk_py_resumable_block_5_%s" % r(9)
         localfile = dst.name
         ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
-        assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         dst.close()
         os.remove(tmpf)
 
         assert err is None, err
+        assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         self.assertEqual(
             ret["hash"], "FnyTMUqPNRTdk1Wou7oLqDHkBm_p", "hash not match")
         rs.Client().delete(bucket, key)
@@ -108,13 +109,32 @@ class TestBlock(unittest.TestCase):
         key = "sdk_py_resumable_block_6_%s" % r(9)
         localfile = dst.name
         ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
-        assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         dst.close()
         os.remove(tmpf)
 
         assert err is None, err
+        assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         self.assertEqual(
             ret["hash"], "FnIVmMd_oaUV3MLDM6F9in4RMz2U", "hash not match")
+        rs.Client().delete(bucket, key)
+
+    def test_put_0(self):
+        if is_travis:
+            return
+
+        f = StringIO.StringIO('')
+
+        policy = rs.PutPolicy(bucket)
+        extra = resumable_io.PutExtra(bucket)
+        extra.bucket = bucket
+        extra.params = {"x:foo": "test"}
+        key = "sdk_py_resumable_block_7_%s" % r(9)
+        ret, err = resumable_io.put(policy.token(), key, f, 0, extra)
+
+        assert err is None, err
+        assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
+        self.assertEqual(
+            ret["hash"], "Fg==", "hash not match")
         rs.Client().delete(bucket, key)
 
 
