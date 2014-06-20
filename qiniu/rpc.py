@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-import httplib_chunk as httplib
+
+import httplib
+
+if not getattr(httplib, "_IMPLEMENTATION", False):   # httplib._IMPLEMENTATION is "gae" on GAE
+    import httplib_chunk as httplib
+
 import json
 import cStringIO
 import conf
