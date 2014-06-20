@@ -2,7 +2,7 @@
 
 import httplib
 
-if getattr(httplib, "_IMPLEMENTATION") != "gae":   # httplib._IMPLEMENTATION is "gae" on GAE
+if getattr(httplib, "_IMPLEMENTATION", None) != "gae":   # httplib._IMPLEMENTATION is "gae" on GAE
     import httplib_chunk as httplib
 
 import json
