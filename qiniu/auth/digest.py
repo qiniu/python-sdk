@@ -55,8 +55,8 @@ class Client(rpc.Client):
         super(Client, self).__init__(host)
         self.mac = mac
 
-    def round_tripper(self, method, path, body):
+    def round_tripper(self, method, path, body, header={}):
         token = self.mac.sign_request(
-            path, body, self._header.get("Content-Type"))
-        self.set_header("Authorization", "QBox %s" % token)
-        return super(Client, self).round_tripper(method, path, body)
+            path, body, header.get("Content-Type"))
+        header["Authorization"] = "QBox %s" % token
+        return super(Client, self).round_tripper(method, path, body, header)
