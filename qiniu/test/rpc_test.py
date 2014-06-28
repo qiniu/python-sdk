@@ -6,15 +6,15 @@ from qiniu import rpc
 from qiniu import conf
 
 
-def round_tripper(client, method, path, body):
+def round_tripper(client, method, path, body, header={}):
     pass
 
 
 class ClsTestClient(rpc.Client):
 
-    def round_tripper(self, method, path, body):
-        round_tripper(self, method, path, body)
-        return super(ClsTestClient, self).round_tripper(method, path, body)
+    def round_tripper(self, method, path, body, header={}):
+        round_tripper(self, method, path, body, header)
+        return super(ClsTestClient, self).round_tripper(method, path, body, header)
 
 client = ClsTestClient(conf.RS_HOST)
 
@@ -24,7 +24,7 @@ class TestClient(unittest.TestCase):
     def test_call(self):
         global round_tripper
 
-        def tripper(client, method, path, body):
+        def tripper(client, method, path, body, header={}):
             self.assertEqual(path, "/hello")
             assert body is None
 
@@ -34,7 +34,7 @@ class TestClient(unittest.TestCase):
     def test_call_with(self):
         global round_tripper
 
-        def tripper(client, method, path, body):
+        def tripper(client, method, path, body, header={}):
             self.assertEqual(body, "body")
 
         round_tripper = tripper
@@ -43,16 +43,16 @@ class TestClient(unittest.TestCase):
     def test_call_with_multipart(self):
         global round_tripper
 
-        def tripper(client, method, path, body):
+        def tripper(client, method, path, body, header={}):
             target_type = "multipart/form-data"
             self.assertTrue(
-                client._header["Content-Type"].startswith(target_type))
-            start_index = client._header["Content-Type"].find("boundary")
-            boundary = client._header["Content-Type"][start_index + 9:]
+                header["Content-Type"].startswith(target_type))
+            start_index = header["Content-Type"].find("boundary")
+            boundary = header["Content-Type"][start_index + 9:]
             dispostion = 'Content-Disposition: form-data; name="auth"'
             tpl = "--%s\r\n%s\r\n\r\n%s\r\n--%s--\r\n" % (boundary, dispostion,
                                                           "auth_string", boundary)
-            self.assertEqual(len(tpl), client._header["Content-Length"])
+            self.assertEqual(len(tpl), header["Content-Length"])
             self.assertEqual(len(tpl), body.length())
 
         round_tripper = tripper
@@ -61,14 +61,25 @@ class TestClient(unittest.TestCase):
     def test_call_with_form(self):
         global round_tripper
 
-        def tripper(client, method, path, body):
+        def tripper(client, method, path, body, header={}):
             self.assertEqual(body, "action=a&op=a&op=b")
             target_type = "application/x-www-form-urlencoded"
-            self.assertEqual(client._header["Content-Type"], target_type)
-            self.assertEqual(client._header["Content-Length"], len(body))
+            self.assertEqual(header["Content-Type"], target_type)
+            self.assertEqual(header["Content-Length"], len(body))
 
         round_tripper = tripper
         client.call_with_form("/hello", dict(op=["a", "b"], action="a"))
+
+    def test_call_after_call_with_form(self):
+        # test case for https://github.com/qiniu/python-sdk/issues/112
+        global round_tripper
+
+        def tripper(client, method, path, body, header={}):
+            pass
+
+        round_tripper = tripper
+        client.call_with_form("/hello", dict(op=["a", "b"], action="a"))
+        client.call("/hello")
 
 
 class TestMultiReader(unittest.TestCase):

@@ -13,6 +13,7 @@ except ImportError:
 import urllib
 import shutil
 import StringIO
+from tempfile import mktemp
 
 from qiniu import conf
 from qiniu.auth import up
@@ -67,9 +68,9 @@ class TestBlock(unittest.TestCase):
         src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
         ostype = platform.system()
         if ostype.lower().find("windows") != -1:
-            tmpf = "".join([os.getcwd(), os.tmpnam()])
+            tmpf = "".join([os.getcwd(), mktemp()])
         else:
-            tmpf = os.tmpnam()
+            tmpf = mktemp()
         dst = open(tmpf, 'wb')
         shutil.copyfileobj(src, dst)
         src.close()
@@ -95,9 +96,9 @@ class TestBlock(unittest.TestCase):
             return
         ostype = platform.system()
         if ostype.lower().find("windows") != -1:
-            tmpf = "".join([os.getcwd(), os.tmpnam()])
+            tmpf = "".join([os.getcwd(), mktemp()])
         else:
-            tmpf = os.tmpnam()
+            tmpf = mktemp()
         dst = open(tmpf, 'wb')
         dst.write("abcd" * 1024 * 1024)
         dst.flush()
