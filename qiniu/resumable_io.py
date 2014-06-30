@@ -71,11 +71,14 @@ def put_file(uptoken, key, localfile, extra):
     return ret
 
 
-def put(uptoken, key, f, fsize, extra):
+def put(uptoken, key, f, fsize, extra, host=None):
     """ 上传二进制流, 通过将data "切片" 分段上传 """
     if not isinstance(extra, PutExtra):
         print("extra must the instance of PutExtra")
         return
+
+    if host is None:
+        host = conf.UP_HOST
 
     block_cnt = block_count(fsize)
     if extra.progresses is None:
@@ -97,7 +100,7 @@ def put(uptoken, key, f, fsize, extra):
             read_length = fsize - i * _block_size
         data_slice = f.read(read_length)
         while True:
-            err = resumable_block_put(data_slice, i, extra, uptoken)
+            err = resumable_block_put(data_slice, i, extra, uptoken, host)
             if err is None:
                 break
 
@@ -106,19 +109,19 @@ def put(uptoken, key, f, fsize, extra):
                 return None, err_put_failed
             print err, ".. retry"
 
-    mkfile_host = extra.progresses[-1]["host"] if block_cnt else conf.UP_HOST
+    mkfile_host = extra.progresses[-1]["host"] if block_cnt else host
     mkfile_client = auth_up.Client(uptoken, mkfile_host)
-    return mkfile(mkfile_client, key, fsize, extra)
+    return mkfile(mkfile_client, key, fsize, extra, mkfile_host)
 
 
-def resumable_block_put(block, index, extra, uptoken):
+def resumable_block_put(block, index, extra, uptoken, host):
     block_size = len(block)
 
-    mkblk_client = auth_up.Client(uptoken, conf.UP_HOST)
+    mkblk_client = auth_up.Client(uptoken, host)
     if extra.progresses[index] is None or "ctx" not in extra.progresses[index]:
         crc32 = gen_crc32(block)
         block = bytearray(block)
-        extra.progresses[index], err = mkblock(mkblk_client, block_size, block)
+        extra.progresses[index], err = mkblock(mkblk_client, block_size, block, host)
         if err is not None:
             extra.notify_err(index, block_size, err)
             return err
@@ -133,8 +136,8 @@ def block_count(size):
     return (size + _block_mask) / _block_size
 
 
-def mkblock(client, block_size, first_chunk):
-    url = "http://%s/mkblk/%s" % (conf.UP_HOST, block_size)
+def mkblock(client, block_size, first_chunk, host):
+    url = "http://%s/mkblk/%s" % (host, block_size)
     content_type = "application/octet-stream"
     return client.call_with(url, first_chunk, content_type, len(first_chunk))
 
@@ -146,8 +149,8 @@ def putblock(client, block_ret, chunk):
     return client.call_with(url, chunk, content_type, len(chunk))
 
 
-def mkfile(client, key, fsize, extra):
-    url = ["http://%s/mkfile/%s" % (conf.UP_HOST, fsize)]
+def mkfile(client, key, fsize, extra, host):
+    url = ["http://%s/mkfile/%s" % (host, fsize)]
 
     if extra.mimetype:
         url.append("mimeType/%s" % urlsafe_b64encode(extra.mimetype))
