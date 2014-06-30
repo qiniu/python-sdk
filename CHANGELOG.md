@@ -1,5 +1,13 @@
 ## CHANGE LOG
 
+### v6.1.6
+
+2014-06-30 issue [#118](https://github.com/qiniu/python-sdk/pull/118)
+- [#108] 增加限定用户上传类型字段
+- [#110] 0字节文件上传支持
+- [#114] 支持GAE
+- [#115] 请求完成后清除http header
+
 ### v6.1.5
 
 2014-04-28 issue [#105](https://github.com/qiniu/python-sdk/pull/105)
