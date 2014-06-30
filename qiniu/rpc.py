@@ -31,7 +31,8 @@ class Client(object):
         return _header
 
     def call(self, path):
-        return self.call_with(path, None)
+        ret, err, code = self.call_with(path, None)
+        return ret, err
 
     def call_with(self, path, body, content_type=None, content_length=None):
         ret = None
@@ -59,9 +60,9 @@ class Client(object):
             if reqid is not None:
                 err_msg += ", reqid:%s" % reqid
 
-            return None, err_msg
+            return None, err_msg, resp.status
 
-        return ret, None
+        return ret, None, resp.status
 
     def call_with_multipart(self, path, fields=None, files=None):
         """
@@ -87,7 +88,8 @@ class Client(object):
         body = '&'.join(body)
 
         content_type = "application/x-www-form-urlencoded"
-        return self.call_with(path, body, content_type, len(body))
+        ret, err, code = self.call_with(path, body, content_type, len(body))
+        return ret, err
 
     def set_header(self, field, value):
         self._header[field] = value
