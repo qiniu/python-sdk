@@ -53,7 +53,7 @@ class Client(object):
         except ValueError:
             pass
 
-        if resp.status / 100 != 2:
+        if resp.status >= 400:
             err_msg = ret if "error" not in ret else ret["error"]
             reqid = resp.getheader("X-Reqid", None)
             # detail = resp.getheader("x-log", None)

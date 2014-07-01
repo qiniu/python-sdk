@@ -76,9 +76,12 @@ def put(uptoken, key, f, fsize, extra):
         print("extra must the instance of PutExtra")
         return
     host = conf.UP_HOST
-    ret, err, code = put_with_host(uptoken, key, f, fsize, extra, host)
-    if err is None or code == 571 or code == 614:
-        return ret, err
+    try:
+        ret, err, code = put_with_host(uptoken, key, f, fsize, extra, host)
+        if err is None or code == 571 or code == 614 or code == 301:
+            return ret, err
+    except:
+        pass
 
     ret, err, code = put_with_host(uptoken, key, f, fsize, extra, conf.UP_HOST2)
     return ret, err
@@ -90,7 +93,7 @@ def put_with_host(uptoken, key, f, fsize, extra, host):
         extra.progresses = [None] * block_cnt
     else:
         if not len(extra.progresses) == block_cnt:
-            return None, err_invalid_put_progress
+            return None, err_invalid_put_progress, 0
 
     if extra.try_times is None:
         extra.try_times = _try_times
@@ -111,12 +114,13 @@ def put_with_host(uptoken, key, f, fsize, extra, host):
 
             try_time -= 1
             if try_time <= 0:
-                return None, err_put_failed
+                return None, err_put_failed, 0
             print err, ".. retry"
 
     mkfile_host = extra.progresses[-1]["host"] if block_cnt else host
     mkfile_client = auth_up.Client(uptoken, mkfile_host)
-    return mkfile(mkfile_client, key, fsize, extra, mkfile_host)
+
+    return mkfile(mkfile_client, key, fsize, extra, host)
 
 def resumable_block_put(block, index, extra, uptoken, host):
     block_size = len(block)

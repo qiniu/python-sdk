@@ -58,7 +58,7 @@ class TestBlock(unittest.TestCase):
 
         key = u"sdk_py_resumable_block_4_%s" % r(9)
         ret, err, code = resumable_io.mkfile(client, key, lens, extra, host)
-        assert err is None
+        assert err is None, err
         self.assertEqual(
             ret["hash"], "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")
         rs.Client().delete(bucket, key)
@@ -85,7 +85,7 @@ class TestBlock(unittest.TestCase):
         ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
         dst.close()
         os.remove(tmpf)
-        assert err is None
+        assert err is None, err
         assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         self.assertEqual(
             ret["hash"], "FnyTMUqPNRTdk1Wou7oLqDHkBm_p", "hash not match")
@@ -112,7 +112,6 @@ class TestBlock(unittest.TestCase):
         ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
         dst.close()
         os.remove(tmpf)
-        print err
         assert err is None, err
         assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         self.assertEqual(
