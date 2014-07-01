@@ -36,7 +36,7 @@ class Client(object):
         if prefix is not None:
             ops['prefix'] = prefix
         url = '%s?%s' % ('/list', urllib.urlencode(ops))
-        ret, err = self.conn.call_with(
+        ret, err, code = self.conn.call_with(
             url, body=None, content_type='application/x-www-form-urlencoded')
         if ret and not ret.get('marker'):
             err = EOF

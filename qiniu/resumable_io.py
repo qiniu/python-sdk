@@ -66,9 +66,9 @@ def put_file(uptoken, key, localfile, extra):
     """ 上传文件 """
     f = open(localfile, "rb")
     statinfo = os.stat(localfile)
-    ret = put(uptoken, key, f, statinfo.st_size, extra)
+    ret, err = put(uptoken, key, f, statinfo.st_size, extra)
     f.close()
-    return ret
+    return ret, err
 
 
 def put(uptoken, key, f, fsize, extra):
@@ -76,13 +76,25 @@ def put(uptoken, key, f, fsize, extra):
     if not isinstance(extra, PutExtra):
         print("extra must the instance of PutExtra")
         return
+    host = conf.UP_HOST
+    try:
+        ret, err, code = put_with_host(uptoken, key, f, fsize, extra, host)
+        if err is None or code == 571 or code == 614 or code == 301:
+            return ret, err
+    except:
+        pass
 
+    ret, err, code = put_with_host(uptoken, key, f, fsize, extra, conf.UP_HOST2)
+    return ret, err
+
+
+def put_with_host(uptoken, key, f, fsize, extra, host):
     block_cnt = block_count(fsize)
     if extra.progresses is None:
         extra.progresses = [None] * block_cnt
     else:
         if not len(extra.progresses) == block_cnt:
-            return None, err_invalid_put_progress
+            return None, err_invalid_put_progress, 0
 
     if extra.try_times is None:
         extra.try_times = _try_times
@@ -97,28 +109,29 @@ def put(uptoken, key, f, fsize, extra):
             read_length = fsize - i * _block_size
         data_slice = f.read(read_length)
         while True:
-            err = resumable_block_put(data_slice, i, extra, uptoken)
+            err = resumable_block_put(data_slice, i, extra, uptoken, host)
             if err is None:
                 break
 
             try_time -= 1
             if try_time <= 0:
-                return None, err_put_failed
+                return None, err_put_failed, 0
             print err, ".. retry"
 
-    mkfile_host = extra.progresses[-1]["host"] if block_cnt else conf.UP_HOST
+    mkfile_host = extra.progresses[-1]["host"] if block_cnt else host
     mkfile_client = auth_up.Client(uptoken, mkfile_host)
-    return mkfile(mkfile_client, key, fsize, extra)
+
+    return mkfile(mkfile_client, key, fsize, extra, host)
 
 
-def resumable_block_put(block, index, extra, uptoken):
+def resumable_block_put(block, index, extra, uptoken, host):
     block_size = len(block)
 
-    mkblk_client = auth_up.Client(uptoken, conf.UP_HOST)
+    mkblk_client = auth_up.Client(uptoken, host)
     if extra.progresses[index] is None or "ctx" not in extra.progresses[index]:
         crc32 = gen_crc32(block)
         block = bytearray(block)
-        extra.progresses[index], err = mkblock(mkblk_client, block_size, block)
+        extra.progresses[index], err, code = mkblock(mkblk_client, block_size, block, host)
         if err is not None:
             extra.notify_err(index, block_size, err)
             return err
@@ -133,8 +146,8 @@ def block_count(size):
     return (size + _block_mask) / _block_size
 
 
-def mkblock(client, block_size, first_chunk):
-    url = "http://%s/mkblk/%s" % (conf.UP_HOST, block_size)
+def mkblock(client, block_size, first_chunk, host):
+    url = "http://%s/mkblk/%s" % (host, block_size)
     content_type = "application/octet-stream"
     return client.call_with(url, first_chunk, content_type, len(first_chunk))
 
@@ -146,8 +159,8 @@ def putblock(client, block_ret, chunk):
     return client.call_with(url, chunk, content_type, len(chunk))
 
 
-def mkfile(client, key, fsize, extra):
-    url = ["http://%s/mkfile/%s" % (conf.UP_HOST, fsize)]
+def mkfile(client, key, fsize, extra, host):
+    url = ["http://%s/mkfile/%s" % (host, fsize)]
 
     if extra.mimetype:
         url.append("mimeType/%s" % urlsafe_b64encode(extra.mimetype))

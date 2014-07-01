@@ -37,14 +37,15 @@ class TestBlock(unittest.TestCase):
     def test_block(self):
         if is_travis:
             return
+        host = conf.UP_HOST
         policy = rs.PutPolicy(bucket)
         uptoken = policy.token()
         client = up.Client(uptoken)
 
         # rets = [0, 0]
         data_slice_2 = "\nbye!"
-        ret, err = resumable_io.mkblock(
-            client, len(data_slice_2), data_slice_2)
+        ret, err, code = resumable_io.mkblock(
+            client, len(data_slice_2), data_slice_2, host)
         assert err is None, err
         self.assertEqual(ret["crc32"], binascii.crc32(data_slice_2))
 
@@ -56,7 +57,7 @@ class TestBlock(unittest.TestCase):
             lens += extra.progresses[i]["offset"]
 
         key = u"sdk_py_resumable_block_4_%s" % r(9)
-        ret, err = resumable_io.mkfile(client, key, lens, extra)
+        ret, err, code = resumable_io.mkfile(client, key, lens, extra, host)
         assert err is None, err
         self.assertEqual(
             ret["hash"], "FtCFo0mQugW98uaPYgr54Vb1QsO0", "hash not match")
@@ -65,7 +66,7 @@ class TestBlock(unittest.TestCase):
     def test_put(self):
         if is_travis:
             return
-        src = urllib.urlopen("http://cheneya.qiniudn.com/hello_jpg")
+        src = urllib.urlopen("http://pythonsdk.qiniudn.com/hello.jpg")
         ostype = platform.system()
         if ostype.lower().find("windows") != -1:
             tmpf = "".join([os.getcwd(), mktemp()])
@@ -84,7 +85,6 @@ class TestBlock(unittest.TestCase):
         ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
         dst.close()
         os.remove(tmpf)
-
         assert err is None, err
         assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         self.assertEqual(
@@ -112,7 +112,6 @@ class TestBlock(unittest.TestCase):
         ret, err = resumable_io.put_file(policy.token(), key, localfile, extra)
         dst.close()
         os.remove(tmpf)
-
         assert err is None, err
         assert ret.get("x:foo") == "test", "return data not contains 'x:foo'"
         self.assertEqual(
