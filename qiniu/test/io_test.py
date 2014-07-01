@@ -63,7 +63,6 @@ class TestUp(unittest.TestCase):
             data = r(100)
             key = 'a\\b\\c"你好' + r(9)
             ret, err = io.put(policy.token(), key, data)
-            print err
             assert err is None
             assert ret['key'].encode('utf8') == key
 
