@@ -14,6 +14,6 @@ class Client(rpc.Client):
         self.up_token = up_token
         super(Client, self).__init__(host)
 
-    def round_tripper(self, method, path, body):
-        self.set_header("Authorization", "UpToken %s" % self.up_token)
-        return super(Client, self).round_tripper(method, path, body)
+    def round_tripper(self, method, path, body, header={}):
+        header["Authorization"] = "UpToken %s" % self.up_token
+        return super(Client, self).round_tripper(method, path, body, header)

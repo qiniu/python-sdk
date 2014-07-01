@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-import httplib_chunk as httplib
+
+import httplib
+
+if getattr(httplib, "_IMPLEMENTATION", None) != "gae":
+    # httplib._IMPLEMENTATION is "gae" on GAE
+    import httplib_chunk as httplib
+
 import json
 import cStringIO
 import conf
@@ -13,25 +19,32 @@ class Client(object):
         self._conn = httplib.HTTPConnection(host)
         self._header = {}
 
-    def round_tripper(self, method, path, body):
-        self._conn.request(method, path, body, self._header)
+    def round_tripper(self, method, path, body, header={}):
+        header = self.merged_headers(header)
+        self._conn.request(method, path, body, header)
         resp = self._conn.getresponse()
         return resp
 
+    def merged_headers(self, header):
+        _header = self._header.copy()
+        _header.update(header)
+        return _header
+
     def call(self, path):
-        return self.call_with(path, None)
+        ret, err, code = self.call_with(path, None)
+        return ret, err
 
     def call_with(self, path, body, content_type=None, content_length=None):
         ret = None
 
-        self.set_header("User-Agent", conf.USER_AGENT)
+        header = {"User-Agent": conf.USER_AGENT}
         if content_type is not None:
-            self.set_header("Content-Type", content_type)
+            header["Content-Type"] = content_type
 
         if content_length is not None:
-            self.set_header("Content-Length", content_length)
+            header["Content-Length"] = content_length
 
-        resp = self.round_tripper("POST", path, body)
+        resp = self.round_tripper("POST", path, body, header)
         try:
             ret = resp.read()
             ret = json.loads(ret)
@@ -40,16 +53,16 @@ class Client(object):
         except ValueError:
             pass
 
-        if resp.status / 100 != 2:
+        if resp.status >= 400:
             err_msg = ret if "error" not in ret else ret["error"]
             reqid = resp.getheader("X-Reqid", None)
             # detail = resp.getheader("x-log", None)
             if reqid is not None:
                 err_msg += ", reqid:%s" % reqid
 
-            return None, err_msg
+            return None, err_msg, resp.status
 
-        return ret, None
+        return ret, None, resp.status
 
     def call_with_multipart(self, path, fields=None, files=None):
         """
@@ -75,7 +88,8 @@ class Client(object):
         body = '&'.join(body)
 
         content_type = "application/x-www-form-urlencoded"
-        return self.call_with(path, body, content_type, len(body))
+        ret, err, code = self.call_with(path, body, content_type, len(body))
+        return ret, err
 
     def set_header(self, field, value):
         self._header[field] = value
