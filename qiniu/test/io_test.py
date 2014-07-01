@@ -155,7 +155,6 @@ class TestUp(unittest.TestCase):
         test_put_urlopen()
         test_put_no_length()
 
-
     def test_put_file(self):
         localfile = "%s" % __file__
         key = "test_%s" % r(9)
@@ -180,8 +179,7 @@ class TestUp(unittest.TestCase):
         assert "reqid" in err
 
     def test_put_with_uphost2(self):
-        #mistake up host
-        conf.UP_HOST = "api.qiniu.com"
+        conf.UP_HOST = "api.qiniu.com"  # mistake up host
         localfile = "%s" % __file__
         key = "test_up2_%s" % r(9)
 

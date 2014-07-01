@@ -59,6 +59,7 @@ def put(uptoken, key, data, extra=None):
     ret, err, code = rpc.Client(conf.UP_HOST2).call_with_multipart("/", fields, files)
     return ret, err
 
+
 def put_file(uptoken, key, localfile, extra=None):
     """ put a file to Qiniu
 

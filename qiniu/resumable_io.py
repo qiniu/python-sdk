@@ -70,6 +70,7 @@ def put_file(uptoken, key, localfile, extra):
     f.close()
     return ret, err
 
+
 def put(uptoken, key, f, fsize, extra):
     """ 上传二进制流, 通过将data "切片" 分段上传 """
     if not isinstance(extra, PutExtra):
@@ -121,6 +122,7 @@ def put_with_host(uptoken, key, f, fsize, extra, host):
     mkfile_client = auth_up.Client(uptoken, mkfile_host)
 
     return mkfile(mkfile_client, key, fsize, extra, host)
+
 
 def resumable_block_put(block, index, extra, uptoken, host):
     block_size = len(block)
