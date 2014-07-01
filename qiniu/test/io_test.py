@@ -114,7 +114,7 @@ class TestUp(unittest.TestCase):
 
         def test_put_urlopen():
             key = "test_%s" % r(9)
-            data = urllib.urlopen('http://cheneya.qiniudn.com/hello_jpg')
+            data = urllib.urlopen('http://pythonsdk.qiniudn.com/hello.jpg')
             ret, err = io.put(policy.token(), key, data)
             assert err is None
             assert ret['key'] == key
@@ -155,6 +155,7 @@ class TestUp(unittest.TestCase):
         test_put_urlopen()
         test_put_no_length()
 
+
     def test_put_file(self):
         localfile = "%s" % __file__
         key = "test_%s" % r(9)
@@ -177,6 +178,18 @@ class TestUp(unittest.TestCase):
         data = "hello bubby!"
         ret, err = io.put("", key, data, extra)
         assert "reqid" in err
+
+    def test_put_with_uphost2(self):
+        #mistake up host
+        conf.UP_HOST = "api.qiniu.com"
+        localfile = "%s" % __file__
+        key = "test_up2_%s" % r(9)
+
+        extra.check_crc = 1
+        ret, err = io.put_file(policy.token(), key, localfile, extra)
+        assert err is None
+        assert ret['key'] == key
+        conf.UP_HOST = "up.qiniu.com"
 
 
 class Test_get_file_crc32(unittest.TestCase):

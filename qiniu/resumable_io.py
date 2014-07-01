@@ -66,20 +66,25 @@ def put_file(uptoken, key, localfile, extra):
     """ 上传文件 """
     f = open(localfile, "rb")
     statinfo = os.stat(localfile)
-    ret = put(uptoken, key, f, statinfo.st_size, extra)
+    ret, err = put(uptoken, key, f, statinfo.st_size, extra)
     f.close()
-    return ret
+    return ret, err
 
-
-def put(uptoken, key, f, fsize, extra, host=None):
+def put(uptoken, key, f, fsize, extra):
     """ 上传二进制流, 通过将data "切片" 分段上传 """
     if not isinstance(extra, PutExtra):
         print("extra must the instance of PutExtra")
         return
+    host = conf.UP_HOST
+    ret, err, code = put_with_host(uptoken, key, f, fsize, extra, host)
+    if err is None or code == 571 or code == 614:
+        return ret, err
 
-    if host is None:
-        host = conf.UP_HOST
+    ret, err, code = put_with_host(uptoken, key, f, fsize, extra, conf.UP_HOST2)
+    return ret, err
 
+
+def put_with_host(uptoken, key, f, fsize, extra, host):
     block_cnt = block_count(fsize)
     if extra.progresses is None:
         extra.progresses = [None] * block_cnt
@@ -113,7 +118,6 @@ def put(uptoken, key, f, fsize, extra, host=None):
     mkfile_client = auth_up.Client(uptoken, mkfile_host)
     return mkfile(mkfile_client, key, fsize, extra, mkfile_host)
 
-
 def resumable_block_put(block, index, extra, uptoken, host):
     block_size = len(block)
 
@@ -121,7 +125,7 @@ def resumable_block_put(block, index, extra, uptoken, host):
     if extra.progresses[index] is None or "ctx" not in extra.progresses[index]:
         crc32 = gen_crc32(block)
         block = bytearray(block)
-        extra.progresses[index], err = mkblock(mkblk_client, block_size, block, host)
+        extra.progresses[index], err, code = mkblock(mkblk_client, block_size, block, host)
         if err is not None:
             extra.notify_err(index, block_size, err)
             return err
