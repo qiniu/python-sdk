@@ -79,7 +79,7 @@ def put(uptoken, key, f, fsize, extra):
     host = conf.UP_HOST
     try:
         ret, err, code = put_with_host(uptoken, key, f, fsize, extra, host)
-        if err is None or code < 500 or code == 571 or code == 614:
+        if err is None or code / 100 == 4 or code == 571 or code == 614:
             return ret, err
     except:
         pass
