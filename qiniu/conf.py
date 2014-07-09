@@ -5,7 +5,7 @@ SECRET_KEY = ""
 
 RS_HOST = "rs.qbox.me"
 RSF_HOST = "rsf.qbox.me"
-UP_HOST = "up.qiniu.com"
+UP_HOST = "upload.qiniu.com"
 UP_HOST2 = "up.qbox.me"
 
 from . import __version__
