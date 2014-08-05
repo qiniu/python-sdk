@@ -44,14 +44,15 @@ class Client(object):
         if content_length is not None:
             header["Content-Length"] = content_length
 
-        resp = self.round_tripper("POST", path, body, header)
         try:
+            resp = self.round_tripper("POST", path, body, header)
             ret = resp.read()
             ret = json.loads(ret)
-        except IOError, e:
-            return None, e
         except ValueError:
+            # ignore empty body when success
             pass
+        except Exception, e:
+            return None, str(e)+path, 0
 
         if resp.status >= 400:
             err_msg = ret if "error" not in ret else ret["error"]
