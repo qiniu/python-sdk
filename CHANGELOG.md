@@ -1,5 +1,16 @@
 ## CHANGE LOG
 
+### v6.1.8
+
+2014-08-05 issue [#126](https://github.com/qiniu/python-sdk/pull/126)
+- [#125] 网络出错不抛异常
+
+### v6.1.7
+
+2014-07-10 issue [#123](https://github.com/qiniu/python-sdk/pull/123)
+- [#121] 上传多host重试
+- [#122] 修改上传域名
+
 ### v6.1.6
 
 2014-06-30 issue [#118](https://github.com/qiniu/python-sdk/pull/118)
