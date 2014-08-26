@@ -359,7 +359,7 @@ def list_prefix_all():
 # @gist list_all
 
 
-def list_all(bucket, rs=None, prefix=None, limit=None):
+def list_all(bucket_name, rs=None, prefix=None, limit=None):
     if rs is None:
         rs = qiniu.rsf.Client()
     marker = None
