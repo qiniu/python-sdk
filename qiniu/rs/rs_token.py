@@ -88,7 +88,7 @@ class GetPolicy(object):
     def __init__(self, expires=3600):
         self.expires = expires
 
-    def make_request(self, base_url, mac=None):
+    def make_request(self, base_url, mac=None, attname=None):
         '''
          *  return private_url
         '''
@@ -100,7 +100,10 @@ class GetPolicy(object):
             base_url += '&'
         else:
             base_url += '?'
-        base_url = '%se=%s' % (base_url, str(deadline))
+        if attname is None:
+            base_url = '%se=%s' % (base_url, str(deadline))
+        else:
+            base_url = '%se=%s&attname=%s' % (base_url, str(deadline), attname)
 
         token = mac.sign(base_url)
         return '%s&token=%s' % (base_url, token)
