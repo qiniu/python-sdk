@@ -14,12 +14,13 @@ class Client(object):
             mac = auth.digest.Mac()
         self.conn = auth.digest.Client(host=conf.RSF_HOST, mac=mac)
 
-    def list_prefix(self, bucket, prefix=None, marker=None, limit=None):
+    def list_prefix(self, bucket, prefix=None, marker=None, limit=None, delimiter=None):
         '''前缀查询:
          * bucket => str
          * prefix => str
          * marker => str
          * limit => int
+         * delimiter => str
          * return ret => {'items': items, 'marker': markerOut}, err => str
 
         1. 首次请求 marker = None
@@ -37,6 +38,7 @@ class Client(object):
             ops['prefix'] = prefix
         if delimiter is not None:
             ops['delimiter'] = delimiter
+
         url = '%s?%s' % ('/list', urllib.urlencode(ops))
         ret, err, code = self.conn.call_with(
             url, body=None, content_type='application/x-www-form-urlencoded')
