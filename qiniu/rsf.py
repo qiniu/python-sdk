@@ -35,6 +35,8 @@ class Client(object):
             ops['limit'] = limit
         if prefix is not None:
             ops['prefix'] = prefix
+        if delimiter is not None:
+            ops['delimiter'] = delimiter
         url = '%s?%s' % ('/list', urllib.urlencode(ops))
         ret, err, code = self.conn.call_with(
             url, body=None, content_type='application/x-www-form-urlencoded')
