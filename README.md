@@ -9,7 +9,7 @@
 通过pip
 
 ```bash
-pip install qiniu
+$ pip install qiniu
 ```
 
 ## 运行环境
@@ -21,6 +21,7 @@ pip install qiniu
 
 ## 使用方法
 
+### 上传
 ```python
 import qiniu
 ...
@@ -36,10 +37,16 @@ import qiniu
 ...
 ```
 
+### 命令行工具
+安装完后附带有命令行工具，可以计算etag
+```bash
+$ qiniupy etag yourfile
+```
+
 ## 测试
 
 ``` bash
-py.test
+$ py.test
 ```
 
 ## 常见问题
