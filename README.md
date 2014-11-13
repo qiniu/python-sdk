@@ -3,7 +3,8 @@
 [![Build Status](https://travis-ci.org/qiniu/python-sdk.svg)](https://travis-ci.org/qiniu/python-sdk)
 [![Latest Stable Version](https://img.shields.io/pypi/v/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
 [![Download Times](https://img.shields.io/pypi/dm/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
-
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/qiniu/python-sdk/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/qiniu/python-sdk/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/qiniu/python-sdk/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/qiniu/python-sdk/?branch=master)
 ## 安装
 
 通过pip
