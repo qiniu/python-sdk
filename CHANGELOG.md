@@ -1,5 +1,10 @@
 ## CHANGE LOG
 
+### v6.1.9
+
+2014-11-13 
+- 增加文件列表的delimiter，模拟目录方式
+
 ### v6.1.8
 
 2014-08-05 issue [#126](https://github.com/qiniu/python-sdk/pull/126)
