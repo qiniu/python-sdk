@@ -18,5 +18,5 @@ before_script:
   - export QINIU_TEST_ENV="travis"
   - export PYTHONPATH="$PYTHONPATH:."
 script:
-  - py.test
-  - ocular --data-file .coverage --config-file .coveragerc
+  - py.test --cov qiniu
+  - ocular --data-file .coverage
