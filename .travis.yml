@@ -8,6 +8,7 @@ install:
   - "pip install pytest --use-mirrors"
   - "pip install pytest-cov --use-mirrors"
   - "pip install requests --use-mirrors"
+  - "pip install scrutinizer-ocular --use-mirrors"
 before_script:
   - "flake8 --show-source --show-pep8 --max-line-length=160 ."
   - export QINIU_ACCESS_KEY="QWYn5TFQsLLU1pL5MFEmX3s5DmHdUThav9WyOWOm"
@@ -18,3 +19,4 @@ before_script:
   - export PYTHONPATH="$PYTHONPATH:."
 script:
   - py.test
+  - ocular --data-file .coverage --config-file .coveragerc

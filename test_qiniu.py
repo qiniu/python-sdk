@@ -94,55 +94,69 @@ class BucketTestCase(unittest.TestCase):
     bucket = BucketManager(q)
 
     def test_list(self):
-        ret, eof, _ = self.bucket.list(bucket_name, limit=4)
+        ret, eof, info = self.bucket.list(bucket_name, limit=4)
+        print(info)
         assert eof is False
         assert len(ret.get('items')) == 4
-        ret, eof, _ = self.bucket.list(bucket_name, limit=100)
+        ret, eof, info = self.bucket.list(bucket_name, limit=100)
+        print(info)
         assert eof is True
 
     def test_buckets(self):
-        ret, _ = self.bucket.buckets()
+        ret, info = self.bucket.buckets()
+        print(info)
         assert bucket_name in ret
 
     def test_pefetch(self):
-        ret, _ = self.bucket.prefetch(bucket_name, 'python-sdk.html')
+        ret, info = self.bucket.prefetch(bucket_name, 'python-sdk.html')
+        print(info)
         assert ret == {}
 
     def test_fetch(self):
-        ret, _ = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name, 'fetch.html')
+        ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name, 'fetch.html')
+        print(info)
         assert ret == {}
 
     def test_stat(self):
-        ret, _ = self.bucket.stat(bucket_name, 'python-sdk.html')
+        ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
+        print(info)
         assert 'hash' in ret
 
     def test_delete(self):
         ret, info = self.bucket.delete(bucket_name, 'del')
+        print(info)
+        assert ret is None
+        assert info.status_code == 612
 
     def test_rename(self):
         key = 'renameto'+rand_string(8)
         self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
         key2 = key + 'move'
-        ret, _ = self.bucket.rename(bucket_name, key, key2)
+        ret, info = self.bucket.rename(bucket_name, key, key2)
+        print(info)
         assert ret == {}
-        ret, _ = self.bucket.delete(bucket_name, key2)
+        ret, info = self.bucket.delete(bucket_name, key2)
+        print(info)
         assert ret == {}
 
     def test_copy(self):
         key = 'copyto'+rand_string(8)
-        ret, _ = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
-
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
+        print(info)
         assert ret == {}
-        ret, _ = self.bucket.delete(bucket_name, key)
+        ret, info = self.bucket.delete(bucket_name, key)
+        print(info)
         assert ret == {}
 
     def test_batch_copy(self):
         key = 'copyto'+rand_string(8)
         ops = build_batch_copy(bucket_name, {'copyfrom': key}, bucket_name)
-        ret, _ = self.bucket.batch(ops)
+        ret, info = self.bucket.batch(ops)
+        print(info)
         assert ret[0]['code'] == 200
         ops = build_batch_delete(bucket_name, [key])
-        ret, _ = self.bucket.batch(ops)
+        ret, info = self.bucket.batch(ops)
+        print(info)
         assert ret[0]['code'] == 200
 
     def test_batch_move(self):
@@ -150,9 +164,11 @@ class BucketTestCase(unittest.TestCase):
         self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
         key2 = key2 = key + 'move'
         ops = build_batch_move(bucket_name, {key: key2}, bucket_name)
-        ret, _ = self.bucket.batch(ops)
+        ret, info = self.bucket.batch(ops)
+        print(info)
         assert ret[0]['code'] == 200
-        ret, _ = self.bucket.delete(bucket_name, key2)
+        ret, info = self.bucket.delete(bucket_name, key2)
+        print(info)
         assert ret == {}
 
     def test_batch_rename(self):
@@ -160,14 +176,17 @@ class BucketTestCase(unittest.TestCase):
         self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
         key2 = key2 = key + 'rename'
         ops = build_batch_move(bucket_name, {key: key2}, bucket_name)
-        ret, _ = self.bucket.batch(ops)
+        ret, info = self.bucket.batch(ops)
+        print(info)
         assert ret[0]['code'] == 200
-        ret, _ = self.bucket.delete(bucket_name, key2)
+        ret, info = self.bucket.delete(bucket_name, key2)
+        print(info)
         assert ret == {}
 
     def test_batch_stat(self):
         ops = build_batch_stat(bucket_name, ['python-sdk.html'])
-        ret, _ = self.bucket.batch(ops)
+        ret, info = self.bucket.batch(ops)
+        print(info)
         assert ret[0]['code'] == 200
 
 
@@ -182,12 +201,14 @@ class UploaderTestCase(unittest.TestCase):
         data = 'hello bubby!'
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
+        print(info)
         assert ret['key'] == key
 
         key = ''
         data = 'hello bubby!'
         token = self.q.upload_token(bucket_name, key)
-        ret, _ = put_data(token, key, data, check_crc=True)
+        ret, info = put_data(token, key, data, check_crc=True)
+        print(info)
         assert ret['key'] == key
 
     def test_putfile(self):
@@ -195,7 +216,8 @@ class UploaderTestCase(unittest.TestCase):
         key = 'test_file'
 
         token = self.q.upload_token(bucket_name, key)
-        ret, _ = put_file(token, key, localfile, mime_type=self.mime_type, check_crc=True)
+        ret, info = put_file(token, key, localfile, mime_type=self.mime_type, check_crc=True)
+        print(info)
         assert ret['key'] == key
         assert ret['hash'] == etag(localfile)
 
@@ -205,6 +227,7 @@ class UploaderTestCase(unittest.TestCase):
         crc32 = 'wrong crc32'
         token = self.q.upload_token(bucket_name)
         ret, info = _form_put(token, key, data, None, None, crc32=crc32)
+        print(info)
         assert ret is None
         assert info.status_code == 400
 
@@ -212,20 +235,24 @@ class UploaderTestCase(unittest.TestCase):
         key = None
         data = 'hello bubby!'
         token = self.q.upload_token(bucket_name)
-        ret, _ = put_data(token, key, data)
+        ret, info = put_data(token, key, data)
+        print(info)
         assert ret['hash'] == ret['key']
 
         data = 'hello bubby!'
         token = self.q.upload_token(bucket_name, 'nokey2')
-
         ret, info = put_data(token, None, data)
+        print(info)
+        assert ret is None
+        assert info.status_code == 401  # key not match
 
     def test_retry(self):
         key = 'retry'
         data = 'hello retry!'
         set_default(default_up_host='a')
         token = self.q.upload_token(bucket_name)
-        ret, _ = put_data(token, key, data)
+        ret, info = put_data(token, key, data)
+        print(info)
         assert ret['key'] == key
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
 
@@ -253,6 +280,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         progress_handler = lambda progress, total: progress
         qiniu.set_default(default_up_host='a')
         ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
+        print(info)
         assert ret['key'] == key
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
         remove_temp_file(localfile)
@@ -263,6 +291,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         qiniu.set_default(default_up_host='a')
         token = self.q.upload_token(bucket_name, key)
         ret, info = put_file(token, key, localfile, self.params, self.mime_type)
+        print(info)
         assert ret['key'] == key
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
 
@@ -273,6 +302,7 @@ class MediaTestCase(unittest.TestCase):
         pfop = PersistentFop(q, 'testres', 'sdktest')
         op = op_save('avthumb/m3u8/segtime/10/vcodec/libx264/s/320x240', 'pythonsdk', 'pfoptest')
         ret, info = pfop.execute('sintel_trailer.mp4', op, 1)
+        print(info)
         assert ret['persistentId'] is not None
 
 if __name__ == '__main__':
