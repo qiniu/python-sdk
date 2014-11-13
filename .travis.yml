@@ -2,20 +2,19 @@ language: python
 python:
   - "2.6"
   - "2.7"
+  - "3.4"
 install:
-  - "pip install coverage --use-mirrors"
-  - "pip install pep8 --use-mirrors"
-  - "pip install pyflakes --use-mirrors"
+  - "pip install flake8 --use-mirrors"
+  - "pip install pytest --use-mirrors"
+  - "pip install pytest-cov --use-mirrors"
+  - "pip install requests --use-mirrors"
 before_script:
-  - "pep8 --max-line-length=160 ."
-  - "pyflakes ."
-  - export QINIU_ACCESS_KEY="X0XpjFmLMTJpHB_ESHjeolCtipk-1U3Ok7LVTdoN"
-  - export QINIU_SECRET_KEY="wenlwkU1AYwNBf7Q9cCoG4VT_GYyrHE9AS_R2u81"
-  - export QINIU_TEST_BUCKET="pysdk"
-  - export QINIU_TEST_DOMAIN="pysdk.qiniudn.com"
+  - "flake8 --show-source --show-pep8 --max-line-length=160 ."
+  - export QINIU_ACCESS_KEY="QWYn5TFQsLLU1pL5MFEmX3s5DmHdUThav9WyOWOm"
+  - export QINIU_SECRET_KEY="Bxckh6FA-Fbs9Yt3i3cbKVK22UPBmAOHJcL95pGz"
+  - export QINIU_TEST_BUCKET="pythonsdk"
+  - export QINIU_TEST_DOMAIN="pythonsdk.qiniudn.com"
   - export QINIU_TEST_ENV="travis"
   - export PYTHONPATH="$PYTHONPATH:."
 script:
-  - python setup.py nosetests
-  - python docs/gist/demo.py
-  - python docs/gist/conf.py
+  - py.test
