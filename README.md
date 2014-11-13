@@ -1,7 +1,8 @@
 # Qiniu Python SDK
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE.md)
 [![Build Status](https://travis-ci.org/qiniu/python-sdk.svg)](https://travis-ci.org/qiniu/python-sdk)
-[![Latest Stable Version](https://badge.fury.io/co/Qiniu.png)](https://github.com/qiniu/python-sdk/releases)
+[![Latest Stable Version](https://img.shields.io/pypi/v/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
+[![Download Times](https://img.shields.io/pypi/dm/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
 
 ## 安装
 
