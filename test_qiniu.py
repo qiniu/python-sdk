@@ -160,6 +160,11 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert ret == {}
 
+    def test_change_mime(self):
+        ret, info = self.bucket.change_mime(bucket_name, 'python-sdk.html', 'text/html')
+        print(info)
+        assert ret == {}
+
     def test_batch_copy(self):
         key = 'copyto'+rand_string(8)
         ops = build_batch_copy(bucket_name, {'copyfrom': key}, bucket_name)
