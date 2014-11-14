@@ -3,8 +3,6 @@ Qiniu Resource Storage SDK for Python
 
 [![Build Status](https://api.travis-ci.org/qiniu/python-sdk.png?branch=master)](https://travis-ci.org/qiniu/python-sdk)
 
-[![Qiniu Logo](http://qiniu-brand.qiniudn.com/5/logo-white-195x105.png)](http://www.qiniu.com/)
-
 ## 使用
 
 参考文档：[七牛云存储 Python SDK 使用指南](https://github.com/qiniu/python-sdk/blob/develop/docs/README.md)
@@ -15,9 +13,9 @@ Qiniu Resource Storage SDK for Python
 
 * 直接安装:
 
-    pip install qiniu  
+    pip install 'qiniu<7'  
     或  
-    easy_install qiniu  
+    easy_install 'qiniu<7'  
 
 Python-SDK可以使用`pip`或`easy_install`从PyPI服务器上安装，但不包括文档和样例。如果需要，请下载源码并安装。
 
