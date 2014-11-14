@@ -10,7 +10,6 @@ install:
   - "pip install requests --use-mirrors"
   - "pip install scrutinizer-ocular --use-mirrors"
 before_script:
-  - "flake8 --show-source --show-pep8 --max-line-length=160 ."
   - export QINIU_ACCESS_KEY="QWYn5TFQsLLU1pL5MFEmX3s5DmHdUThav9WyOWOm"
   - export QINIU_SECRET_KEY="Bxckh6FA-Fbs9Yt3i3cbKVK22UPBmAOHJcL95pGz"
   - export QINIU_TEST_BUCKET="pythonsdk"
@@ -18,5 +17,6 @@ before_script:
   - export QINIU_TEST_ENV="travis"
   - export PYTHONPATH="$PYTHONPATH:."
 script:
+  - flake8 --show-source --show-pep8 --max-line-length=160 .
   - py.test --cov qiniu
   - ocular --data-file .coverage
