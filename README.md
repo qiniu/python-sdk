@@ -1,7 +1,7 @@
 Qiniu Resource Storage SDK for Python
 ===
 
-[![Build Status](https://api.travis-ci.org/qiniu/python-sdk.png?branch=master)](https://travis-ci.org/qiniu/python-sdk)
+[![Build Status](https://api.travis-ci.org/qiniu/python-sdk.png?branch=6.x)](https://travis-ci.org/qiniu/python-sdk)
 
 ## 使用
 
