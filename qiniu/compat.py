@@ -42,14 +42,14 @@ if is_py2:
     basestring = basestring  # noqa
     numeric_types = (int, long, float)  # noqa
 
-    def b(s):
-        return s
+    def b(data):
+        return data
 
-    def s(b):
-        return b
+    def s(data):
+        return data
 
-    def u(s):
-        return unicode(s, 'unicode_escape')  # noqa
+    def u(data):
+        return unicode(data, 'unicode_escape')  # noqa
 
 elif is_py3:
     from urllib.parse import urlparse  # noqa
@@ -63,15 +63,15 @@ elif is_py3:
     basestring = (str, bytes)
     numeric_types = (int, float)
 
-    def b(s):
-        if isinstance(s, str):
-            return s.encode('utf-8')
-        return s
+    def b(data):
+        if isinstance(data, str):
+            return data.encode('utf-8')
+        return data
 
-    def s(b):
-        if isinstance(b, bytes):
-            b = b.decode('utf-8')
-        return b
+    def s(data):
+        if isinstance(data, bytes):
+            data = data.decode('utf-8')
+        return data
 
-    def u(s):
-        return s
+    def u(data):
+        return data

@@ -88,6 +88,18 @@ class AuthTestCase(unittest.TestCase):
         with pytest.raises(ValueError):
             dummy_auth.upload_token('1', None, policy={'asyncOps': 1})
 
+    def test_token_of_request(self):
+        token = dummy_auth.token_of_request('http://www.qiniu.com?go=1', 'test', '')
+        assert token == 'abcdefghklmnopq:cFyRVoWrE3IugPIMP5YJFTO-O-Y='
+        token = dummy_auth.token_of_request('http://www.qiniu.com?go=1', 'test', 'application/x-www-form-urlencoded')
+        assert token == 'abcdefghklmnopq:svWRNcacOE-YMsc70nuIYdaa1e4='
+
+    def test_verify_callback(self):
+        body = 'name=sunflower.jpg&hash=Fn6qeQi4VDLQ347NiRm-RlQx_4O2&location=Shanghai&price=1500.00&uid=123'
+        url = 'test.qiniu.com/callback'
+        ok = dummy_auth.verify_callback('QBox abcdefghklmnopq:ZWyeM5ljWMRFwuPTPOwQ4RwSto4=', url, body)
+        assert ok
+
 
 class BucketTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
@@ -226,7 +238,7 @@ class UploaderTestCase(unittest.TestCase):
         data = 'hello bubby!'
         crc32 = 'wrong crc32'
         token = self.q.upload_token(bucket_name)
-        ret, info = _form_put(token, key, data, None, None, crc32=crc32)
+        ret, info = _form_put(token, key, data, None, None, crc=crc32)
         print(info)
         assert ret is None
         assert info.status_code == 400

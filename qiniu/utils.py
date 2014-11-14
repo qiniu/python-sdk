@@ -56,8 +56,8 @@ def _etag(input_stream):
         data = array[0]
         prefix = b('\x16')
     else:
-        s = b('').join(array)
-        data = _sha1(s)
+        sha1_str = b('').join(array)
+        data = _sha1(sha1_str)
         prefix = b('\x96')
     return urlsafe_base64_encode(prefix + data)
 

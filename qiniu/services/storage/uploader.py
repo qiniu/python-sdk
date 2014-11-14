@@ -29,13 +29,13 @@ def put_file(up_token, key, file_path, params=None, mime_type='application/octet
     return ret, info
 
 
-def _form_put(up_token, key, data, params, mime_type, crc32, is_file=False, progress_handler=None):
+def _form_put(up_token, key, data, params, mime_type, crc, is_file=False, progress_handler=None):
     fields = {}
     if params:
         for k, v in params.items():
             fields[k] = str(v)
-    if crc32:
-        fields['crc32'] = crc32
+    if crc:
+        fields['crc32'] = crc
     if key is not None:
         fields['key'] = key
     fields['token'] = up_token
