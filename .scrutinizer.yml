@@ -1,15 +1,9 @@
-checks:
-    php:
-        code_rating: true
-        duplication: true
 
+checks:
     python:
         code_rating: true
         duplicate_code: true
-
-    ruby:
-        code_rating: true
-        duplicate_code: true
+        variables_redefined_outer_name: true
 
 tools:
     external_code_coverage:
