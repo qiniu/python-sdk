@@ -55,6 +55,7 @@ $ py.test
 - 第二个参数info保留了请求响应的信息，失败情况下ret 为none, 将info可以打印出来，提交给我们。
 - API 的使用 demo 可以参考 [单元测试](https://github.com/qiniu/python-sdk/blob/master/test_qiniu.py)。
 - 如果碰到`ImportError: No module named requests.auth` 请安装 `requests` 。
+
 ## 代码贡献
 
 详情参考[代码提交指南](https://github.com/qiniu/python-sdk/blob/master/CONTRIBUTING.md)。
