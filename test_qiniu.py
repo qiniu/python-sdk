@@ -119,7 +119,7 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert bucket_name in ret
 
-    def test_pefetch(self):
+    def test_prefetch(self):
         ret, info = self.bucket.prefetch(bucket_name, 'python-sdk.html')
         print(info)
         assert ret == {}
