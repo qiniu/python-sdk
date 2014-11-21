@@ -11,7 +11,7 @@ except ImportError:
 
 setup(
     name='qiniu',
-    version=__import__('qiniu').__version__,
+    version='7.0.0',
     description='Qiniu Resource Storage SDK',
     long_description='see:\nhttps://github.com/qiniu/python-sdk\n',
     author='Shanghai Qiniu Information Technologies Co., Ltd.',
