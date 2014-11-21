@@ -318,7 +318,9 @@ class MediaTestCase(unittest.TestCase):
         q = Auth(access_key, secret_key)
         pfop = PersistentFop(q, 'testres', 'sdktest')
         op = op_save('avthumb/m3u8/segtime/10/vcodec/libx264/s/320x240', 'pythonsdk', 'pfoptest')
-        ret, info = pfop.execute('sintel_trailer.mp4', op, 1)
+        ops = []
+        ops.append(op)
+        ret, info = pfop.execute('sintel_trailer.mp4', ops, 1)
         print(info)
         assert ret['persistentId'] is not None
 
