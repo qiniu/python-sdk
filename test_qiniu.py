@@ -4,6 +4,7 @@ import os
 import string
 import random
 import tempfile
+import json
 
 import unittest
 import pytest
@@ -305,7 +306,7 @@ class MediaTestCase(unittest.TestCase):
         ops.append(op)
         ret, info = pfop.execute('sintel_trailer.mp4', ops, 1)
         print(info)
-        assert ret['persistentId'] is not None
+        print json.dumps(ret)
 
 if __name__ == '__main__':
     unittest.main()
