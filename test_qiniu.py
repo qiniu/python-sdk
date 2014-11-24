@@ -4,7 +4,6 @@ import os
 import string
 import random
 import tempfile
-import urllib
 
 import unittest
 import pytest
