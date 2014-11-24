@@ -316,7 +316,7 @@ class MediaTestCase(unittest.TestCase):
         ops.append(op)
         ret, info = pfop.execute('sintel_trailer.mp4', ops, 1)
         print(info)
-        assert ret[0]['persistentId'] is not None
+        assert ret['persistentId'] is not None
 
 if __name__ == '__main__':
     unittest.main()
