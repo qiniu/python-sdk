@@ -4,7 +4,7 @@ import os
 import string
 import random
 import tempfile
-import json
+import urllib
 
 import unittest
 import pytest
@@ -296,6 +296,16 @@ class ResumableUploaderTestCase(unittest.TestCase):
         assert ret['key'] == key
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
 
+class DownloadTestCase(unittest.TestCase):
+    def test_private_url(self):
+        q = Auth(access_key, secret_key)
+        bucket = 'test_private_bucket'
+        key = 'test_private_key'
+        key = key.encode('utf8')
+        base_url = 'http://%s/%s' % (bucket, urllib.quote(key))
+        private_url = self.q.private_download_url(baseurl, expires=3600)
+        print(private_url)
+
 
 class MediaTestCase(unittest.TestCase):
     def test_pfop(self):
@@ -306,7 +316,7 @@ class MediaTestCase(unittest.TestCase):
         ops.append(op)
         ret, info = pfop.execute('sintel_trailer.mp4', ops, 1)
         print(info)
-        print json.dumps(ret)
+        assert ret[0]['persistentId'] is not None
 
 if __name__ == '__main__':
     unittest.main()
