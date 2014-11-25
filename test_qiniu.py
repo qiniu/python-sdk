@@ -4,6 +4,7 @@ import os
 import string
 import random
 import tempfile
+import requests
 
 import unittest
 import pytest
@@ -27,12 +28,11 @@ if is_py2:
 access_key = os.getenv('QINIU_ACCESS_KEY')
 secret_key = os.getenv('QINIU_SECRET_KEY')
 bucket_name = os.getenv('QINIU_TEST_BUCKET')
+domain = os.getenv('QINIU_TEST_DOMAIN')
 
 dummy_access_key = 'abcdefghklmnopq'
 dummy_secret_key = '1234567890'
 dummy_auth = Auth(dummy_access_key, dummy_secret_key)
-access_key = 'abcdefghklmnopq'
-secret_key = '1234567890'
 
 
 def rand_string(length):
@@ -302,12 +302,14 @@ class DownloadTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
 
     def test_private_url(self):
-        bucket = 'test_private_bucket'
-        key = 'test_private_key'
+        bucket = 'private-res'
+        key = 'gogopher.jpg'
         key = key.encode('utf8')
         base_url = 'http://%s/%s' % (bucket+'.qiniudn.com', key)
         private_url = self.q.private_download_url(base_url, expires=3600)
         print(private_url)
+        r = requests.get(private_url)
+        assert r.status_code == 200
 
 class MediaTestCase(unittest.TestCase):
     def test_pfop(self):
