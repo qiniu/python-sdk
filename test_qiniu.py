@@ -31,6 +31,8 @@ bucket_name = os.getenv('QINIU_TEST_BUCKET')
 dummy_access_key = 'abcdefghklmnopq'
 dummy_secret_key = '1234567890'
 dummy_auth = Auth(dummy_access_key, dummy_secret_key)
+access_key = 'abcdefghklmnopq'
+secret_key = '1234567890'
 
 
 def rand_string(length):
@@ -303,10 +305,9 @@ class DownloadTestCase(unittest.TestCase):
         bucket = 'test_private_bucket'
         key = 'test_private_key'
         key = key.encode('utf8')
-        base_url = 'http://%s/%s' % (bucket, key)
+        base_url = 'http://%s/%s' % (bucket+'.qiniudn.com', key)
         private_url = self.q.private_download_url(base_url, expires=3600)
         print(private_url)
-
 
 class MediaTestCase(unittest.TestCase):
     def test_pfop(self):
