@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import io
+import os
+import re
+
 try:
     import setuptools
     setup = setuptools.setup
@@ -9,9 +13,33 @@ except ImportError:
     from distutils.core import setup
 
 
+packages = [
+    'qiniu',
+    'qiniu.services',
+    'qiniu.services.storage',
+    'qiniu.services.processing',
+]
+
+
+def read(*names, **kwargs):
+    return io.open(
+        os.path.join(os.path.dirname(__file__), *names),
+        encoding=kwargs.get("encoding", "utf8")
+    ).read()
+
+
+def find_version(*file_paths):
+    version_file = read(*file_paths)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
+
+
 setup(
     name='qiniu',
-    version=__import__('qiniu').__version__,
+    version=find_version("qiniu/__init__.py"),
     description='Qiniu Resource Storage SDK',
     long_description='see:\nhttps://github.com/qiniu/python-sdk\n',
     author='Shanghai Qiniu Information Technologies Co., Ltd.',
@@ -19,8 +47,8 @@ setup(
     maintainer_email='support@qiniu.com',
     license='MIT',
     url='https://github.com/qiniu/python-sdk',
-    packages=['qiniu', 'qiniu.services', 'qiniu.services.storage', 'qiniu.services.processing'],
     platforms='any',
+    packages=packages,
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

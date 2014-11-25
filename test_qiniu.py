@@ -88,12 +88,6 @@ class AuthTestCase(unittest.TestCase):
         with pytest.raises(ValueError):
             dummy_auth.upload_token('1', None, policy={'asyncOps': 1})
 
-    def test_token_of_request(self):
-        token = dummy_auth.token_of_request('http://www.qiniu.com?go=1', 'test', '')
-        assert token == 'abcdefghklmnopq:cFyRVoWrE3IugPIMP5YJFTO-O-Y='
-        token = dummy_auth.token_of_request('http://www.qiniu.com?go=1', 'test', 'application/x-www-form-urlencoded')
-        assert token == 'abcdefghklmnopq:svWRNcacOE-YMsc70nuIYdaa1e4='
-
     def test_verify_callback(self):
         body = 'name=sunflower.jpg&hash=Fn6qeQi4VDLQ347NiRm-RlQx_4O2&location=Shanghai&price=1500.00&uid=123'
         url = 'test.qiniu.com/callback'
