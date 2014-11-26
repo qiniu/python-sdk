@@ -4,6 +4,7 @@ import os
 import string
 import random
 import tempfile
+import requests
 
 import unittest
 import pytest
@@ -305,6 +306,8 @@ class DownloadTestCase(unittest.TestCase):
         base_url = 'http://%s/%s' % (bucket, key)
         private_url = self.q.private_download_url(base_url, expires=3600)
         print(private_url) 
+        r = requests.get(private_url)
+        assert r.status_code == 200
 
 
 class MediaTestCase(unittest.TestCase):
