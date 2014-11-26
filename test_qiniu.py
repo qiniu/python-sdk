@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
-import os
+import os  
 import string
 import random
 import tempfile
+import requests
 
 import unittest
 import pytest
@@ -305,6 +306,19 @@ class ResumableUploaderTestCase(unittest.TestCase):
         print(info)
         assert ret['key'] == key
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+
+class DownloadTestCase(unittest.TestCase):
+
+    q = Auth(access_key, secret_key)
+
+    def test_private_url(self):
+        private_bucket = 'private-res'
+        private_key = 'gogopher.jpg'
+        base_url = 'http://%s/%s' % (private_bucket+'.qiniudn.com', private_key)
+        private_url = self.q.private_download_url(base_url, expires=3600)
+        print(private_url) 
+        r = requests.get(private_url)
+        assert r.status_code == 200
 
 
 class MediaTestCase(unittest.TestCase):
