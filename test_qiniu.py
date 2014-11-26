@@ -302,7 +302,6 @@ class DownloadTestCase(unittest.TestCase):
     def test_private_url(self):
         bucket = 'test_private_bucket'
         key = 'test_private_key'
-        key = key.encode('utf8')
         base_url = 'http://%s/%s' % (bucket, key)
         private_url = self.q.private_download_url(base_url, expires=3600)
         print(private_url)
