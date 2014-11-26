@@ -304,7 +304,7 @@ class DownloadTestCase(unittest.TestCase):
         key = 'test_private_key'
         base_url = 'http://%s/%s' % (bucket, key)
         private_url = self.q.private_download_url(base_url, expires=3600)
-        print(private_url)
+        print(private_url) 
 
 
 class MediaTestCase(unittest.TestCase):
