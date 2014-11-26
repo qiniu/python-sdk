@@ -304,7 +304,6 @@ class DownloadTestCase(unittest.TestCase):
     def test_private_url(self):
         bucket = 'private-res'
         key = 'gogopher.jpg'
-        key = key.encode('utf8')
         base_url = 'http://%s/%s' % (bucket+'.qiniudn.com', key)
         private_url = self.q.private_download_url(base_url, expires=3600)
         print(private_url)
