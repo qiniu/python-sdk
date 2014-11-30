@@ -1,9 +1,9 @@
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
-# flake8: noqa
 
 import argparse
 
-from qiniu.utils import etag
+from qiniu import etag
 
 
 def main():
