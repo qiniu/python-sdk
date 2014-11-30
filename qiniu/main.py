@@ -17,7 +17,15 @@ def main():
 
     args = parser.parse_args()
 
-    if args.etag_files:
+    try:
+        etag_files = args.etag_files
+
+    except AttributeError:
+        # In Python-3* `main.py` (without arguments) raises 
+        # AttributeError. I have not found any standard way to display same 
+        # error message as in Python-2*.
+        parser.error('too few arguments')
+    else:
         r = [etag(file) for file in args.etag_files]
         if len(r) == 1:
             print(r[0])
