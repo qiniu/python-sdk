@@ -25,14 +25,13 @@ $ pip install qiniu
 ### 上传
 ```python
 import qiniu
-import qiniu.services.storage.uploader as uploader
 
 ...
     q = qiniu.Auth(access_key, secret_key)
     key = 'hello'
     data = 'hello qiniu!'
     token = q.upload_token(bucket_name)
-    ret, info = uploader.put_data(token, key, data)
+    ret, info = qiniu.put_data(token, key, data)
     if ret is not None:
         print('All is OK')
     else:
