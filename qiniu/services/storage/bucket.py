@@ -101,7 +101,7 @@ class BucketManager(object):
         return http._post_with_auth(url, data, self.auth)
 
     def __get(self, url, params=None):
-        return http._get(url, params, self.auth)
+        return http._get_with_auth(url, params, self.auth)
 
 
 def _build_op(*args):
