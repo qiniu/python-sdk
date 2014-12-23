@@ -49,10 +49,10 @@ def _post(url, data, files, auth):
 def _get(url, params, auth):
     try:
         r = requests.get(
-            url, params=params, auth=RequestsAuth(auth),
+            url, params=params, auth=RequestsAuth(auth) if auth is not None else None,
             timeout=config.get_default('connection_timeout'), headers=_headers)
     except Exception as e:
-        return None,  ResponseInfo(None, e)
+        return None, ResponseInfo(None, e)
     return __return_wrapper(r)
 
 
