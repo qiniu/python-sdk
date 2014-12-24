@@ -22,13 +22,13 @@ def main():
 
     except AttributeError:
         etag_files = None
-        
-if etag_files
-    r = [etag(file) for file in etag_files]
-    if len(r) == 1:
-        print(r[0])
-    else:
-        print(' '.join(r))
+
+    if etag_files:
+        r = [etag(file) for file in etag_files]
+        if len(r) == 1:
+            print(r[0])
+        else:
+            print(' '.join(r))
 
 if __name__ == '__main__':
     main()
