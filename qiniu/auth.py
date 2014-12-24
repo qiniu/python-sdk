@@ -14,6 +14,8 @@ _policy_fields = set([
     'callbackUrl',
     'callbackBody',
     'callbackHost',
+    'callbackBodyType',
+    'callbackFetchKey',
 
     'returnUrl',
     'returnBody',
@@ -67,6 +69,7 @@ class Auth(object):
         if body:
             mimes = [
                 'application/x-www-form-urlencoded',
+                'application/json'
             ]
             if content_type in mimes:
                 data += body
@@ -115,8 +118,8 @@ class Auth(object):
         data = json.dumps(policy, separators=(',', ':'))
         return self.token_with_data(data)
 
-    def verify_callback(self, origin_authorization, url, body):
-        token = self.token_of_request(url, body, 'application/x-www-form-urlencoded')
+    def verify_callback(self, origin_authorization, url, body, content_type='application/x-www-form-urlencoded'):
+        token = self.token_of_request(url, body, content_type)
         authorization = 'QBox {0}'.format(token)
         return origin_authorization == authorization
 
