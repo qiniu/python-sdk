@@ -17,8 +17,14 @@ def main():
 
     args = parser.parse_args()
 
-    if args.etag_files:
-        r = [etag(file) for file in args.etag_files]
+    try:
+        etag_files = args.etag_files
+
+    except AttributeError:
+        etag_files = None
+
+    if etag_files:
+        r = [etag(file) for file in etag_files]
         if len(r) == 1:
             print(r[0])
         else:
