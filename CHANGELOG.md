@@ -1,5 +1,10 @@
 #Changelog
 
+## 7.0.2 (2014-12-24)
+### 修正
+* 内部http get当没有auth会出错
+* python3下的qiniupy 没有参数时 arg parse会抛异常
+
 ## 7.0.1 (2014-11-26)
 ### 增加
 * setup.py从文件中读取版本号，而不是用导入方式
