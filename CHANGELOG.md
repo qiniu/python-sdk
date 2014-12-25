@@ -4,6 +4,7 @@
 ### 修正
 * 内部http get当没有auth会出错
 * python3下的qiniupy 没有参数时 arg parse会抛异常
+* 增加callback policy
 
 ## 7.0.1 (2014-11-26)
 ### 增加
