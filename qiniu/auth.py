@@ -86,7 +86,7 @@ class Auth(object):
          *  return private url
         '''
 
-        deadline = int(time.time()) + expires
+        deadline = int(time.mktime(time.gmtime())+8*60*60) + expires
         if '?' in url:
             url += '&'
         else:
@@ -106,7 +106,7 @@ class Auth(object):
 
         args = dict(
             scope=scope,
-            deadline=int(time.time()) + expires,
+            deadline=int(time.mktime(time.gmtime())+8*60*60) + expires,
         )
 
         if policy is not None:
