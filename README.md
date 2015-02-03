@@ -1,4 +1,6 @@
-# Qiniu Python SDK
+# Qiniu Resource Storage SDK for Python
+
+[![@qiniu on weibo](http://img.shields.io/badge/weibo-%40qiniutek-blue.svg)](http://weibo.com/qiniutek)
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 [![Build Status](https://travis-ci.org/qiniu/python-sdk.svg)](https://travis-ci.org/qiniu/python-sdk)
 [![Latest Stable Version](https://img.shields.io/pypi/v/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
