@@ -186,7 +186,7 @@ class BucketTestCase(unittest.TestCase):
     def test_batch_rename(self):
         key = 'rename'+rand_string(8)
         self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
-        key2 = key2 = key + 'rename'
+        key2 = key + 'rename'
         ops = build_batch_move(bucket_name, {key: key2}, bucket_name)
         ret, info = self.bucket.batch(ops)
         print(info)
