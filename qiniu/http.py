@@ -78,7 +78,20 @@ def _post_with_auth(url, data, auth):
 
 
 class ResponseInfo(object):
+    """七牛HTTP请求返回信息类
+
+    该类主要是用于获取和解析对七牛发起各种请求后的响应包的header和body。
+
+    Attributes:
+        status_code: 整数变量，响应状态码
+        text_body:   字符串变量，响应的body
+        req_id:      字符串变量，七牛HTTP扩展字段，参考 http://developer.qiniu.com/docs/v6/api/reference/extended-headers.html
+        x_log:       字符串变量，七牛HTTP扩展字段，参考 http://developer.qiniu.com/docs/v6/api/reference/extended-headers.html
+        error:       字符串变量，响应的错误内容
+    """
+
     def __init__(self, response, exception=None):
+        """用响应包和异常信息初始化ResponseInfo类"""
         self.__response = response
         self.exception = exception
         if response is None:

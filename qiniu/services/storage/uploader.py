@@ -9,15 +9,41 @@ from qiniu import http
 
 def put_data(
         up_token, key, data, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None):
-    ''' put data to Qiniu
-    If key is None, the server will generate one.
-    data may be str or read()able object.
-    '''
+    """上传二进制流到七牛
+
+    Args:
+        up_token:         上传凭证
+        key:              上传文件名
+        data:             上传二进制流
+        params:           自定义变量，规格参考 http://developer.qiniu.com/docs/v6/api/overview/up/response/vars.html#xvar
+        mime_type:        上传数据的mimeType
+        check_crc:        是否校验crc32
+        progress_handler: 上传进度
+
+    Returns:
+        一个json串，类似 {"hash": "<Hash string>", "key": "<Key string>"};
+        一个包含响应头部信息的字符串。
+    """
     crc = crc32(data) if check_crc else None
     return _form_put(up_token, key, data, params, mime_type, crc, False, progress_handler)
 
 
 def put_file(up_token, key, file_path, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None):
+    """上传文件到七牛
+
+    Args:
+        up_token:         上传凭证
+        key:              上传文件名
+        file_path:        上传文件的路径
+        params:           自定义变量，规格参考 http://developer.qiniu.com/docs/v6/api/overview/up/response/vars.html#xvar
+        mime_type:        上传数据的mimeType
+        check_crc:        是否校验crc32
+        progress_handler: 上传进度
+
+    Returns:
+        一个json串，类似 {"hash": "<Hash string>", "key": "<Key string>"};
+        一个包含响应头部信息的字符串。
+    """
     ret = {}
     size = os.stat(file_path).st_size
     with open(file_path, 'rb') as input_stream:
@@ -59,8 +85,24 @@ def put_stream(up_token, key, input_stream, data_size, params=None, mime_type=No
 
 
 class _Resume(object):
+    """断点续上传类
+
+    该类主要实现了断点续上传中的分块上传，以及相应地创建块和创建文件过程，详细规格参考：
+    http://developer.qiniu.com/docs/v6/api/reference/up/mkblk.html
+    http://developer.qiniu.com/docs/v6/api/reference/up/mkfile.html
+
+    Attributes:
+        up_token:         上传凭证
+        key:              上传文件名
+        input_stream:     上传二进制流
+        data_size:        上传流大小
+        params:           自定义变量，规格参考 http://developer.qiniu.com/docs/v6/api/overview/up/response/vars.html#xvar
+        mime_type:        上传数据的mimeType
+        progress_handler: 上传进度
+    """
 
     def __init__(self, up_token, key, input_stream, data_size, params, mime_type, progress_handler):
+        """初始化断点续上传"""
         self.up_token = up_token
         self.key = key
         self.input_stream = input_stream
@@ -70,6 +112,7 @@ class _Resume(object):
         self.progress_handler = progress_handler
 
     def upload(self):
+        """上传操作"""
         self.blockStatus = []
         host = config.get_default('default_up_host')
         for block in _file_iter(self.input_stream, config._BLOCK_SIZE):
@@ -91,6 +134,7 @@ class _Resume(object):
         return self.make_file(host)
 
     def make_block(self, block, block_size, host):
+        """创建块"""
         url = self.block_url(host, block_size)
         return self.post(url, block)
 
@@ -114,6 +158,7 @@ class _Resume(object):
         return url
 
     def make_file(self, host):
+        """创建文件"""
         url = self.file_url(host)
         body = ','.join([status['ctx'] for status in self.blockStatus])
         return self.post(url, body)

@@ -16,16 +16,45 @@ except ImportError:
 
 
 def urlsafe_base64_encode(data):
+    """urlsafe的base64编码:
+
+    对提供的数据进行urlsafe的base64编码。规格参考：
+    http://developer.qiniu.com/docs/v6/api/overview/appendix.html#urlsafe-base64
+
+    Args:
+        data: 待编码的数据，一般为字符串
+
+    Returns:
+        编码后的字符串
+    """
     ret = urlsafe_b64encode(b(data))
     return s(ret)
 
 
 def urlsafe_base64_decode(data):
+    """urlsafe的base64解码:
+
+    对提供的urlsafe的base64编码的数据进行解码
+
+    Args:
+        data: 待解码的数据，一般为字符串
+
+    Returns:
+        解码后的字符串。
+    """
     ret = urlsafe_b64decode(s(data))
     return ret
 
 
 def file_crc32(filePath):
+    """计算文件的crc32检验码:
+
+    Args:
+        filePath: 待计算校验码的文件路径
+
+    Returns:
+        文件内容的crc32校验码。
+    """
     crc = 0
     with open(filePath, 'rb') as f:
         for block in _file_iter(f, _BLOCK_SIZE):
@@ -34,10 +63,27 @@ def file_crc32(filePath):
 
 
 def crc32(data):
+    """计算输入流的crc32检验码:
+
+    Args:
+        data: 待计算校验码的字符流
+
+    Returns:
+        输入流的crc32校验码。
+    """
     return binascii.crc32(b(data)) & 0xffffffff
 
 
 def _file_iter(input_stream, size):
+    """读取输入流:
+
+    Args:
+        input_stream: 待读取文件的二进制流
+        size:         二进制流的大小
+
+    Raises:
+        IOError: 文件流读取失败
+    """
     d = input_stream.read(size)
     while d:
         yield d
@@ -45,12 +91,30 @@ def _file_iter(input_stream, size):
 
 
 def _sha1(data):
+    """单块计算hash:
+
+    Args:
+        data: 待计算hash的数据
+
+    Returns:
+        输入数据计算的hash值
+    """
     h = sha1()
     h.update(data)
     return h.digest()
 
 
 def _etag(input_stream):
+    """计算输入流的etag:
+
+    etag规格参考 http://developer.qiniu.com/docs/v6/api/overview/appendix.html#qiniu-etag
+
+    Args:
+        input_stream: 待计算etag的二进制流
+
+    Returns:
+        输入流的etag值
+    """
     array = [_sha1(block) for block in _file_iter(input_stream, _BLOCK_SIZE)]
     if len(array) == 1:
         data = array[0]
@@ -63,9 +127,28 @@ def _etag(input_stream):
 
 
 def etag(filePath):
+    """计算文件的etag:
+
+    Args:
+        filePath: 待计算etag的文件路径
+
+    Returns:
+        输入文件的etag值
+    """
     with open(filePath, 'rb') as f:
         return _etag(f)
 
 
 def entry(bucket, key):
+    """计算七牛API中的数据格式:
+
+    entry规格参考 http://developer.qiniu.com/docs/v6/api/reference/data-formats.html
+
+    Args:
+        bucket: 待操作的空间名
+        key:    待操作的文件名
+
+    Returns:
+        符合七牛API规格的数据格式
+    """
     return urlsafe_base64_encode('{0}:{1}'.format(bucket, key))
