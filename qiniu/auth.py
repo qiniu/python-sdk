@@ -10,27 +10,29 @@ from .compat import urlparse, json, b
 from .utils import urlsafe_base64_encode
 
 
+# 上传策略，参数规格详见
+# http://developer.qiniu.com/docs/v6/api/reference/security/put-policy.html
 _policy_fields = set([
-    'callbackUrl',
-    'callbackBody',
-    'callbackHost',
-    'callbackBodyType',
-    'callbackFetchKey',
+    'callbackUrl',       # 回调URL
+    'callbackBody',      # 回调Body
+    'callbackHost',      # 回调URL指定的Host
+    'callbackBodyType',  # 回调Body的Content-Type
+    'callbackFetchKey',  # 回调FetchKey模式开关
 
-    'returnUrl',
-    'returnBody',
+    'returnUrl',         # 上传端的303跳转URL
+    'returnBody',        # 上传端简单反馈获取的Body
 
-    'endUser',
-    'saveKey',
-    'insertOnly',
+    'endUser',           # 回调时上传端标识
+    'saveKey',           # 自定义资源名
+    'insertOnly',        # 插入模式开关
 
-    'detectMime',
-    'mimeLimit',
-    'fsizeLimit',
+    'detectMime',        # MimeType侦测开关
+    'mimeLimit',         # MimeType限制
+    'fsizeLimit',        # 上传文件大小限制
 
-    'persistentOps',
-    'persistentNotifyUrl',
-    'persistentPipeline',
+    'persistentOps',        # 持久化处理操作
+    'persistentNotifyUrl',  # 持久化处理结果通知URL
+    'persistentPipeline',   # 持久化处理独享队列
 ])
 
 _deprecated_policy_fields = set([
@@ -39,8 +41,17 @@ _deprecated_policy_fields = set([
 
 
 class Auth(object):
+    """七牛安全机制类
+
+    该类主要内容是七牛上传凭证、下载凭证、管理凭证三种凭证的签名接口的实现，以及回调验证。
+
+    Attributes:
+        __access_key: 账号密钥对中的accessKey，详见 https://portal.qiniu.com/setting/key
+        __secret_key: 账号密钥对重的secretKey，详见 https://portal.qiniu.com/setting/key
+    """
 
     def __init__(self, access_key, secret_key):
+        """初始化Auth类"""
         self.__checkKey(access_key, secret_key)
         self.__access_key, self.__secret_key = access_key, secret_key
         self.__secret_key = b(self.__secret_key)
@@ -58,6 +69,16 @@ class Auth(object):
         return '{0}:{1}:{2}'.format(self.__access_key, self.__token(data), data)
 
     def token_of_request(self, url, body=None, content_type=None):
+        """带请求体的签名（本质上是管理凭证的签名）
+
+        Args:
+            url:          待签名请求的url
+            body:         待签名请求的body
+            content_type: 待签名请求的body的Content-Type
+
+        Returns:
+            管理凭证
+        """
         parsed_url = urlparse(url)
         query = parsed_url.query
         path = parsed_url.path
@@ -82,10 +103,15 @@ class Auth(object):
             raise ValueError('invalid key')
 
     def private_download_url(self, url, expires=3600):
-        '''
-         *  return private url
-        '''
+        """生成私有资源下载链接
 
+        Args:
+            url:     私有空间资源的原始URL
+            expires: 下载凭证有效期，默认为3600s
+
+        Returns:
+            私有资源的下载链接
+        """
         deadline = int(time.time()) + expires
         if '?' in url:
             url += '&'
@@ -97,6 +123,17 @@ class Auth(object):
         return '{0}&token={1}'.format(url, token)
 
     def upload_token(self, bucket, key=None, expires=3600, policy=None, strict_policy=True):
+        """生成上传凭证
+
+        Args:
+            bucket:  上传的空间名
+            key:     上传的文件名，默认为空
+            expires: 上传凭证的过期时间，默认为3600s
+            policy:  上传策略，默认为空
+
+        Returns:
+            上传凭证
+        """
         if bucket is None or bucket == '':
             raise ValueError('invalid bucket name')
 
@@ -119,6 +156,17 @@ class Auth(object):
         return self.token_with_data(data)
 
     def verify_callback(self, origin_authorization, url, body, content_type='application/x-www-form-urlencoded'):
+        """回调验证
+
+        Args:
+            origin_authorization: 回调时请求Header中的Authorization字段
+            url:                  回调请求的url
+            body:                 回调请求的body
+            content_type:         回调请求body的Content-Type
+
+        Returns:
+            返回true表示验证成功，返回false表示验证失败
+        """
         token = self.token_of_request(url, body, content_type)
         authorization = 'QBox {0}'.format(token)
         return origin_authorization == authorization
