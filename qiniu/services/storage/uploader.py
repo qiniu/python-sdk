@@ -21,8 +21,8 @@ def put_data(
         progress_handler: 上传进度
 
     Returns:
-        一个json串，类似 {"hash": "<Hash string>", "key": "<Key string>"};
-        一个包含响应头部信息的字符串。
+        一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
+        一个ReponseInfo对象
     """
     crc = crc32(data) if check_crc else None
     return _form_put(up_token, key, data, params, mime_type, crc, False, progress_handler)
@@ -41,8 +41,8 @@ def put_file(up_token, key, file_path, params=None, mime_type='application/octet
         progress_handler: 上传进度
 
     Returns:
-        一个json串，类似 {"hash": "<Hash string>", "key": "<Key string>"};
-        一个包含响应头部信息的字符串。
+        一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
+        一个ReponseInfo对象
     """
     ret = {}
     size = os.stat(file_path).st_size

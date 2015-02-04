@@ -33,8 +33,8 @@ class PersistentFop(object):
             force:  强制执行持久化处理开关
 
         Returns:
-            一个json串，返回持久化处理的persistentId，类似{"persistentId": 5476bedf7823de4068253bae};
-            一个包含响应头部信息的字符串。
+            一个dict变量，返回持久化处理的persistentId，类似{"persistentId": 5476bedf7823de4068253bae};
+            一个ReponseInfo对象
         """
         ops = ';'.join(fops)
         data = {'bucket': self.bucket, 'key': key, 'fops': ops}

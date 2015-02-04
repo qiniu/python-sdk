@@ -35,8 +35,8 @@ class BucketManager(object):
             delimiter:  指定目录分隔符
 
         Returns:
-            一个json串，内容详见list接口返回的items。
-            一个包含响应头部信息的字符串。
+            一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
+            一个ReponseInfo对象
             一个EOF信息。
         """
         options = {
@@ -61,55 +61,185 @@ class BucketManager(object):
         return ret, eof, info
 
     def stat(self, bucket, key):
-        """获取文件信息"""
+        """获取文件信息:
+
+        获取资源的元信息，但不返回文件内容，具体规格参考：
+        http://developer.qiniu.com/docs/v6/api/reference/rs/stat.html
+
+        Args:
+            bucket: 待获取信息资源所在的空间
+            key:    待获取资源的文件名
+
+        Returns:
+            一个dict变量，类似：
+                {
+                    "fsize":        5122935,
+                    "hash":         "ljfockr0lOil_bZfyaI2ZY78HWoH",
+                    "mimeType":     "application/octet-stream",
+                    "putTime":      13603956734587420
+                }
+            一个ReponseInfo对象
+        """
         resource = entry(bucket, key)
         return self.__rs_do('stat', resource)
 
     def delete(self, bucket, key):
-        """删除文件"""
+        """删除文件:
+
+        删除指定资源，具体规格参考：
+        http://developer.qiniu.com/docs/v6/api/reference/rs/delete.html
+
+        Args:
+            bucket: 待获取信息资源所在的空间
+            key:    待获取资源的文件名     
+
+        Returns:
+            一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
+            一个ReponseInfo对象
+        """
         resource = entry(bucket, key)
         return self.__rs_do('delete', resource)
 
     def rename(self, bucket, key, key_to):
-        """重命名文件"""
+        """重命名文件:
+
+        给资源进行重命名，本质为move操作。
+
+        Args:
+            bucket: 待操作资源所在空间
+            key:    待操作资源文件名
+            key_to: 目标资源文件名
+
+        Returns:
+            一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
+            一个ReponseInfo对象
+        """
         return self.move(bucket, key, bucket, key_to)
 
     def move(self, bucket, key, bucket_to, key_to):
-        """移动文件"""
+        """移动文件:
+
+        将资源从一个空间到另一个空间，具体规格参考：
+        http://developer.qiniu.com/docs/v6/api/reference/rs/move.html
+
+        Args:
+            bucket:     待操作资源所在空间
+            bucket_to:  目标资源空间名
+            key:        待操作资源文件名
+            key_to:     目标资源文件名
+
+        Returns:
+            一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
+            一个ReponseInfo对象
+        """
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
         return self.__rs_do('move', resource, to)
 
     def copy(self, bucket, key, bucket_to, key_to):
-        """复制文件"""
+        """复制文件:
+
+        将指定资源复制为新命名资源，具体规格参考：
+        http://developer.qiniu.com/docs/v6/api/reference/rs/copy.html
+
+        Args:
+            bucket:     待操作资源所在空间
+            bucket_to:  目标资源空间名
+            key:        待操作资源文件名
+            key_to:     目标资源文件名
+
+        Returns:
+            一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
+            一个ReponseInfo对象
+        """
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
         return self.__rs_do('copy', resource, to)
 
     def fetch(self, url, bucket, key):
-        """抓取文件"""
+        """抓取文件:
+        从指定URL抓取资源，并将该资源存储到指定空间中，具体规格参考：
+        http://developer.qiniu.com/docs/v6/api/reference/rs/fetch.html
+
+        Args:
+            url:    指定的URL       
+            bucket: 目标资源空间
+            key:    目标资源文件名
+
+        Returns:
+            一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
+            一个ReponseInfo对象
+        """
         resource = urlsafe_base64_encode(url)
         to = entry(bucket, key)
         return self.__io_do('fetch', resource, 'to/{0}'.format(to))
 
     def prefetch(self, bucket, key):
-        """镜像回源预取文件"""
+        """镜像回源预取文件:
+
+        从镜像源站抓取资源到空间中，如果空间中已经存在，则覆盖该资源，具体规格参考
+        http://developer.qiniu.com/docs/v6/api/reference/rs/prefetch.html
+
+        Args:
+            bucket: 待获取资源所在的空间
+            key:    代获取资源文件名
+
+        Returns:
+            一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
+            一个ReponseInfo对象
+        """
         resource = entry(bucket, key)
         return self.__io_do('prefetch', resource)
 
     def change_mime(self, bucket, key, mime):
-        """修改文件mimeType"""
+        """修改文件mimeType:
+
+        主动修改指定资源的文件类型，具体规格参考：
+        http://developer.qiniu.com/docs/v6/api/reference/rs/chgm.html
+
+        Args:
+            bucket: 待操作资源所在空间
+            key:    待操作资源文件名
+            mime:   待操作文件目标mimeType
+        """
         resource = entry(bucket, key)
         encode_mime = urlsafe_base64_encode(mime)
         return self.__rs_do('chgm', resource, 'mime/{0}'.format(encode_mime))
 
     def batch(self, operations):
-        """批量操作"""
+        """批量操作:
+
+        在单次请求中进行多个资源管理操作，具体规格参考：
+        http://developer.qiniu.com/docs/v6/api/reference/rs/batch.html
+
+        Args:
+            operations: 资源管理操作数组，可通过
+
+        Returns:
+            一个dict变量，返回结果类似：
+                [
+                    { "code": <HttpCode int>, "data": <Data> },
+                    { "code": <HttpCode int> },
+                    { "code": <HttpCode int> },
+                    { "code": <HttpCode int> },
+                    { "code": <HttpCode int>, "data": { "error": "<ErrorMessage string>" } },
+                    ...
+                ]
+            一个ReponseInfo对象
+        """
         url = 'http://{0}/batch'.format(config.RS_HOST)
         return self.__post(url, dict(op=operations))
 
     def buckets(self):
-        """获取所有空间名"""
+        """获取所有空间名:
+
+        获取指定账号下所有的空间名。
+
+        Returns:
+            一个dict变量，类似：
+                [ <Bucket1>, <Bucket2>, ... ]
+            一个ReponseInfo对象
+        """
         return self.__rs_do('buckets')
 
     def __rs_do(self, operation, *args):
