@@ -91,7 +91,7 @@ class BucketManager(object):
 
         Args:
             bucket: 待获取信息资源所在的空间
-            key:    待获取资源的文件名     
+            key:    待获取资源的文件名
 
         Returns:
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
@@ -162,7 +162,7 @@ class BucketManager(object):
         http://developer.qiniu.com/docs/v6/api/reference/rs/fetch.html
 
         Args:
-            url:    指定的URL       
+            url:    指定的URL
             bucket: 目标资源空间
             key:    目标资源文件名
 
