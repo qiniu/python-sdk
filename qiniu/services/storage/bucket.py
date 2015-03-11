@@ -51,7 +51,7 @@ class BucketManager(object):
         if delimiter is not None:
             options['delimiter'] = delimiter
 
-        url = 'http://{0}/list'.format(config.RSF_HOST)
+        url = 'http://{0}/list'.format(config.get_default('default_rsf_host'))
         ret, info = self.__get(url, options)
 
         eof = False
@@ -227,7 +227,7 @@ class BucketManager(object):
                 ]
             一个ReponseInfo对象
         """
-        url = 'http://{0}/batch'.format(config.RS_HOST)
+        url = 'http://{0}/batch'.format(config.get_default('default_rs_host'))
         return self.__post(url, dict(op=operations))
 
     def buckets(self):
@@ -243,10 +243,10 @@ class BucketManager(object):
         return self.__rs_do('buckets')
 
     def __rs_do(self, operation, *args):
-        return self.__server_do(config.RS_HOST, operation, *args)
+        return self.__server_do(config.get_default('default_rs_host'), operation, *args)
 
     def __io_do(self, operation, *args):
-        return self.__server_do(config.IO_HOST, operation, *args)
+        return self.__server_do(config.get_default('default_io_host'), operation, *args)
 
     def __server_do(self, host, operation, *args):
         cmd = _build_op(operation, *args)

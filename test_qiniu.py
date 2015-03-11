@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
-import os  
+import os
 import string
 import random
 import tempfile
@@ -307,6 +307,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         assert ret['key'] == key
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
 
+
 class DownloadTestCase(unittest.TestCase):
 
     q = Auth(access_key, secret_key)
@@ -316,7 +317,7 @@ class DownloadTestCase(unittest.TestCase):
         private_key = 'gogopher.jpg'
         base_url = 'http://%s/%s' % (private_bucket+'.qiniudn.com', private_key)
         private_url = self.q.private_download_url(base_url, expires=3600)
-        print(private_url) 
+        print(private_url)
         r = requests.get(private_url)
         assert r.status_code == 200
 

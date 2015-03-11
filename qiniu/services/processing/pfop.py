@@ -45,5 +45,5 @@ class PersistentFop(object):
         if force == 1:
             data['force'] = 1
 
-        url = 'http://{0}/pfop'.format(config.API_HOST)
+        url = 'http://{0}/pfop'.format(config.get_default('default_api_host'))
         return http._post_with_auth(url, data, self.auth)
