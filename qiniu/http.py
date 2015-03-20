@@ -113,7 +113,7 @@ class ResponseInfo(object):
                     self.error = ret['error']
 
     def ok(self):
-        self.status_code == 200
+        return self.status_code == 200
 
     def need_retry(self):
         if self.__response is None:
