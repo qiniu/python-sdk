@@ -36,7 +36,7 @@ class BucketManager(object):
 
         Returns:
             一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
-            一个ReponseInfo对象
+            一个ResponseInfo对象
             一个EOF信息。
         """
         options = {
@@ -78,7 +78,7 @@ class BucketManager(object):
                     "mimeType":     "application/octet-stream",
                     "putTime":      13603956734587420
                 }
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         resource = entry(bucket, key)
         return self.__rs_do('stat', resource)
@@ -95,7 +95,7 @@ class BucketManager(object):
 
         Returns:
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         resource = entry(bucket, key)
         return self.__rs_do('delete', resource)
@@ -112,7 +112,7 @@ class BucketManager(object):
 
         Returns:
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         return self.move(bucket, key, bucket, key_to)
 
@@ -130,7 +130,7 @@ class BucketManager(object):
 
         Returns:
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
@@ -150,7 +150,7 @@ class BucketManager(object):
 
         Returns:
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
@@ -168,7 +168,7 @@ class BucketManager(object):
 
         Returns:
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         resource = urlsafe_base64_encode(url)
         to = entry(bucket, key)
@@ -186,7 +186,7 @@ class BucketManager(object):
 
         Returns:
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         resource = entry(bucket, key)
         return self.__io_do('prefetch', resource)
@@ -225,7 +225,7 @@ class BucketManager(object):
                     { "code": <HttpCode int>, "data": { "error": "<ErrorMessage string>" } },
                     ...
                 ]
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         url = 'http://{0}/batch'.format(config.get_default('default_rs_host'))
         return self.__post(url, dict(op=operations))
@@ -238,7 +238,7 @@ class BucketManager(object):
         Returns:
             一个dict变量，类似：
                 [ <Bucket1>, <Bucket2>, ... ]
-            一个ReponseInfo对象
+            一个ResponseInfo对象
         """
         return self.__rs_do('buckets')
 
