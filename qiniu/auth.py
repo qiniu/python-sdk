@@ -89,8 +89,7 @@ class Auth(object):
 
         if body:
             mimes = [
-                'application/x-www-form-urlencoded',
-                'application/json'
+                'application/x-www-form-urlencoded'
             ]
             if content_type in mimes:
                 data += body
