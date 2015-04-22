@@ -122,7 +122,8 @@ class BucketTestCase(unittest.TestCase):
     def test_fetch(self):
         ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name, 'fetch.html')
         print(info)
-        assert ret == {}
+        assert ret['key'] == 'fetch.html'
+        assert ret['hash'] == 'FhwVT7vs6xqs1nu_vEdo_4x4qBMB'
 
     def test_stat(self):
         ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
@@ -256,7 +257,7 @@ class UploaderTestCase(unittest.TestCase):
         ret, info = put_data(token, None, data)
         print(info)
         assert ret is None
-        assert info.status_code == 401  # key not match
+        assert info.status_code == 403  # key not match
 
     def test_retry(self):
         key = 'retry'
