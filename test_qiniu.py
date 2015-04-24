@@ -267,6 +267,7 @@ class UploaderTestCase(unittest.TestCase):
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
+        assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
 
 
@@ -306,6 +307,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         ret, info = put_file(token, key, localfile, self.params, self.mime_type)
         print(info)
         assert ret['key'] == key
+        assert ret['hash'] == etag(localfile)
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
 
 

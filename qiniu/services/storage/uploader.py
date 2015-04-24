@@ -72,7 +72,7 @@ def _form_put(up_token, key, data, params, mime_type, crc, is_file=False, progre
     if r is None and info.need_retry():
         if info.connect_failed:
             url = 'http://' + config.UPBACKUP_HOST + '/'
-        if is_file:
+        if hasattr(data, 'seek'):
             data.seek(0)
         r, info = http._post_file(url, data=fields, files={'file': (name, data, mime_type)})
 
