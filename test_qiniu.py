@@ -259,7 +259,7 @@ class UploaderTestCase(unittest.TestCase):
         assert ret is None
         assert info.status_code == 403  # key not match
 
-    def test_retry(self):
+    def test_withoutRead_withoutSeek_retry(self):
         key = 'retry'
         data = 'hello retry!'
         set_default(default_up_host='a')
@@ -268,6 +268,28 @@ class UploaderTestCase(unittest.TestCase):
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
+        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+
+    def test_hasRead_hasSeek_retry(self):
+        key = 'withReadAndSeek_retry'
+        data = StringIO.StringIO('hello retry again!')
+        set_default(default_up_host='a')
+        token = self.q.upload_token(bucket_name)
+        ret, info = put_data(token, key, data)
+        print(info)
+        assert ret['key'] == key
+        assert ret['hash'] == 'FuEbdt6JP2BqwQJi7PezYhmuVYOo'
+        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+
+    def test_hasRead_withoutSeek_retry(self):
+        key = 'withReadAndWithoutSeek_retry'
+        import urllib2
+        data = urllib2.urlopen('http://pythonsdk.qiniudn.com/python-sdk.html')
+        set_default(default_up_host='a')
+        token = self.q.upload_token(bucket_name)
+        ret, info = put_data(token, key, data)
+        print(info)
+        assert ret == None
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
 
 
