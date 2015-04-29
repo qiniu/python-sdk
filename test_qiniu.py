@@ -14,7 +14,7 @@ from qiniu import put_data, put_file, put_stream
 from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, build_batch_delete
 from qiniu import urlsafe_base64_encode, urlsafe_base64_decode
 
-from qiniu.compat import is_py2, b
+from qiniu.compat import is_py2, is_py3, b
 
 from qiniu.services.storage.uploader import _form_put
 
@@ -22,8 +22,13 @@ import qiniu.config
 
 if is_py2:
     import sys
+    import StringIO
     reload(sys)
     sys.setdefaultencoding('utf-8')
+    StringIO = StringIO.StringIO
+elif is_py3:
+    import io
+    StringIO = io.StringIO
 
 access_key = os.getenv('QINIU_ACCESS_KEY')
 secret_key = os.getenv('QINIU_SECRET_KEY')
@@ -272,7 +277,7 @@ class UploaderTestCase(unittest.TestCase):
 
     def test_hasRead_hasSeek_retry(self):
         key = 'withReadAndSeek_retry'
-        data = StringIO.StringIO('hello retry again!')
+        data = StringIO('hello retry again!')
         set_default(default_up_host='a')
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
@@ -283,8 +288,7 @@ class UploaderTestCase(unittest.TestCase):
 
     def test_hasRead_withoutSeek_retry(self):
         key = 'withReadAndWithoutSeek_retry'
-        import urllib2
-        data = urllib2.urlopen('http://pythonsdk.qiniudn.com/python-sdk.html')
+        data = ReadWithoutSeek('I only have read attribute!')
         set_default(default_up_host='a')
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
@@ -357,6 +361,15 @@ class MediaTestCase(unittest.TestCase):
         ret, info = pfop.execute('sintel_trailer.mp4', ops, 1)
         print(info)
         assert ret['persistentId'] is not None
+
+
+class ReadWithoutSeek(object):
+    def __init__(self, str):
+        self.str = str
+        pass
+
+    def read(self):
+        print(self.str)
 
 if __name__ == '__main__':
     unittest.main()
