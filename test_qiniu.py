@@ -23,12 +23,16 @@ import qiniu.config
 if is_py2:
     import sys
     import StringIO
+    import urllib
     reload(sys)
     sys.setdefaultencoding('utf-8')
     StringIO = StringIO.StringIO
+    urlopen = urllib.urlopen
 elif is_py3:
     import io
+    import urllib
     StringIO = io.StringIO
+    urlopen = urllib.request.urlopen
 
 access_key = os.getenv('QINIU_ACCESS_KEY')
 secret_key = os.getenv('QINIU_SECRET_KEY')
@@ -289,6 +293,16 @@ class UploaderTestCase(unittest.TestCase):
     def test_hasRead_withoutSeek_retry(self):
         key = 'withReadAndWithoutSeek_retry'
         data = ReadWithoutSeek('I only have read attribute!')
+        set_default(default_up_host='a')
+        token = self.q.upload_token(bucket_name)
+        ret, info = put_data(token, key, data)
+        print(info)
+        assert ret == None
+        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+
+    def test_hasRead_WithoutSeek_retry2(self):
+        key = 'withReadAndWithoutSeek_retry2'
+        data = urlopen("http://www.qiniu.com")
         set_default(default_up_host='a')
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
