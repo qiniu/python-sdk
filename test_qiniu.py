@@ -14,7 +14,7 @@ from qiniu import put_data, put_file, put_stream
 from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, build_batch_delete
 from qiniu import urlsafe_base64_encode, urlsafe_base64_decode
 
-from qiniu.compat import is_py2, b
+from qiniu.compat import is_py2, is_py3, b
 
 from qiniu.services.storage.uploader import _form_put
 
@@ -22,8 +22,17 @@ import qiniu.config
 
 if is_py2:
     import sys
+    import StringIO
+    import urllib
     reload(sys)
     sys.setdefaultencoding('utf-8')
+    StringIO = StringIO.StringIO
+    urlopen = urllib.urlopen
+elif is_py3:
+    import io
+    import urllib
+    StringIO = io.StringIO
+    urlopen = urllib.request.urlopen
 
 access_key = os.getenv('QINIU_ACCESS_KEY')
 secret_key = os.getenv('QINIU_SECRET_KEY')
@@ -259,7 +268,7 @@ class UploaderTestCase(unittest.TestCase):
         assert ret is None
         assert info.status_code == 403  # key not match
 
-    def test_retry(self):
+    def test_withoutRead_withoutSeek_retry(self):
         key = 'retry'
         data = 'hello retry!'
         set_default(default_up_host='a')
@@ -268,6 +277,37 @@ class UploaderTestCase(unittest.TestCase):
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
+        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+
+    def test_hasRead_hasSeek_retry(self):
+        key = 'withReadAndSeek_retry'
+        data = StringIO('hello retry again!')
+        set_default(default_up_host='a')
+        token = self.q.upload_token(bucket_name)
+        ret, info = put_data(token, key, data)
+        print(info)
+        assert ret['key'] == key
+        assert ret['hash'] == 'FuEbdt6JP2BqwQJi7PezYhmuVYOo'
+        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+
+    def test_hasRead_withoutSeek_retry(self):
+        key = 'withReadAndWithoutSeek_retry'
+        data = ReadWithoutSeek('I only have read attribute!')
+        set_default(default_up_host='a')
+        token = self.q.upload_token(bucket_name)
+        ret, info = put_data(token, key, data)
+        print(info)
+        assert ret == None
+        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+
+    def test_hasRead_WithoutSeek_retry2(self):
+        key = 'withReadAndWithoutSeek_retry2'
+        data = urlopen("http://www.qiniu.com")
+        set_default(default_up_host='a')
+        token = self.q.upload_token(bucket_name)
+        ret, info = put_data(token, key, data)
+        print(info)
+        assert ret == None
         qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
 
 
@@ -335,6 +375,15 @@ class MediaTestCase(unittest.TestCase):
         ret, info = pfop.execute('sintel_trailer.mp4', ops, 1)
         print(info)
         assert ret['persistentId'] is not None
+
+
+class ReadWithoutSeek(object):
+    def __init__(self, str):
+        self.str = str
+        pass
+
+    def read(self):
+        print(self.str)
 
 if __name__ == '__main__':
     unittest.main()

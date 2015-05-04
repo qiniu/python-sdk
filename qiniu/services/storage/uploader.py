@@ -25,7 +25,7 @@ def put_data(
         一个ResponseInfo对象
     """
     crc = crc32(data) if check_crc else None
-    return _form_put(up_token, key, data, params, mime_type, crc, False, progress_handler)
+    return _form_put(up_token, key, data, params, mime_type, crc, progress_handler)
 
 
 def put_file(up_token, key, file_path, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None):
@@ -51,11 +51,11 @@ def put_file(up_token, key, file_path, params=None, mime_type='application/octet
             ret, info = put_stream(up_token, key, input_stream, size, params, mime_type, progress_handler)
         else:
             crc = file_crc32(file_path) if check_crc else None
-            ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, True, progress_handler)
+            ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler)
     return ret, info
 
 
-def _form_put(up_token, key, data, params, mime_type, crc, is_file=False, progress_handler=None):
+def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None):
     fields = {}
     if params:
         for k, v in params.items():
@@ -72,8 +72,12 @@ def _form_put(up_token, key, data, params, mime_type, crc, is_file=False, progre
     if r is None and info.need_retry():
         if info.connect_failed:
             url = 'http://' + config.UPBACKUP_HOST + '/'
-        if hasattr(data, 'seek'):
+        if hasattr(data, 'read') is False:
+            pass
+        elif hasattr(data, 'seek') and (not hasattr(data, 'seekable') or data.seekable()):
             data.seek(0)
+        else:
+            return r, info
         r, info = http._post_file(url, data=fields, files={'file': (name, data, mime_type)})
 
     return r, info
