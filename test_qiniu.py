@@ -134,6 +134,12 @@ class BucketTestCase(unittest.TestCase):
         assert ret['key'] == 'fetch.html'
         assert ret['hash'] == 'FhwVT7vs6xqs1nu_vEdo_4x4qBMB'
 
+    def test_fetch_without_key(self):
+        ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name)
+        print(info)
+        assert ret['key'] == 'FhwVT7vs6xqs1nu_vEdo_4x4qBMB'
+        assert ret['hash'] == 'FhwVT7vs6xqs1nu_vEdo_4x4qBMB'
+
     def test_stat(self):
         ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
         print(info)
