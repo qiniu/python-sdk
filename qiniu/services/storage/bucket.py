@@ -156,7 +156,7 @@ class BucketManager(object):
         to = entry(bucket_to, key_to)
         return self.__rs_do('copy', resource, to)
 
-    def fetch(self, url, bucket, key):
+    def fetch(self, url, bucket, key=None):
         """抓取文件:
         从指定URL抓取资源，并将该资源存储到指定空间中，具体规格参考：
         http://developer.qiniu.com/docs/v6/api/reference/rs/fetch.html
