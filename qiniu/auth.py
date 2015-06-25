@@ -53,8 +53,8 @@ class Auth(object):
     def __init__(self, access_key, secret_key):
         """初始化Auth类"""
         self.__checkKey(access_key, secret_key)
-        self.__access_key, self.__secret_key = access_key, secret_key
-        self.__secret_key = b(self.__secret_key)
+        self.__access_key = access_key
+        self.__secret_key = b(secret_key)
 
     def __token(self, data):
         data = b(data)
