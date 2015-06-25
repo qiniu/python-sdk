@@ -9,7 +9,7 @@ import requests
 import unittest
 import pytest
 
-from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save
+from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save, Zone
 from qiniu import put_data, put_file, put_stream
 from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, build_batch_delete
 from qiniu import urlsafe_base64_encode, urlsafe_base64_decode
@@ -132,13 +132,13 @@ class BucketTestCase(unittest.TestCase):
         ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name, 'fetch.html')
         print(info)
         assert ret['key'] == 'fetch.html'
-        assert ret['hash'] == 'FhwVT7vs6xqs1nu_vEdo_4x4qBMB'
+        assert 'hash' in ret
 
     def test_fetch_without_key(self):
         ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name)
         print(info)
-        assert ret['key'] == 'FhwVT7vs6xqs1nu_vEdo_4x4qBMB'
-        assert ret['hash'] == 'FhwVT7vs6xqs1nu_vEdo_4x4qBMB'
+        assert ret['key'] == ret['hash']
+        assert 'hash' in ret
 
     def test_stat(self):
         ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
@@ -277,44 +277,44 @@ class UploaderTestCase(unittest.TestCase):
     def test_withoutRead_withoutSeek_retry(self):
         key = 'retry'
         data = 'hello retry!'
-        set_default(default_up_host='a')
+        set_default(default_zone=Zone('a', 'upload.qiniu.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
-        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+        qiniu.set_default(default_zone=qiniu.config.zone0)
 
     def test_hasRead_hasSeek_retry(self):
         key = 'withReadAndSeek_retry'
         data = StringIO('hello retry again!')
-        set_default(default_up_host='a')
+        set_default(default_zone=Zone('a', 'upload.qiniu.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == 'FuEbdt6JP2BqwQJi7PezYhmuVYOo'
-        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+        qiniu.set_default(default_zone=qiniu.config.zone0)
 
     def test_hasRead_withoutSeek_retry(self):
         key = 'withReadAndWithoutSeek_retry'
         data = ReadWithoutSeek('I only have read attribute!')
-        set_default(default_up_host='a')
+        set_default(default_zone=Zone('a', 'upload.qiniu.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
-        assert ret == None
-        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+        assert ret is None
+        qiniu.set_default(default_zone=qiniu.config.zone0)
 
     def test_hasRead_WithoutSeek_retry2(self):
         key = 'withReadAndWithoutSeek_retry2'
         data = urlopen("http://www.qiniu.com")
-        set_default(default_up_host='a')
+        set_default(default_zone=Zone('a', 'upload.qiniu.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
-        assert ret == None
-        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+        assert ret is None
+        qiniu.set_default(default_zone=qiniu.config.zone0)
 
 
 class ResumableUploaderTestCase(unittest.TestCase):
@@ -338,23 +338,23 @@ class ResumableUploaderTestCase(unittest.TestCase):
         token = self.q.upload_token(bucket_name, key)
         localfile = create_temp_file(4 * 1024 * 1024 + 1)
         progress_handler = lambda progress, total: progress
-        qiniu.set_default(default_up_host='a')
+        qiniu.set_default(default_zone=Zone('a', 'upload.qiniu.com'))
         ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
         print(info)
         assert ret['key'] == key
-        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+        qiniu.set_default(default_zone=qiniu.config.zone0)
         remove_temp_file(localfile)
 
     def test_retry(self):
         localfile = __file__
         key = 'test_file_r_retry'
-        qiniu.set_default(default_up_host='a')
+        qiniu.set_default(default_zone=Zone('a', 'upload.qiniu.com'))
         token = self.q.upload_token(bucket_name, key)
         ret, info = put_file(token, key, localfile, self.params, self.mime_type)
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == etag(localfile)
-        qiniu.set_default(default_up_host=qiniu.config.UPAUTO_HOST)
+        qiniu.set_default(default_zone=qiniu.config.zone0)
 
 
 class DownloadTestCase(unittest.TestCase):

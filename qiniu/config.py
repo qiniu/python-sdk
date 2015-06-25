@@ -5,14 +5,29 @@ IO_HOST = 'iovip.qbox.me'   # 七牛源站Host
 RSF_HOST = 'rsf.qbox.me'    # 列举操作Host
 API_HOST = 'api.qiniu.com'  # 数据处理操作Host
 
-UPAUTO_HOST = 'up.qiniu.com'        # 默认上传Host
-UPDX_HOST = 'updx.qiniu.com'        # 电信上传Host
-UPLT_HOST = 'uplt.qiniu.com'        # 联通上传Host
-UPYD_HOST = 'upyd.qiniu.com'        # 移动上传Host
-UPBACKUP_HOST = 'upload.qiniu.com'  # 备用上传Host
+_BLOCK_SIZE = 1024 * 1024 * 4  # 断点续上传分块大小，该参数为接口规格，暂不支持修改
+
+
+class Zone(object):
+    """七牛上传区域类
+
+    该类主要内容上传区域地址。
+
+    Attributes:
+        up_host: 首选上传地址
+        up_host_backup: 备用上传地址
+    """
+    def __init__(self, up_host, up_host_backup):
+        """初始化Zone类"""
+        self.up_host, self.up_host_backup = up_host, up_host_backup
+
+
+zone0 = Zone('up.qiniu.com', 'upload.qiniu.com')
+zone1 = Zone('up-z1.qiniu.com', 'upload-z1.qiniu.com')
 
 _config = {
-    'default_up_host': UPAUTO_HOST,  # 设置为默认上传Host
+    'default_up_host': zone0.up_host,  # 设置为默认上传Host
+    'default_up_host_backup': zone0.up_host_backup,
     'default_rs_host': RS_HOST,
     'default_io_host': IO_HOST,
     'default_rsf_host': RSF_HOST,
@@ -20,9 +35,7 @@ _config = {
     'connection_timeout': 30,        # 链接超时为时间为30s
     'connection_retries': 3,         # 链接重试次数为3次
     'connection_pool': 10,           # 链接池个数为10
-
 }
-_BLOCK_SIZE = 1024 * 1024 * 4  # 断点续上传分块大小，该参数为接口规格，暂不支持修改
 
 
 def get_default(key):
@@ -30,11 +43,12 @@ def get_default(key):
 
 
 def set_default(
-        default_up_host=None, connection_retries=None, connection_pool=None,
+        default_zone=None, connection_retries=None, connection_pool=None,
         connection_timeout=None, default_rs_host=None, default_io_host=None,
         default_rsf_host=None, default_api_host=None):
-    if default_up_host:
-        _config['default_up_host'] = default_up_host
+    if default_zone:
+        _config['default_up_host'] = default_zone.up_host
+        _config['default_up_host_backup'] = default_zone.up_host_backup
     if default_rs_host:
         _config['default_rs_host'] = default_rs_host
     if default_io_host:
