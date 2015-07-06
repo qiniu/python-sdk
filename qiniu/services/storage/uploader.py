@@ -5,7 +5,7 @@ import os
 from qiniu import config
 from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter
 from qiniu import http
-from upload_progress_recorder import UploadProgressRecorder
+from .upload_progress_recorder import UploadProgressRecorder
 
 
 def put_data(
@@ -31,7 +31,8 @@ def put_data(
 
 def put_file(up_token, key, file_path, params=None,
              mime_type='application/octet-stream', check_crc=False,
-             progress_handler=None, upload_progress_recorder=None):
+             progress_handler=None, upload_progress_recorder=None,
+             cancel_upload_signal=None):
 
     """上传文件到七牛
 
@@ -146,10 +147,10 @@ class _Resume(object):
             return 0
 
         if not record['modify_time'] or record['size'] != self.size or \
-            record['modify_time'] != self.modify_time:
+                record['modify_time'] != self.modify_time:
             return 0
 
-        self.blockStatus =  [{'ctx': ctx} for ctx in record['contexts']]
+        self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
         return record['offset']
 
     def upload(self):
