@@ -31,9 +31,7 @@ def put_data(
 
 def put_file(up_token, key, file_path, params=None,
              mime_type='application/octet-stream', check_crc=False,
-             progress_handler=None, upload_progress_recorder=None,
-             cancel_upload_signal=None):
-
+             progress_handler=None, upload_progress_recorder=None):
     """上传文件到七牛
 
     Args:
@@ -44,6 +42,7 @@ def put_file(up_token, key, file_path, params=None,
         mime_type:        上传数据的mimeType
         check_crc:        是否校验crc32
         progress_handler: 上传进度
+        upload_progress_recorder: 记录上传进度，用于断点续传
 
     Returns:
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
