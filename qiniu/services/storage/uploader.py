@@ -5,6 +5,7 @@ import os
 from qiniu import config
 from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter
 from qiniu import http
+from .upload_progress_recorder import UploadProgressRecorder
 
 
 def put_data(
@@ -28,7 +29,9 @@ def put_data(
     return _form_put(up_token, key, data, params, mime_type, crc, progress_handler)
 
 
-def put_file(up_token, key, file_path, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None):
+def put_file(up_token, key, file_path, params=None,
+             mime_type='application/octet-stream', check_crc=False,
+             progress_handler=None, upload_progress_recorder=None):
     """上传文件到七牛
 
     Args:
@@ -39,6 +42,7 @@ def put_file(up_token, key, file_path, params=None, mime_type='application/octet
         mime_type:        上传数据的mimeType
         check_crc:        是否校验crc32
         progress_handler: 上传进度
+        upload_progress_recorder: 记录上传进度，用于断点续传
 
     Returns:
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
@@ -48,7 +52,10 @@ def put_file(up_token, key, file_path, params=None, mime_type='application/octet
     size = os.stat(file_path).st_size
     with open(file_path, 'rb') as input_stream:
         if size > config._BLOCK_SIZE * 2:
-            ret, info = put_stream(up_token, key, input_stream, size, params, mime_type, progress_handler)
+            ret, info = put_stream(up_token, key, input_stream, size, params,
+                                   mime_type, progress_handler,
+                                   upload_progress_recorder=upload_progress_recorder,
+                                   modify_time=(int)(os.path.getmtime(file_path)))
         else:
             crc = file_crc32(file_path) if check_crc else None
             ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler)
@@ -83,15 +90,18 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
     return r, info
 
 
-def put_stream(up_token, key, input_stream, data_size, params=None, mime_type=None, progress_handler=None):
-    task = _Resume(up_token, key, input_stream, data_size, params, mime_type, progress_handler)
+def put_stream(up_token, key, input_stream, data_size, params=None,
+               mime_type=None, progress_handler=None,
+               upload_progress_recorder=None, modify_time=None):
+    task = _Resume(up_token, key, input_stream, data_size, params, mime_type,
+                   progress_handler, upload_progress_recorder, modify_time)
     return task.upload()
 
 
 class _Resume(object):
     """断点续上传类
 
-    该类主要实现了断点续上传中的分块上传，以及相应地创建块和创建文件过程，详细规格参考：
+    该类主要实现了分块上传，断点续上，以及相应地创建块和创建文件过程，详细规格参考：
     http://developer.qiniu.com/docs/v6/api/reference/up/mkblk.html
     http://developer.qiniu.com/docs/v6/api/reference/up/mkfile.html
 
@@ -103,9 +113,12 @@ class _Resume(object):
         params:           自定义变量，规格参考 http://developer.qiniu.com/docs/v6/api/overview/up/response/vars.html#xvar
         mime_type:        上传数据的mimeType
         progress_handler: 上传进度
+        upload_progress_recorder:  记录上传进度，用于断点续传
+        modify_time:      上传文件修改日期
     """
 
-    def __init__(self, up_token, key, input_stream, data_size, params, mime_type, progress_handler):
+    def __init__(self, up_token, key, input_stream, data_size, params, mime_type,
+                 progress_handler, upload_progress_recorder, modify_time):
         """初始化断点续上传"""
         self.up_token = up_token
         self.key = key
@@ -114,12 +127,37 @@ class _Resume(object):
         self.params = params
         self.mime_type = mime_type
         self.progress_handler = progress_handler
+        self.upload_progress_recorder = upload_progress_recorder or UploadProgressRecorder()
+        self.modify_time = modify_time
+
+    def record_upload_progress(self, offset):
+        record_data = {
+            'size': self.size,
+            'offset': offset,
+            'contexts': [block['ctx'] for block in self.blockStatus]
+        }
+        if self.modify_time:
+            record_data['modify_time'] = self.modify_time
+        self.upload_progress_recorder.set_upload_record(self.key, record_data)
+
+    def recovery_from_record(self):
+        record = self.upload_progress_recorder.get_upload_record(self.key)
+        if not record:
+            return 0
+
+        if not record['modify_time'] or record['size'] != self.size or \
+                record['modify_time'] != self.modify_time:
+            return 0
+
+        self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
+        return record['offset']
 
     def upload(self):
         """上传操作"""
         self.blockStatus = []
         host = config.get_default('default_up_host')
-        for block in _file_iter(self.input_stream, config._BLOCK_SIZE):
+        offset = self.recovery_from_record()
+        for block in _file_iter(self.input_stream, config._BLOCK_SIZE, offset):
             length = len(block)
             crc = crc32(block)
             ret, info = self.make_block(block, length, host)
@@ -133,6 +171,8 @@ class _Resume(object):
                     return ret, info
 
             self.blockStatus.append(ret)
+            offset += length
+            self.record_upload_progress(offset)
             if(callable(self.progress_handler)):
                 self.progress_handler(((len(self.blockStatus) - 1) * config._BLOCK_SIZE)+length, self.size)
         return self.make_file(host)

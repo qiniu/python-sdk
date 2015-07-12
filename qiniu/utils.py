@@ -74,7 +74,7 @@ def crc32(data):
     return binascii.crc32(b(data)) & 0xffffffff
 
 
-def _file_iter(input_stream, size):
+def _file_iter(input_stream, size, offset=0):
     """读取输入流:
 
     Args:
@@ -84,6 +84,7 @@ def _file_iter(input_stream, size):
     Raises:
         IOError: 文件流读取失败
     """
+    input_stream.seek(offset)
     d = input_stream.read(size)
     while d:
         yield d
