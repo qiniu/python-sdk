@@ -119,11 +119,11 @@ class _Resume(object):
             length = len(block)
             crc = crc32(block)
             ret, info = self.make_block(block, length, host)
-            if ret is None and not info.need_retry:
+            if ret is None and not info.need_retry():
                 return ret, info
-            if info.connect_failed:
+            if info.connect_failed():
                 host = config.UPBACKUP_HOST
-            if info.need_retry or crc != ret['crc32']:
+            if info.need_retry() or crc != ret['crc32']:
                 ret, info = self.make_block(block, length, host)
                 if ret is None or crc != ret['crc32']:
                     return ret, info
