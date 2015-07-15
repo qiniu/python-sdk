@@ -138,6 +138,16 @@ def etag(filePath):
     with open(filePath, 'rb') as f:
         return _etag(f)
 
+def etag_stream(input_stream):
+    """计算输入流的etag:
+
+    Args:
+        input_stream: 待计算etag的二进制流
+
+    Returns:
+        输入流的etag值
+    """
+    return _etag(input_stream)
 
 def entry(bucket, key):
     """计算七牛API中的数据格式:
