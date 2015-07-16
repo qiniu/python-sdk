@@ -56,6 +56,13 @@ def create_temp_file(size):
     f.close()
     return t
 
+def download_temp_file(url):
+    t = tempfile.mktemp()
+    f = open(t, 'wb')
+    f.write(requests.get(url).content)
+    f.close()
+    return t
+
 
 def remove_temp_file(file):
     try:
@@ -131,14 +138,18 @@ class BucketTestCase(unittest.TestCase):
     def test_fetch(self):
         ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name, 'fetch.html')
         print(info)
+        localfile = download_temp_file('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html')
         assert ret['key'] == 'fetch.html'
-        assert 'hash' in ret
+        assert ret['hash'] == etag(localfile)
+        remove_temp_file(localfile)
 
     def test_fetch_without_key(self):
         ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name)
         print(info)
-        assert ret['key'] == ret['hash']
-        assert 'hash' in ret
+        localfile = download_temp_file('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html')
+        assert ret['key'] == etag(localfile)
+        assert ret['hash'] == etag(localfile)
+        remove_temp_file(localfile)
 
     def test_stat(self):
         ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
