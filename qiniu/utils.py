@@ -105,7 +105,7 @@ def _sha1(data):
     return h.digest()
 
 
-def _etag(input_stream):
+def etag_stream(input_stream):
     """计算输入流的etag:
 
     etag规格参考 http://developer.qiniu.com/docs/v6/api/overview/appendix.html#qiniu-etag
@@ -137,7 +137,7 @@ def etag(filePath):
         输入文件的etag值
     """
     with open(filePath, 'rb') as f:
-        return _etag(f)
+        return etag_stream(f)
 
 
 def entry(bucket, key):
