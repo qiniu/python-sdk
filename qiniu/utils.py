@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 from hashlib import sha1
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
@@ -56,9 +57,23 @@ def file_crc32(filePath):
         文件内容的crc32校验码。
     """
     crc = 0
-    with open(filePath, 'rb') as f:
-        for block in _file_iter(f, _BLOCK_SIZE):
-            crc = binascii.crc32(block, crc) & 0xFFFFFFFF
+    for block in _file_block_generator(filePath):
+        crc = binascii.crc32(block, crc) & 0xFFFFFFFF
+    return crc
+
+
+def file_block_crc32(block_generator):
+    """计算文件块的crc32检验码:
+
+    Args:
+        block_generator: 待计算校验码的文件块
+
+    Returns:
+        文件块的crc32校验码。
+    """
+    crc = 0
+    for block in block_generator:
+        crc = binascii.crc32(block, crc) & 0xFFFFFFFF
     return crc
 
 
@@ -74,49 +89,98 @@ def crc32(data):
     return binascii.crc32(b(data)) & 0xffffffff
 
 
-def _file_iter(input_stream, size, offset=0):
-    """读取输入流:
+class _file_block_generator(object):
+    """用于读取文件片段的对象
 
     Args:
-        input_stream: 待读取文件的二进制流
-        size:         二进制流的大小
+        filePath:   待读取的文件路径和名称
+        offset:     文件片段开始的位移
+        length:     文件片段的长度
+
+    使用例子:
+        for data in _file_block_generator("foo.bin", 1024*1024, 512*1024):
+            print data
+    """
+    def __init__(self, filePath, offset=0, length=None):
+        self.filePath = filePath
+        self.offset = offset
+        if length:
+            self.length = length
+        else:
+            self.length = os.stat(filePath).st_size
+
+    def __iter__(self):
+        self.f = open(self.filePath,'rb')
+        self.f.seek(self.offset)
+        self.done = False
+        self.rest = self.length
+        return self
+
+    # Python 3 Compatibility
+    def __next__(self):
+        return self.next()
+
+    def next(self):
+        #Choose 8192 because httplib has hard-coded read size of 8192
+        if self.done:
+            raise StopIteration
+        if self.rest <= 8192:
+            data = self.f.read(self.rest)
+            self.done = True
+            self.rest = 0
+            self.f.close()
+            return data
+        else:
+            self.rest -= 8192
+            return self.f.read(8192)
+
+
+def _file_iter(filePath, size, offset=0):
+    """分片段读取文件:
+
+    Args:
+        filePath:   待读取文件
+        size:       每个片段的大小
+        offset:     第一个片段开始的位移
 
     Raises:
-        IOError: 文件流读取失败
+        IOError: 文件读取失败
     """
-    input_stream.seek(offset)
-    d = input_stream.read(size)
-    while d:
-        yield d
-        d = input_stream.read(size)
+    file_size = os.stat(filePath).st_size
+    while offset < file_size - size:
+        yield _file_block_generator(filePath, offset, size)
+        offset += size
+    if offset < file_size:
+        yield _file_block_generator(filePath, offset, file_size - offset)
 
 
-def _sha1(data):
+def _sha1(block_generator):
     """单块计算hash:
 
     Args:
-        data: 待计算hash的数据
+        block_generator: 待计算hash的数据片段
 
     Returns:
         输入数据计算的hash值
     """
     h = sha1()
-    h.update(data)
+    for data in block_generator:
+        h.update(data)
     return h.digest()
 
 
-def etag_stream(input_stream):
-    """计算输入流的etag:
-
+def etag(filePath):
+    """计算文件的etag:
+    
     etag规格参考 http://developer.qiniu.com/docs/v6/api/overview/appendix.html#qiniu-etag
 
     Args:
-        input_stream: 待计算etag的二进制流
+        filePath: 待计算etag的文件路径
 
     Returns:
-        输入流的etag值
+        输入文件的etag值
     """
-    array = [_sha1(block) for block in _file_iter(input_stream, _BLOCK_SIZE)]
+    array = [_sha1(block) for block in _file_iter(filePath, _BLOCK_SIZE)]
     if len(array) == 1:
         data = array[0]
         prefix = b('\x16')
@@ -125,20 +189,6 @@ def etag_stream(input_stream):
         data = _sha1(sha1_str)
         prefix = b('\x96')
     return urlsafe_base64_encode(prefix + data)
-
-
-def etag(filePath):
-    """计算文件的etag:
-
-    Args:
-        filePath: 待计算etag的文件路径
-
-    Returns:
-        输入文件的etag值
-    """
-    with open(filePath, 'rb') as f:
-        return etag_stream(f)
-
 
 def entry(bucket, key):
     """计算七牛API中的数据格式:
