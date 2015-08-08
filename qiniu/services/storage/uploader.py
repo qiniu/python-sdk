@@ -52,12 +52,12 @@ def put_file(up_token, key, file_path, params=None,
     size = os.stat(file_path).st_size
     if size > config._BLOCK_SIZE * 2:
         ret, info = _Resume(up_token, key, file_path, size, params,
-                               mime_type, progress_handler,
-                               upload_progress_recorder=upload_progress_recorder,
-                               modify_time=(int)(os.path.getmtime(file_path))).upload()
+                            mime_type, progress_handler,
+                            upload_progress_recorder=upload_progress_recorder,
+                            modify_time=(int)(os.path.getmtime(file_path))).upload()
     else:
         crc = file_crc32(file_path) if check_crc else None
-        with open(file_path,'rb') as input_stream:
+        with open(file_path, 'rb') as input_stream:
             ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler)
     return ret, info
 

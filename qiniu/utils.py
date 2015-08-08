@@ -110,7 +110,7 @@ class _file_block_generator(object):
             self.length = os.stat(filePath).st_size
 
     def __iter__(self):
-        self.f = open(self.filePath,'rb')
+        self.f = open(self.filePath, 'rb')
         self.f.seek(self.offset)
         self.done = False
         self.rest = self.length
@@ -121,7 +121,7 @@ class _file_block_generator(object):
         return self.next()
 
     def next(self):
-        #Choose 8192 because httplib has hard-coded read size of 8192
+        # Choose 8192 because httplib has hard-coded read size of 8192
         if self.done:
             raise StopIteration
         if self.rest <= 8192:
@@ -171,7 +171,7 @@ def _sha1(block_generator):
 
 def etag(filePath):
     """计算文件的etag:
-    
+
     etag规格参考 http://developer.qiniu.com/docs/v6/api/overview/appendix.html#qiniu-etag
 
     Args:
@@ -189,6 +189,7 @@ def etag(filePath):
         data = _sha1(sha1_str)
         prefix = b('\x96')
     return urlsafe_base64_encode(prefix + data)
+
 
 def entry(bucket, key):
     """计算七牛API中的数据格式:
