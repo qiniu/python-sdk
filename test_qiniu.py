@@ -126,7 +126,7 @@ class BucketTestCase(unittest.TestCase):
     def test_prefetch(self):
         ret, info = self.bucket.prefetch(bucket_name, 'python-sdk.html')
         print(info)
-        assert ret == {}
+        assert ret['key'] == 'python-sdk.html'
 
     def test_fetch(self):
         ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name, 'fetch.html')
