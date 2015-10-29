@@ -29,6 +29,7 @@ _policy_fields = set([
     'detectMime',        # MimeType侦测开关
     'mimeLimit',         # MimeType限制
     'fsizeLimit',        # 上传文件大小限制
+    'fsizeMin' ,         #上传文件最小字节数
 
     'persistentOps',        # 持久化处理操作
     'persistentNotifyUrl',  # 持久化处理结果通知URL
