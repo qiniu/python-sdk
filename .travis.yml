@@ -8,11 +8,11 @@ python:
   - "3.4"
   - "3.5"
 install:
-  - "pip install flake8 --use-mirrors"
-  - "pip install pytest --use-mirrors"
-  - "pip install pytest-cov --use-mirrors"
-  - "pip install requests --use-mirrors"
-  - "pip install scrutinizer-ocular --use-mirrors"
+  - "pip install flake8"
+  - "pip install pytest"
+  - "pip install pytest-cov"
+  - "pip install requests"
+  - "pip install scrutinizer-ocular"
 before_script:
   - export QINIU_ACCESS_KEY="QWYn5TFQsLLU1pL5MFEmX3s5DmHdUThav9WyOWOm"
   - export QINIU_SECRET_KEY="Bxckh6FA-Fbs9Yt3i3cbKVK22UPBmAOHJcL95pGz"
