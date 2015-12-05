@@ -1,5 +1,16 @@
 #Changelog
 
+## 7.0.6 (2015-12-05)
+### 修正
+* 2.x unicode 问题 by @hunter007
+* 上传重试判断
+
+### 增加
+* fsizeMin 上传策略
+* 断点上传记录 by @hokein
+* 计算stream etag
+* 3.5 ci 支持
+
 ## 7.0.5 (2015-06-25)
 ### 变更
 * 配置up_host 改为配置zone

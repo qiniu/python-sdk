@@ -43,10 +43,10 @@ if is_py2:
     numeric_types = (int, long, float)  # noqa
 
     def b(data):
-        return data
+        return bytes(data)
 
     def s(data):
-        return data
+        return bytes(data)
 
     def u(data):
         return unicode(data, 'unicode_escape')  # noqa
