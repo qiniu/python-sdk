@@ -323,7 +323,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
     params = {'x:a': 'a'}
     q = Auth(access_key, secret_key)
 
-    def test_putfile(self):
+    def test_put_stream(self):
         localfile = __file__
         key = 'test_file_r'
         size = os.stat(localfile).st_size

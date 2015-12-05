@@ -128,7 +128,7 @@ class _Resume(object):
         self.mime_type = mime_type
         self.progress_handler = progress_handler
         self.upload_progress_recorder = upload_progress_recorder or UploadProgressRecorder()
-        self.modify_time = modify_time
+        self.modify_time = modify_time or time.time()
 
     def record_upload_progress(self, offset):
         record_data = {
