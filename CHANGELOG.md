@@ -4,6 +4,7 @@
 ### 修正
 * 2.x unicode 问题 by @hunter007
 * 上传重试判断
+* 上传时 dns劫持处理
 
 ### 增加
 * fsizeMin 上传策略

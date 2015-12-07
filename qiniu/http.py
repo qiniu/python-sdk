@@ -19,7 +19,7 @@ _headers = {'User-Agent': USER_AGENT}
 
 
 def __return_wrapper(resp):
-    if resp.status_code != 200:
+    if resp.status_code != 200 or resp.headers.get('X-Reqid') is None:
         return None, ResponseInfo(resp)
     ret = resp.json() if resp.text != '' else {}
     return ret, ResponseInfo(resp)
@@ -111,12 +111,14 @@ class ResponseInfo(object):
                     self.error = 'unknown'
                 else:
                     self.error = ret['error']
+            if self.req_id is None and self.status_code == 200:
+                self.error = 'server is not qiniu'
 
     def ok(self):
-        return self.status_code == 200
+        return self.status_code == 200 and self.req_id is not None
 
     def need_retry(self):
-        if self.__response is None:
+        if self.__response is None or self.req_id is None:
             return True
         code = self.status_code
         if (code // 100 == 5 and code != 579) or code == 996:
@@ -124,7 +126,7 @@ class ResponseInfo(object):
         return False
 
     def connect_failed(self):
-        return self.__response is None
+        return self.__response is None or self.req_id is None
 
     def __str__(self):
         return ', '.join(['%s:%s' % item for item in self.__dict__.items()])

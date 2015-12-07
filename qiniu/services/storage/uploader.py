@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
 
 from qiniu import config
 from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter
@@ -128,7 +129,10 @@ class _Resume(object):
         self.mime_type = mime_type
         self.progress_handler = progress_handler
         self.upload_progress_recorder = upload_progress_recorder or UploadProgressRecorder()
-        self.modify_time = modify_time
+        self.modify_time = modify_time or time.time()
+
+        print(self.modify_time)
+        print(modify_time)
 
     def record_upload_progress(self, offset):
         record_data = {
@@ -138,6 +142,8 @@ class _Resume(object):
         }
         if self.modify_time:
             record_data['modify_time'] = self.modify_time
+
+        print(record_data)
         self.upload_progress_recorder.set_upload_record(self.key, record_data)
 
     def recovery_from_record(self):
@@ -145,8 +151,11 @@ class _Resume(object):
         if not record:
             return 0
 
-        if not record['modify_time'] or record['size'] != self.size or \
-                record['modify_time'] != self.modify_time:
+        try:
+            if not record['modify_time'] or record['size'] != self.size or \
+                    record['modify_time'] != self.modify_time:
+                return 0
+        except KeyError:
             return 0
 
         self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
