@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
 
 from qiniu import config
 from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter
