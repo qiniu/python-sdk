@@ -119,11 +119,11 @@ def etag_stream(input_stream):
     array = [_sha1(block) for block in _file_iter(input_stream, _BLOCK_SIZE)]
     if len(array) == 1:
         data = array[0]
-        prefix = b('\x16')
+        prefix = b'\x16'
     else:
         sha1_str = b('').join(array)
         data = _sha1(sha1_str)
-        prefix = b('\x96')
+        prefix = b'\x96'
     return urlsafe_base64_encode(prefix + data)
 
 
