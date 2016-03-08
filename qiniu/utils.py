@@ -117,6 +117,8 @@ def etag_stream(input_stream):
         输入流的etag值
     """
     array = [_sha1(block) for block in _file_iter(input_stream, _BLOCK_SIZE)]
+    if len(array) == 0:
+        array = [_sha1(b'')]
     if len(array) == 1:
         data = array[0]
         prefix = b'\x16'
