@@ -53,7 +53,7 @@ def put_file(up_token, key, file_path, params=None,
     size = os.stat(file_path).st_size
     # fname = os.path.basename(file_path)
     with open(file_path, 'rb') as input_stream:
-        file_name=os.path.basename(file_path)
+        file_name = os.path.basename(file_path)
         if size > config._BLOCK_SIZE * 2:
             ret, info = put_stream(up_token, key, input_stream, file_name, size, params,
                                    mime_type, progress_handler,
