@@ -53,14 +53,15 @@ def put_file(up_token, key, file_path, params=None,
     size = os.stat(file_path).st_size
     # fname = os.path.basename(file_path)
     with open(file_path, 'rb') as input_stream:
+        file_name=os.path.basename(file_path)
         if size > config._BLOCK_SIZE * 2:
-            ret, info = put_stream(up_token, key, input_stream, size, params,
+            ret, info = put_stream(up_token, key, input_stream, file_name, size, params,
                                    mime_type, progress_handler,
                                    upload_progress_recorder=upload_progress_recorder,
-                                   modify_time=(int)(os.path.getmtime(file_path)), file_name=os.path.basename(file_path))
+                                   modify_time=(int)(os.path.getmtime(file_path)))
         else:
             crc = file_crc32(file_path) if check_crc else None
-            ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler, file_name=os.path.basename(file_path))
+            ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler, file_name)
             # ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler)
     return ret, info
 
@@ -96,9 +97,9 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
     return r, info
 
 
-def put_stream(up_token, key, input_stream, data_size, params=None,
+def put_stream(up_token, key, input_stream, file_name, data_size, params=None,
                mime_type=None, progress_handler=None,
-               upload_progress_recorder=None, modify_time=None, file_name=None):
+               upload_progress_recorder=None, modify_time=None):
     task = _Resume(up_token, key, input_stream, data_size, params, mime_type,
                    progress_handler, upload_progress_recorder, modify_time, file_name)
     return task.upload()

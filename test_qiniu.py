@@ -329,7 +329,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         size = os.stat(localfile).st_size
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, size, self.params, self.mime_type)
+            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, self.params, self.mime_type)
             print(info)
             assert ret['key'] == key
 
