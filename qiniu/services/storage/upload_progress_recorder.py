@@ -4,7 +4,6 @@ import base64
 import json
 import os
 import tempfile
-from qiniu.utils import urlsafe_base64_encode
 
 
 class UploadProgressRecorder(object):
