@@ -24,7 +24,10 @@ class UploadProgressRecorder(object):
     def __init__(self, record_folder=tempfile.gettempdir()):
         self.record_folder = record_folder
 
-    def get_upload_record(self, key):
+    def get_upload_record(self, file_name, key):
+
+        key = '{0}/{1}'.format(key, file_name)
+
         record_file_name = base64.b64encode(key.encode('utf-8')).decode('utf-8')
         upload_record_file_path = os.path.join(self.record_folder,
                                                record_file_name)
@@ -34,14 +37,16 @@ class UploadProgressRecorder(object):
             json_data = json.load(f)
         return json_data
 
-    def set_upload_record(self, key, data):
+    def set_upload_record(self, file_name, key, data):
+        key = '{0}/{1}'.format(key, file_name)
         record_file_name = base64.b64encode(key.encode('utf-8')).decode('utf-8')
         upload_record_file_path = os.path.join(self.record_folder,
                                                record_file_name)
         with open(upload_record_file_path, 'w') as f:
             json.dump(data, f)
 
-    def delete_upload_record(self, key):
+    def delete_upload_record(self, file_name, key):
+        key = '{0}/{1}'.format(key, file_name)
         record_file_name = base64.b64encode(key.encode('utf-8')).decode('utf-8')
         record_file_path = os.path.join(self.record_folder,
                                         record_file_name)

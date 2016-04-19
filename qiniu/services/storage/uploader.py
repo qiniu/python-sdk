@@ -51,19 +51,22 @@ def put_file(up_token, key, file_path, params=None,
     """
     ret = {}
     size = os.stat(file_path).st_size
+    # fname = os.path.basename(file_path)
     with open(file_path, 'rb') as input_stream:
+        file_name = os.path.basename(file_path)
         if size > config._BLOCK_SIZE * 2:
-            ret, info = put_stream(up_token, key, input_stream, size, params,
+            ret, info = put_stream(up_token, key, input_stream, file_name, size, params,
                                    mime_type, progress_handler,
                                    upload_progress_recorder=upload_progress_recorder,
                                    modify_time=(int)(os.path.getmtime(file_path)))
         else:
             crc = file_crc32(file_path) if check_crc else None
-            ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler)
+            ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler, file_name)
+            # ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler)
     return ret, info
 
 
-def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None):
+def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None, file_name=None):
     fields = {}
     if params:
         for k, v in params.items():
@@ -72,11 +75,14 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
         fields['crc32'] = crc
     if key is not None:
         fields['key'] = key
+
     fields['token'] = up_token
     url = 'http://' + config.get_default('default_up_host') + '/'
-    name = key if key else 'filename'
+    # name = key if key else file_name
 
-    r, info = http._post_file(url, data=fields, files={'file': (name, data, mime_type)})
+    fname = file_name
+
+    r, info = http._post_file(url, data=fields, files={'file': (fname, data, mime_type)})
     if r is None and info.need_retry():
         if info.connect_failed:
             url = 'http://' + config.get_default('default_up_host_backup') + '/'
@@ -86,16 +92,16 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
             data.seek(0)
         else:
             return r, info
-        r, info = http._post_file(url, data=fields, files={'file': (name, data, mime_type)})
+        r, info = http._post_file(url, data=fields, files={'file': (fname, data, mime_type)})
 
     return r, info
 
 
-def put_stream(up_token, key, input_stream, data_size, params=None,
+def put_stream(up_token, key, input_stream, file_name, data_size, params=None,
                mime_type=None, progress_handler=None,
                upload_progress_recorder=None, modify_time=None):
     task = _Resume(up_token, key, input_stream, data_size, params, mime_type,
-                   progress_handler, upload_progress_recorder, modify_time)
+                   progress_handler, upload_progress_recorder, modify_time, file_name)
     return task.upload()
 
 
@@ -119,7 +125,7 @@ class _Resume(object):
     """
 
     def __init__(self, up_token, key, input_stream, data_size, params, mime_type,
-                 progress_handler, upload_progress_recorder, modify_time):
+                 progress_handler, upload_progress_recorder, modify_time, file_name):
         """初始化断点续上传"""
         self.up_token = up_token
         self.key = key
@@ -130,9 +136,9 @@ class _Resume(object):
         self.progress_handler = progress_handler
         self.upload_progress_recorder = upload_progress_recorder or UploadProgressRecorder()
         self.modify_time = modify_time or time.time()
-
-        print(self.modify_time)
-        print(modify_time)
+        self.file_name = file_name
+        # print(self.modify_time)
+        # print(modify_time)
 
     def record_upload_progress(self, offset):
         record_data = {
@@ -142,12 +148,11 @@ class _Resume(object):
         }
         if self.modify_time:
             record_data['modify_time'] = self.modify_time
-
-        print(record_data)
-        self.upload_progress_recorder.set_upload_record(self.key, record_data)
+        # print(record_data)
+        self.upload_progress_recorder.set_upload_record(self.file_name, self.key, record_data)
 
     def recovery_from_record(self):
-        record = self.upload_progress_recorder.get_upload_record(self.key)
+        record = self.upload_progress_recorder.get_upload_record(self.file_name, self.key)
         if not record:
             return 0
 
@@ -157,7 +162,6 @@ class _Resume(object):
                 return 0
         except KeyError:
             return 0
-
         self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
         return record['offset']
 
@@ -178,7 +182,6 @@ class _Resume(object):
                 ret, info = self.make_block(block, length, host)
                 if ret is None or crc != ret['crc32']:
                     return ret, info
-
             self.blockStatus.append(ret)
             offset += length
             self.record_upload_progress(offset)
@@ -203,11 +206,15 @@ class _Resume(object):
         if self.key is not None:
             url.append('key/{0}'.format(urlsafe_base64_encode(self.key)))
 
+        if self.file_name is not None:
+            url.append('fname/{0}'.format(urlsafe_base64_encode(self.file_name)))
+
         if self.params:
             for k, v in self.params.items():
                 url.append('{0}/{1}'.format(k, urlsafe_base64_encode(v)))
-
+            pass
         url = '/'.join(url)
+        # print url
         return url
 
     def make_file(self, host):
