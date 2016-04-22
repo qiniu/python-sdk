@@ -28,8 +28,7 @@ def urlsafe_base64_encode(data):
         编码后的字符串
     """
     try:
-        if isinstance(data, unicode):
-            data = data.encode('utf8')
+        data = data.encode('utf8')
     except:
         pass
     ret = urlsafe_b64encode(b(data))
