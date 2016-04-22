@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import sys
 from hashlib import sha1
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
@@ -28,8 +27,11 @@ def urlsafe_base64_encode(data):
     Returns:
         编码后的字符串
     """
-    if sys.version_info[0] == 2 and isinstance(data, unicode):
-        data = data.encode('utf8')
+    try:
+        if isinstance(data, unicode):
+            data = data.encode('utf8')
+    except:
+        pass
     ret = urlsafe_b64encode(b(data))
     return s(ret)
 
