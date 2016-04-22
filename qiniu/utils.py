@@ -30,7 +30,7 @@ def urlsafe_base64_encode(data):
         编码后的字符串
     """
     
-    if sys.version_info.major == 2 and isinstance(data, unicode):
+    if sys.version_info[0] == 2 and isinstance(data, unicode):
         data = data.encode('utf8')
     
     ret = urlsafe_b64encode(b(data))
