@@ -383,6 +383,24 @@ class MediaTestCase(unittest.TestCase):
         assert ret['persistentId'] is not None
 
 
+class EtagTestCase(unittest.TestCase):
+    def test_zero_size(self):
+        open("x", 'a').close()
+        hash = etag("x")
+        assert hash == 'Fto5o-5ea0sNMlW_75VgGJCv2AcJ'
+        remove_temp_file("x")
+    def test_small_size(self):
+        localfile = create_temp_file(1024 * 1024)
+        hash = etag(localfile)
+        assert hash == 'FnlAdmDasGTQOIgrU1QIZaGDv_1D'
+        remove_temp_file(localfile)
+    def test_large_size(self):
+        localfile = create_temp_file(4 * 1024 * 1024 + 1)
+        hash = etag(localfile)
+        assert hash == 'ljF323utglY3GI6AvLgawSJ4_dgk'
+        remove_temp_file(localfile)
+
+
 class ReadWithoutSeek(object):
     def __init__(self, str):
         self.str = str
