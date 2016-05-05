@@ -1,5 +1,14 @@
 #Changelog
 
+## 7.0.7 (2016-05-05)
+### 修正
+* 修复大于4M的文件hash计算错误的问题
+* add fname
+
+### 增加
+* 一些demo
+* travis 直接发布
+
 ## 7.0.6 (2015-12-05)
 ### 修正
 * 2.x unicode 问题 by @hunter007
