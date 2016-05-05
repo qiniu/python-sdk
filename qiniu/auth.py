@@ -34,6 +34,8 @@ _policy_fields = set([
     'persistentOps',        # 持久化处理操作
     'persistentNotifyUrl',  # 持久化处理结果通知URL
     'persistentPipeline',   # 持久化处理独享队列
+    
+    'checksum',             # 文件校验值
 ])
 
 _deprecated_policy_fields = set([
