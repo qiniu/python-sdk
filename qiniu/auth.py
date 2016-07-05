@@ -34,6 +34,7 @@ _policy_fields = set([
     'persistentOps',        # 持久化处理操作
     'persistentNotifyUrl',  # 持久化处理结果通知URL
     'persistentPipeline',   # 持久化处理独享队列
+    'deleteAfterDays',      # 文件多少天后自动删除
 ])
 
 _deprecated_policy_fields = set([

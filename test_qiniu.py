@@ -176,6 +176,33 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert ret == {}
 
+    def test_copy(self):
+        key = 'copyto'+rand_string(8)
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
+        print(info)
+        assert ret == {}
+        ret, info = self.bucket.delete(bucket_name, key)
+        print(info)
+        assert ret == {}
+
+    def test_copy_force(self):
+        key = 'copyto'+rand_string(8)
+        self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key,)
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
+        print(info)
+        assert ret == {}
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key, force='true')
+        print(info)
+        assert info.status_code == 200
+        ret, info = self.bucket.delete(bucket_name, key)
+        print(info)
+        assert ret == {}
+
+    def test_change_mime(self):
+        ret, info = self.bucket.change_mime(bucket_name, 'python-sdk.html', 'text/html')
+        print(info)
+        assert ret == {}
+
     def test_batch_copy(self):
         key = 'copyto'+rand_string(8)
         ops = build_batch_copy(bucket_name, {'copyfrom': key}, bucket_name)
@@ -183,6 +210,12 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert ret[0]['code'] == 200
         ops = build_batch_delete(bucket_name, [key])
+        ret, info = self.bucket.batch(ops)
+        print(info)
+        assert ret[0]['code'] == 200
+
+    def test_batch_copy_force(self):
+        ops = build_batch_copy(bucket_name, {'copyfrom': 'copyfrom'}, bucket_name, force='true')
         ret, info = self.bucket.batch(ops)
         print(info)
         assert ret[0]['code'] == 200
@@ -199,6 +232,15 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert ret == {}
 
+    def test_batch_move_force(self):
+        ret,info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, 'copyfrom', force='true')
+        print(info)
+        assert info.status_code == 200
+        ops = build_batch_move(bucket_name, {'copyfrom':'copyfrom'}, bucket_name,force='true')
+        ret, info = self.bucket.batch(ops)
+        print(info)
+        assert ret[0]['code'] == 200
+
     def test_batch_rename(self):
         key = 'rename'+rand_string(8)
         self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
@@ -210,6 +252,15 @@ class BucketTestCase(unittest.TestCase):
         ret, info = self.bucket.delete(bucket_name, key2)
         print(info)
         assert ret == {}
+
+    def test_batch_rename_force(self):
+        ret,info = self.bucket.rename(bucket_name, 'copyfrom', 'copyfrom', force='true')
+        print(info)
+        assert info.status_code == 200
+        ops = build_batch_rename(bucket_name, {'copyfrom':'copyfrom'}, force='true')
+        ret, info = self.bucket.batch(ops)
+        print(info)
+        assert ret[0]['code'] == 200
 
     def test_batch_stat(self):
         ops = build_batch_stat(bucket_name, ['python-sdk.html'])
