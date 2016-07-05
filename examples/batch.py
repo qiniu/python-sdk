@@ -22,3 +22,4 @@ ret, info = bucket.batch(ops)
 print(ret)
 print(info)
 assert ret == {}
+
