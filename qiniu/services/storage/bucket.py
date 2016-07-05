@@ -136,7 +136,6 @@ class BucketManager(object):
         to = entry(bucket_to, key_to)
         return self.__rs_do('move', resource, to, 'force/{0}'.format(force))
 
-
     def copy(self, bucket, key, bucket_to, key_to, force='false'):
         """复制文件:
 
@@ -156,7 +155,6 @@ class BucketManager(object):
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
         return self.__rs_do('copy', resource, to, 'force/{0}'.format(force))
-
 
     def fetch(self, url, bucket, key=None):
         """抓取文件:

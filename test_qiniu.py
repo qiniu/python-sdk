@@ -186,17 +186,9 @@ class BucketTestCase(unittest.TestCase):
         assert ret == {}
 
     def test_copy_force(self):
-        key = 'copyto'+rand_string(8)
-        self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key,)
-        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
-        print(info)
-        assert ret == {}
-        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key, force='true')
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, 'copyfrom', force='true')
         print(info)
         assert info.status_code == 200
-        ret, info = self.bucket.delete(bucket_name, key)
-        print(info)
-        assert ret == {}
 
     def test_change_mime(self):
         ret, info = self.bucket.change_mime(bucket_name, 'python-sdk.html', 'text/html')
