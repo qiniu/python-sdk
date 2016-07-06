@@ -100,7 +100,7 @@ class BucketManager(object):
         resource = entry(bucket, key)
         return self.__rs_do('delete', resource)
 
-    def rename(self, bucket, key, key_to):
+    def rename(self, bucket, key, key_to, force='false'):
         """重命名文件:
 
         给资源进行重命名，本质为move操作。
@@ -114,9 +114,9 @@ class BucketManager(object):
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
             一个ResponseInfo对象
         """
-        return self.move(bucket, key, bucket, key_to)
+        return self.move(bucket, key, bucket, key_to, force)
 
-    def move(self, bucket, key, bucket_to, key_to):
+    def move(self, bucket, key, bucket_to, key_to, force='false'):
         """移动文件:
 
         将资源从一个空间到另一个空间，具体规格参考：
@@ -134,9 +134,9 @@ class BucketManager(object):
         """
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
-        return self.__rs_do('move', resource, to)
+        return self.__rs_do('move', resource, to, 'force/{0}'.format(force))
 
-    def copy(self, bucket, key, bucket_to, key_to):
+    def copy(self, bucket, key, bucket_to, key_to, force='false'):
         """复制文件:
 
         将指定资源复制为新命名资源，具体规格参考：
@@ -154,7 +154,7 @@ class BucketManager(object):
         """
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
-        return self.__rs_do('copy', resource, to)
+        return self.__rs_do('copy', resource, to, 'force/{0}'.format(force))
 
     def fetch(self, url, bucket, key=None):
         """抓取文件:
@@ -264,16 +264,16 @@ def _build_op(*args):
     return '/'.join(args)
 
 
-def build_batch_copy(source_bucket, key_pairs, target_bucket):
-    return _two_key_batch('copy', source_bucket, key_pairs, target_bucket)
+def build_batch_copy(source_bucket, key_pairs, target_bucket, force='false'):
+    return _two_key_batch('copy', source_bucket, key_pairs, target_bucket, force)
 
 
-def build_batch_rename(bucket, key_pairs):
-    return build_batch_move(bucket, key_pairs, bucket)
+def build_batch_rename(bucket, key_pairs, force='false'):
+    return build_batch_move(bucket, key_pairs, bucket, force)
 
 
-def build_batch_move(source_bucket, key_pairs, target_bucket):
-    return _two_key_batch('move', source_bucket, key_pairs, target_bucket)
+def build_batch_move(source_bucket, key_pairs, target_bucket, force='false'):
+    return _two_key_batch('move', source_bucket, key_pairs, target_bucket, force)
 
 
 def build_batch_delete(bucket, keys):
@@ -288,7 +288,7 @@ def _one_key_batch(operation, bucket, keys):
     return [_build_op(operation, entry(bucket, key)) for key in keys]
 
 
-def _two_key_batch(operation, source_bucket, key_pairs, target_bucket):
+def _two_key_batch(operation, source_bucket, key_pairs, target_bucket, force='false'):
     if target_bucket is None:
         target_bucket = source_bucket
-    return [_build_op(operation, entry(source_bucket, k), entry(target_bucket, v)) for k, v in key_pairs.items()]
+    return [_build_op(operation, entry(source_bucket, k), entry(target_bucket, v), 'force/{0}'.format(force)) for k, v in key_pairs.items()]
