@@ -6,10 +6,10 @@ import qiniu.config
 # access_key = '...'
 # secret_key = '...'
 
-#初始化Auth状态
+# 初始化Auth状态
 q = Auth(access_key, secret_key)
 
-#你要测试的空间， 并且这个key在你空间中存在
+# 你要测试的空间， 并且这个key在你空间中存在
 bucket_name = 'Bucket_Name'
 key = 'python_video.flv'
 
