@@ -4,8 +4,8 @@
 from qiniu import Auth, put_file, etag,
 import qiniu.config
 
-access_key = 'Access_Key'
-secret_key = 'Secret_Key'
+access_key = '...'
+secret_key = ...'
 
 q = Auth(access_key, secret_key)
 

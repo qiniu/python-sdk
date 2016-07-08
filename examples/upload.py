@@ -5,8 +5,8 @@ from qiniu import Auth, put_file, etag, urlsafe_base64_encode
 import qiniu.config
 
 #需要填写你的 Access Key 和 Secret Key
-access_key = 'Access_Key'
-secret_key = 'Secret_Key'
+access_key = '...'
+secret_key = '...'
 
 #构建鉴权对象
 q = Auth(access_key, secret_key)

@@ -3,13 +3,13 @@
 from qiniu import Auth
 from qiniu import BucketManager
 
-access_key = 'access_key'
-secret_key = 'secret_key'
+access_key = '...'
+secret_key = '...'
 
 q = Auth(access_key, secret_key)
 bucket = BucketManager(q)
 
-bucket_name = 'dontdelete'
+bucket_name = 'Bucket_Name'
 # 前缀
 prefix = None
 # 列举条目

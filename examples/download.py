@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
-import requests
 
+import requests
 from qiniu import Auth
 
-access_key = 'AK'
-secret_key = 'SK'
+access_key = '...'
+secret_key = '...'
 
 q = Auth(access_key, secret_key)
 

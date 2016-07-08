@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
+
 from qiniu import Auth
 from qiniu import BucketManager
 
-access_key = 'Access_Key'
-secret_key = 'Secret_Key'
+access_key = '...'
+secret_key = '...'
 
 #初始化Auth状态
 q = Auth(access_key, secret_key)
