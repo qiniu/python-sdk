@@ -10,7 +10,7 @@ from .upload_progress_recorder import UploadProgressRecorder
 
 
 def put_data(
-        up_token, key, data, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None):
+        up_token, key, data, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None, fname=None):
     """上传二进制流到七牛
 
     Args:
@@ -27,7 +27,7 @@ def put_data(
         一个ResponseInfo对象
     """
     crc = crc32(data) if check_crc else None
-    return _form_put(up_token, key, data, params, mime_type, crc, progress_handler)
+    return _form_put(up_token, key, data, params, mime_type, crc, progress_handler, fname)
 
 
 def put_file(up_token, key, file_path, params=None,
@@ -81,6 +81,8 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
     # name = key if key else file_name
 
     fname = file_name
+    if not fname or not fname.strip():
+        fname = 'file_name'
 
     r, info = http._post_file(url, data=fields, files={'file': (fname, data, mime_type)})
     if r is None and info.need_retry():

@@ -64,10 +64,14 @@ def remove_temp_file(file):
         pass
 
 
+def is_travis():
+    return os.environ['QINIU_TEST_ENV'] == 'travis'
+
+
 class UtilsTest(unittest.TestCase):
 
     def test_urlsafe(self):
-        a = '你好\x96'
+        a = 'hello\x96'
         u = urlsafe_base64_encode(a)
         assert b(a) == urlsafe_base64_decode(u)
 
@@ -268,13 +272,14 @@ class UploaderTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
 
     def test_put(self):
-        key = 'a\\b\\c"你好'
+        key = 'a\\b\\c"hello'
         data = 'hello bubby!'
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
 
+    def test_put_crc(self):
         key = ''
         data = 'hello bubby!'
         token = self.q.upload_token(bucket_name, key)
@@ -358,6 +363,39 @@ class UploaderTestCase(unittest.TestCase):
         print(info)
         assert ret is None
         qiniu.set_default(default_zone=qiniu.config.zone0)
+
+    def test_putData_without_fname(self):
+        if is_travis():
+            return
+        localfile = create_temp_file(30 * 1024 * 1024)
+        key = 'test_putData_without_fname'
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name)
+            ret, info = put_data(token, key, input_stream)
+            print(info)
+            assert ret is not None
+
+    def test_putData_without_fname1(self):
+        if is_travis():
+            return
+        localfile = create_temp_file(30 * 1024 * 1024)
+        key = 'test_putData_without_fname1'
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name)
+            ret, info = put_data(token, key, input_stream, self.params, self.mime_type, False, None, "")
+            print(info)
+            assert ret is not None
+
+    def test_putData_without_fname2(self):
+        if is_travis():
+            return
+        localfile = create_temp_file(30 * 1024 * 1024)
+        key = 'test_putData_without_fname2'
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name)
+            ret, info = put_data(token, key, input_stream, self.params, self.mime_type, False, None, "  ")
+            print(info)
+            assert ret is not None
 
 
 class ResumableUploaderTestCase(unittest.TestCase):
