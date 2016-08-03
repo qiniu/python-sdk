@@ -2,17 +2,17 @@
 # flake8: noqa
 from qiniu import Auth, PersistentFop, build_op, op_save, urlsafe_base64_encode
 
-#对已经上传到七牛的视频发起异步转码操作 
-access_key = 'Access_Key'
-secret_key = 'Secret_Key'
+#对已经上传到七牛的视频发起异步转码操作
+access_key = '...'
+secret_key = '...'
 q = Auth(access_key, secret_key)
 
 #要转码的文件所在的空间和文件名。
-bucket = 'Bucket_Name'
+bucket_name = 'Bucket_Name'
 key = '1.mp4'
 
 #转码是使用的队列名称。
-pipeline = 'mpsdemo'
+pipeline = 'your_pipeline'
 
 #要进行转码的转码操作。
 fops = 'avthumb/mp4/s/640x360/vb/1.25m'
@@ -21,7 +21,7 @@ fops = 'avthumb/mp4/s/640x360/vb/1.25m'
 saveas_key = urlsafe_base64_encode('目标Bucket_Name:自定义文件key')
 fops = fops+'|saveas/'+saveas_key
 
-pfop = PersistentFop(q, bucket, pipeline)
+pfop = PersistentFop(q, bucket_name, pipeline)
 ops = []
 ops.append(fops)
 ret, info = pfop.execute(key, ops, 1)
