@@ -19,7 +19,7 @@ before_script:
 - export QINIU_TEST_ENV="travis"
 - export PYTHONPATH="$PYTHONPATH:."
 script:
-- flake8 --show-source --show-pep8 --max-line-length=160 .
+- flake8 --show-source --max-line-length=160 .
 - py.test --cov qiniu
 - ocular --data-file .coverage
 deploy:
