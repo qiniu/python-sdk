@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from qiniu import config
-from qiniu.utils import urlsafe_base64_encode, entry
 from qiniu import http
+from qiniu.utils import urlsafe_base64_encode, entry
 
 
 class BucketManager(object):
@@ -15,8 +15,12 @@ class BucketManager(object):
         auth: 账号管理密钥对，Auth对象
     """
 
-    def __init__(self, auth):
+    def __init__(self, auth, zone=None):
         self.auth = auth
+        if(zone is None):
+            self.zone = config.get_default('default_zone')
+        else:
+            self.zone = zone
 
     def list(self, bucket, prefix=None, marker=None, limit=None, delimiter=None):
         """前缀查询:
@@ -51,7 +55,7 @@ class BucketManager(object):
         if delimiter is not None:
             options['delimiter'] = delimiter
 
-        url = 'http://{0}/list'.format(config.get_default('default_rsf_host'))
+        url = '{0}/list'.format(config.get_default('default_rsf_host'))
         ret, info = self.__get(url, options)
 
         eof = False
@@ -172,7 +176,7 @@ class BucketManager(object):
         """
         resource = urlsafe_base64_encode(url)
         to = entry(bucket, key)
-        return self.__io_do('fetch', resource, 'to/{0}'.format(to))
+        return self.__io_do(bucket, 'fetch', resource, 'to/{0}'.format(to))
 
     def prefetch(self, bucket, key):
         """镜像回源预取文件:
@@ -189,7 +193,7 @@ class BucketManager(object):
             一个ResponseInfo对象
         """
         resource = entry(bucket, key)
-        return self.__io_do('prefetch', resource)
+        return self.__io_do(bucket, 'prefetch', resource)
 
     def change_mime(self, bucket, key, mime):
         """修改文件mimeType:
@@ -227,7 +231,7 @@ class BucketManager(object):
                 ]
             一个ResponseInfo对象
         """
-        url = 'http://{0}/batch'.format(config.get_default('default_rs_host'))
+        url = '{0}/batch'.format(config.get_default('default_rs_host'))
         return self.__post(url, dict(op=operations))
 
     def buckets(self):
@@ -245,12 +249,14 @@ class BucketManager(object):
     def __rs_do(self, operation, *args):
         return self.__server_do(config.get_default('default_rs_host'), operation, *args)
 
-    def __io_do(self, operation, *args):
-        return self.__server_do(config.get_default('default_io_host'), operation, *args)
+    def __io_do(self, bucket, operation, *args):
+        ak = self.auth.get_access_key()
+        io_host = self.zone.get_io_host(ak, bucket)
+        return self.__server_do(io_host, operation, *args)
 
     def __server_do(self, host, operation, *args):
         cmd = _build_op(operation, *args)
-        url = 'http://{0}/{1}'.format(host, cmd)
+        url = '{0}/{1}'.format(host, cmd)
         return self.__post(url)
 
     def __post(self, url, data=None):

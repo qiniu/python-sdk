@@ -13,7 +13,8 @@ __version__ = '7.0.8'
 
 from .auth import Auth
 
-from .config import set_default, Zone
+from .config import set_default
+from .zone import Zone
 
 from .services.storage.bucket import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, build_batch_delete
 from .services.storage.uploader import put_data, put_file, put_stream

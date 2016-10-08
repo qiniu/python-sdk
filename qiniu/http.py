@@ -5,7 +5,7 @@ import requests
 from requests.auth import AuthBase
 
 from qiniu import config
-from .auth import RequestsAuth
+import qiniu.auth
 from . import __version__
 
 
@@ -49,7 +49,7 @@ def _post(url, data, files, auth):
 def _get(url, params, auth):
     try:
         r = requests.get(
-            url, params=params, auth=RequestsAuth(auth) if auth is not None else None,
+            url, params=params, auth=qiniu.auth.RequestsAuth(auth) if auth is not None else None,
             timeout=config.get_default('connection_timeout'), headers=_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
@@ -74,7 +74,7 @@ def _post_file(url, data, files):
 
 
 def _post_with_auth(url, data, auth):
-    return _post(url, data, None, RequestsAuth(auth))
+    return _post(url, data, None, qiniu.auth.RequestsAuth(auth))
 
 
 class ResponseInfo(object):
