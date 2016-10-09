@@ -2,9 +2,10 @@
 
 import os
 import time
+import requests
 
-from qiniu import http
-from qiniu import compat, utils
+from qiniu import compat
+from qiniu import utils
 
 UC_HOST = 'https://uc.qbox.me'      # 获取空间信息Host
 
@@ -55,7 +56,7 @@ class Zone(object):
             raise ValueError('invalid up_token')
 
         ak = token[0]
-        policy = compat.json.loads(str(utils.urlsafe_base64_decode(token[2]), "utf-8"))
+        policy = compat.json.loads(compat.s(utils.urlsafe_base64_decode(token[2])))
 
         scope = policy["scope"]
         bucket = scope
@@ -82,10 +83,6 @@ class Zone(object):
 
         self.set_bucket_hosts_to_cache(key, bucket_hosts)
 
-        # hosts = self.bucket_hosts(ak, bucket)
-        # self.up_host = compat.json.loads(hosts)[self.scheme]["up"][0]
-        # self.up_host_backup = compat.json.loads(hosts)[self.scheme]["up"][1]
-        # self.io_host = compat.json.loads(hosts)[self.scheme]["io"][0]
         return bucket_hosts
 
     def get_bucket_hosts_to_cache(self, key):
@@ -124,10 +121,11 @@ class Zone(object):
 
     def host_cache_file_path(self):
         home = os.getenv("HOME")
-        return home + "/.qiniu_pythonsdk_hostscache2.json"
+        return home + "/.qiniu_pythonsdk_hostscache.json"
 
     def bucket_hosts(self, ak, bucket):
         url = "{0}/v1/query?ak={1}&bucket={2}".format(UC_HOST, ak, bucket)
-        ret, info = http._get(url, None, None)
-        data = compat.json.dumps(ret, separators=(',', ':'))
+        ret = requests.get(url)
+        # ret, info = http._get(url, None, None)
+        data = compat.json.dumps(ret.json(), separators=(',', ':'))
         return data
