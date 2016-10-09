@@ -58,6 +58,9 @@ class Auth(object):
         self.__access_key = access_key
         self.__secret_key = b(secret_key)
 
+    def get_access_key(self):
+        return self.__access_key
+
     def __token(self, data):
         data = b(data)
         hashed = hmac.new(self.__secret_key, data, sha1)

@@ -3,8 +3,6 @@
 from hashlib import sha1
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
-from .config import _BLOCK_SIZE
-
 from .compat import b, s
 
 try:
@@ -13,6 +11,8 @@ try:
 except ImportError:
     zlib = None
     import binascii
+
+_BLOCK_SIZE = 1024 * 1024 * 4
 
 
 def urlsafe_base64_encode(data):

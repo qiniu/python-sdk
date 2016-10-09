@@ -325,44 +325,40 @@ class UploaderTestCase(unittest.TestCase):
     def test_withoutRead_withoutSeek_retry(self):
         key = 'retry'
         data = 'hello retry!'
-        set_default(default_zone=Zone('a', 'upload.qiniu.com'))
+        set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
-        qiniu.set_default(default_zone=qiniu.config.zone0)
 
     def test_hasRead_hasSeek_retry(self):
         key = 'withReadAndSeek_retry'
         data = StringIO('hello retry again!')
-        set_default(default_zone=Zone('a', 'upload.qiniu.com'))
+        set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == 'FuEbdt6JP2BqwQJi7PezYhmuVYOo'
-        qiniu.set_default(default_zone=qiniu.config.zone0)
 
     def test_hasRead_withoutSeek_retry(self):
         key = 'withReadAndWithoutSeek_retry'
         data = ReadWithoutSeek('I only have read attribute!')
-        set_default(default_zone=Zone('a', 'upload.qiniu.com'))
+        set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret is None
-        qiniu.set_default(default_zone=qiniu.config.zone0)
 
     def test_hasRead_WithoutSeek_retry2(self):
         key = 'withReadAndWithoutSeek_retry2'
         data = urlopen("http://www.qiniu.com")
-        set_default(default_zone=Zone('a', 'upload.qiniu.com'))
+        set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
-        assert ret is None
-        qiniu.set_default(default_zone=qiniu.config.zone0)
+        assert ret is not None
 
     def test_putData_without_fname(self):
         if is_travis():
@@ -419,23 +415,21 @@ class ResumableUploaderTestCase(unittest.TestCase):
         token = self.q.upload_token(bucket_name, key)
         localfile = create_temp_file(4 * 1024 * 1024 + 1)
         progress_handler = lambda progress, total: progress
-        qiniu.set_default(default_zone=Zone('a', 'upload.qiniu.com'))
+        qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
         ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
         print(info)
         assert ret['key'] == key
-        qiniu.set_default(default_zone=qiniu.config.zone0)
         remove_temp_file(localfile)
 
     def test_retry(self):
         localfile = __file__
         key = 'test_file_r_retry'
-        qiniu.set_default(default_zone=Zone('a', 'upload.qiniu.com'))
+        qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
         token = self.q.upload_token(bucket_name, key)
         ret, info = put_file(token, key, localfile, self.params, self.mime_type)
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == etag(localfile)
-        qiniu.set_default(default_zone=qiniu.config.zone0)
 
 
 class DownloadTestCase(unittest.TestCase):
