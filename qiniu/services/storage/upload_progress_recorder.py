@@ -42,6 +42,8 @@ class UploadProgressRecorder(object):
         record_file_name = base64.b64encode(key.encode('utf-8')).decode('utf-8')
         upload_record_file_path = os.path.join(self.record_folder,
                                                record_file_name)
+
+        upload_record_file_path = upload_record_file_path.replace('/', '')
         with open(upload_record_file_path, 'w') as f:
             json.dump(data, f)
 
