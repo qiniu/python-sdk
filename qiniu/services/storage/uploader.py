@@ -77,7 +77,7 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
         fields['key'] = key
 
     fields['token'] = up_token
-    url = 'http://' + config.get_default('default_up_host') + '/'
+    url = config.get_default('default_zone').get_up_host_by_token(up_token) + '/'
     # name = key if key else file_name
 
     fname = file_name
@@ -87,7 +87,7 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
     r, info = http._post_file(url, data=fields, files={'file': (fname, data, mime_type)})
     if r is None and info.need_retry():
         if info.connect_failed:
-            url = 'http://' + config.get_default('default_up_host_backup') + '/'
+            url = config.get_default('default_zone').get_up_host_backup_by_token(up_token) + '/'
         if hasattr(data, 'read') is False:
             pass
         elif hasattr(data, 'seek') and (not hasattr(data, 'seekable') or data.seekable()):
@@ -170,7 +170,7 @@ class _Resume(object):
     def upload(self):
         """上传操作"""
         self.blockStatus = []
-        host = config.get_default('default_up_host')
+        host = config.get_default('default_zone').get_up_host_by_token(self.up_token)
         offset = self.recovery_from_record()
         for block in _file_iter(self.input_stream, config._BLOCK_SIZE, offset):
             length = len(block)
@@ -179,7 +179,7 @@ class _Resume(object):
             if ret is None and not info.need_retry():
                 return ret, info
             if info.connect_failed():
-                host = config.get_default('default_up_host_backup')
+                host = config.get_default('default_zone').get_up_host_backup_by_token(self.up_token)
             if info.need_retry() or crc != ret['crc32']:
                 ret, info = self.make_block(block, length, host)
                 if ret is None or crc != ret['crc32']:
@@ -197,10 +197,10 @@ class _Resume(object):
         return self.post(url, block)
 
     def block_url(self, host, size):
-        return 'http://{0}/mkblk/{1}'.format(host, size)
+        return '{0}/mkblk/{1}'.format(host, size)
 
     def file_url(self, host):
-        url = ['http://{0}/mkfile/{1}'.format(host, self.size)]
+        url = ['{0}/mkfile/{1}'.format(host, self.size)]
 
         if self.mime_type:
             url.append('mimeType/{0}'.format(urlsafe_base64_encode(self.mime_type)))
