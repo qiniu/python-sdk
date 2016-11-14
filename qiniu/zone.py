@@ -125,11 +125,11 @@ class Zone(object):
             return home + "/.qiniu_pythonsdk_hostscache.json"
         elif sys.platform.startswith("win") or sys.platform.startswith("cygwin"):
             if not os.getenv("HOME"):
-                home = "C:\\Users\\Administrator"+os.sep+".qiniu_pythonsdk_hostscache.json"
+                home = "C:\\Users\\Administrator"
             else:
                 home = os.getenv("HOME")
-            return home + "\\.qiniu_pythonsdk_hostscache.json"
-        else:return os.getcwd+os.sep+".qiniu_pythonsdk_hostscache.json"
+            return home + os.sep + ".qiniu_pythonsdk_hostscache.json"
+        else:return os.getcwd + os.sep + ".qiniu_pythonsdk_hostscache.json"
 
     def bucket_hosts(self, ak, bucket):
         url = "{0}/v1/query?ak={1}&bucket={2}".format(UC_HOST, ak, bucket)
