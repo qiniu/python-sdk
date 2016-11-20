@@ -120,7 +120,11 @@ class Zone(object):
         f.close()
 
     def host_cache_file_path(self):
-        home = os.getenv("HOME")
+        system = os.name
+        if system == 'nt':
+            home = os.getenv("USERPROFILE")
+        elif system == 'posix':
+            home = os.getenv("HOME")
         return home + "/.qiniu_pythonsdk_hostscache.json"
 
     def bucket_hosts(self, ak, bucket):
