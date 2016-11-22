@@ -72,10 +72,20 @@ def _post_with_token(url, data, token):
 def _post_file(url, data, files):
     return _post(url, data, files, None)
 
-
 def _post_with_auth(url, data, auth):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth))
 
+def _post_with_qiniu_mac(url, data, auth):
+    return _post(url, data, None, qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None)
+
+def _get_with_qiniu_mac(url, params, auth):
+    try:
+        r = requests.get(
+            url, params=params, auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
+            timeout=config.get_default('connection_timeout'), headers=_headers)
+    except Exception as e:
+        return None, ResponseInfo(None, e)
+    return __return_wrapper(r)
 
 class ResponseInfo(object):
     """七牛HTTP请求返回信息类
