@@ -25,6 +25,8 @@ class AccountClient(object):
         get_region_products(region)
         list_regions()
         list_apps()
+        create_app(args)
+        delete_app(app_uri)
 
     """
 
@@ -140,3 +142,19 @@ class AccountClient(object):
 
         url = '{0}/v3/apps'.format(self.host)
         return http._get_with_qiniu_mac(url, None, self.auth)
+
+    def  create_app(self, args):
+        """创建应用
+
+        """
+
+        url = '{0}/v3/apps'.format(self.host)
+        return http._post_with_qiniu_mac(url, args, self.auth)
+
+    def  delete_app(self, app_uri):
+        """删除应用
+
+        """
+
+        url = '{0}/v3/apps/{1}'.format(self.host, app_uri)
+        return http._delete_with_qiniu_mac(url, None, self.auth)
