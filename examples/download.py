@@ -8,6 +8,8 @@ access_key = '...'
 secret_key = '...'
 
 q = Auth(access_key, secret_key)
+bucket_domain = "..."
+key = "..."
 
 #有两种方式构造base_url的形式
 base_url = 'http://%s/%s' % (bucket_domain, key)
