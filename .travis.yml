@@ -1,7 +1,7 @@
 sudo: false
 language: python
 python:
-- '2.6'
+- '2.6.9'
 - '2.7'
 - '3.4'
 - '3.5'
@@ -19,7 +19,7 @@ before_script:
 - export QINIU_TEST_ENV="travis"
 - export PYTHONPATH="$PYTHONPATH:."
 script:
-- flake8 --show-source --max-line-length=160 .
+- if [[ "$TRAVIS_PYTHON_VERSION" != "2.6.9" ]]; then flake8 --show-source --max-line-length=160 .; fi
 - py.test --cov qiniu
 - ocular --data-file .coverage
 deploy:
