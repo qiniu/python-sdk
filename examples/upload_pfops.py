@@ -3,8 +3,8 @@
 from qiniu import Auth, put_file, etag, urlsafe_base64_encode
 import qiniu.config
 
-# access_key = '...'
-# secret_key = '...'
+access_key = '...'
+secret_key = '...'
 
 # 初始化Auth状态
 q = Auth(access_key, secret_key)

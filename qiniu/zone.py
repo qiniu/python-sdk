@@ -3,7 +3,7 @@
 import os
 import time
 import requests
-
+import tempfile
 from qiniu import compat
 from qiniu import utils
 
@@ -19,11 +19,12 @@ class Zone(object):
         up_host: 首选上传地址
         up_host_backup: 备用上传地址
     """
-    def __init__(self, up_host=None, up_host_backup=None, io_host=None, host_cache={}, scheme="http"):
+    def __init__(self, up_host=None, up_host_backup=None, io_host=None, host_cache={}, scheme="http", home_dir=tempfile.gettempdir()):
         """初始化Zone类"""
         self.up_host, self.up_host_backup, self.io_host = up_host, up_host_backup, io_host
         self.host_cache = host_cache
         self.scheme = scheme
+        self.home_dir = home_dir
 
     def get_up_host_by_token(self, up_token):
         ak, bucket = self.unmarshal_up_token(up_token)
@@ -113,15 +114,14 @@ class Zone(object):
         f.close()
         return
 
+    def host_cache_file_path(self):
+        return os.path.join(self.home_dir, ".qiniu_pythonsdk_hostscache.json")
+
     def host_cache_to_file(self):
         path = self.host_cache_file_path()
         with open(path, 'w') as f:
             compat.json.dump(self.host_cache, f)
         f.close()
-
-    def host_cache_file_path(self):
-        home = os.getenv("HOME")
-        return home + "/.qiniu_pythonsdk_hostscache.json"
 
     def bucket_hosts(self, ak, bucket):
         url = "{0}/v1/query?ak={1}&bucket={2}".format(UC_HOST, ak, bucket)

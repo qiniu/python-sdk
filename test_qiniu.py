@@ -355,7 +355,7 @@ class UploaderTestCase(unittest.TestCase):
         key = 'withReadAndWithoutSeek_retry2'
         data = urlopen("http://www.qiniu.com")
         set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
-        token = self.q.upload_token(bucket_name)
+        token = self.q.upload_token(bucket_name, key)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret is not None
