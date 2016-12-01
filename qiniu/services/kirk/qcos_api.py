@@ -54,6 +54,7 @@ class QcosClient(object):
         disable_ap_port(apid, port)
         enable_ap_port(apid, port)
         get_ap_providers()
+        get_web_proxy(backend)
     """
 
     def __init__(self, auth, host=None):
@@ -668,6 +669,22 @@ class QcosClient(object):
         """
         url = '{0}/v3/aps/providers'.format(self.host)
         return self.__get(url)
+
+    def get_web_proxy(self, backend):
+        """获取代理
+
+        对内网地址获取一个外部可访问的代理地址
+
+        Args:
+            - backend: 后端地址，如："10.128.0.1:8080"
+
+        Returns:
+            返回一个tuple对象，其格式为(<result>, <ResponseInfo>)
+            - result          成功返回代理地址信息，失败返回{"error": "<errMsg string>"}
+            - ResponseInfo    请求的Response信息
+        """
+        url = '{0}/v3/webproxy'.format(self.host)
+        return self.__post(url, {'backend': backend})
 
     def __post(self, url, data=None):
         return http._post_with_qiniu_mac(url, data, self.auth)
