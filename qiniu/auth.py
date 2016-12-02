@@ -243,7 +243,7 @@ class QiniuMacAuth(object):
         data = ''.join(["%s %s"%(method, path_with_query) , "\n", "Host: %s"%host, "\n"])
 
         if content_type:
-            data += "Content-Type: %s"%s(content_type) + "\n"
+            data += "Content-Type: %s"%(content_type) + "\n"
 
         data += qheaders
         data += "\n"
