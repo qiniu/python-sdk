@@ -671,9 +671,9 @@ class QcosClient(object):
         return self.__get(url)
 
     def get_web_proxy(self, backend):
-        """获取代理
+        """获取一次性代理地址
 
-        对内网地址获取一个外部可访问的代理地址
+        对内网地址获取一个一次性的外部可访问的代理地址
 
         Args:
             - backend: 后端地址，如："10.128.0.1:8080"
