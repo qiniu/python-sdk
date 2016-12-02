@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-
-from qiniu import config, http
+from qiniu import http
 from .config import KIRK_HOST
+
 
 class QcosClient(object):
     """资源管理客户端
@@ -156,7 +156,6 @@ class QcosClient(object):
         """
         url = '{0}/v3/stacks/{1}/stop'.format(self.host, stack)
         return self.__post(url)
-
 
     def list_services(self, stack):
         """获得服务列表
@@ -333,8 +332,7 @@ class QcosClient(object):
             - result          成功返回空dict{}，失败返回{"error": "<errMsg string>"}
             - ResponseInfo    请求的Response信息
         """
-        url = '{0}/v3/stacks/{1}/services/{2}/volumes/{3}/extend'\
-                .format(self.host, stack, service, volume)
+        url = '{0}/v3/stacks/{1}/services/{2}/volumes/{3}/extend'.format(self.host, stack, service, volume)
         return self.__post(url, args)
 
     def delete_service_volume(self, stack, service, volume):
@@ -529,7 +527,7 @@ class QcosClient(object):
             - apid: 接入点ID
             - port: 要设置的端口号
             - args: 请求参数(json)，参考 http://kirk-docs.qiniu.com/apidocs/
-  
+
         Returns:
             返回一个tuple对象，其格式为(<result>, <ResponseInfo>)
             - result          成功返回空dict{}，失败返回{"error": "<errMsg string>"}

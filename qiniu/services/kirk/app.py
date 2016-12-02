@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-
-from qiniu import config, http, QiniuMacAuth
+from qiniu import http, QiniuMacAuth
 from .config import KIRK_HOST
 from .qcos_api import QcosClient
+
 
 class AccountClient(object):
     """客户端入口
@@ -191,7 +191,7 @@ class AccountClient(object):
         url = '{0}/v3/apps'.format(self.host)
         return http._get_with_qiniu_mac(url, None, self.auth)
 
-    def  create_app(self, args):
+    def create_app(self, args):
         """创建应用
 
         在指定区域创建一个新应用，所属应用为当前请求方。
@@ -207,7 +207,7 @@ class AccountClient(object):
         url = '{0}/v3/apps'.format(self.host)
         return http._post_with_qiniu_mac(url, args, self.auth)
 
-    def  delete_app(self, app_uri):
+    def delete_app(self, app_uri):
         """删除应用
 
         删除指定标识的应用，当前请求方对该应用应有删除权限。

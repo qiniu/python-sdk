@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+=======================
+    注意：必须手动运行
+=======================
+"""
 import os
 import sys
 import time
@@ -14,7 +19,7 @@ qn_auth = auth.QiniuMacAuth(access_key, secret_key)
 acc_client = kirk.app.AccountClient(qn_auth)
 qcos_client = None
 user_name = ''
-app_uri = '' 
+app_uri = ''
 app_name = 'appjust4test'
 app_region = 'nq'
 
@@ -23,7 +28,7 @@ def setup_module(module):
     acc_client = kirk.app.AccountClient(qn_auth)
     user_info = acc_client.get_account_info()[0]
     acc_client.create_app({'name': app_name, 'title': 'whatever', 'region': app_region})
-    
+
     module.user_name = user_info['name']
     module.app_uri = '{0}.{1}'.format(module.user_name, app_name)
     module.qcos_client = acc_client.create_qcos_client(module.app_uri)
@@ -238,7 +243,6 @@ class TestAp:
         cls._ap_domain = qcos_client.create_ap({'type': 'DOMAIN', 'provider': 'Telecom', 'unitType': 'BW_10M', 'title': 'public1'})[0]
         cls._ap_ip = qcos_client.create_ap({'type': 'PUBLIC_IP', 'provider': 'Telecom', 'unitType': 'BW_10M', 'title': 'public2'})[0]
         qcos_client.set_ap_port(cls._ap_ip['apid'], cls._apid_ip_port, {'proto': 'http'})
-        
 
     @classmethod
     def teardown_class(cls):
@@ -328,4 +332,3 @@ def _debug_info(*args):
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
     pytest.main()
-
