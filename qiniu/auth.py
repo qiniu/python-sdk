@@ -197,6 +197,7 @@ class RequestsAuth(AuthBase):
         r.headers['Authorization'] = 'QBox {0}'.format(token)
         return r
 
+
 class QiniuMacAuth(object):
     """
     Sign Requests
@@ -240,10 +241,10 @@ class QiniuMacAuth(object):
         path_with_query = path
         if query != '':
             path_with_query = ''.join([path_with_query, '?', query])
-        data = ''.join(["%s %s"%(method, path_with_query) , "\n", "Host: %s"%host, "\n"])
+        data = ''.join(["%s %s" % (method, path_with_query), "\n", "Host: %s" % host, "\n"])
 
         if content_type:
-            data += "Content-Type: %s"%(content_type) + "\n"
+            data += "Content-Type: %s" % (content_type) + "\n"
 
         data += qheaders
         data += "\n"
@@ -257,13 +258,14 @@ class QiniuMacAuth(object):
         res = ""
         for key in headers:
             if key.startswith(self.qiniu_header_prefix):
-                res += key+": %s\n"%s(headers.get(key))
+                res += key+": %s\n" % (headers.get(key))
         return res
 
     @staticmethod
     def __checkKey(access_key, secret_key):
         if not (access_key and secret_key):
             raise ValueError('QiniuMacAuthSign : Invalid key')
+
 
 class QiniuMacRequestsAuth(AuthBase):
     def __init__(self, auth):

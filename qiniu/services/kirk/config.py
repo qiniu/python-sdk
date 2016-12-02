@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 KIRK_HOST = {
-    'APPGLOBAL': "https://app-api.qiniu.com", # 公有云 APP API
-    'APPPROXY': "http://app.qcos.qiniu", # 内网 APP API
-    'APIPROXY': "http://api.qcos.qiniu", # 内网 API
+    'APPGLOBAL': "https://app-api.qiniu.com",  # 公有云 APP API
+    'APPPROXY': "http://app.qcos.qiniu",  # 内网 APP API
+    'APIPROXY': "http://api.qcos.qiniu",  # 内网 API
 }
 
 CONTAINER_UINT_TYPE = {

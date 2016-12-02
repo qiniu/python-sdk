@@ -72,19 +72,22 @@ def _post_with_token(url, data, token):
 def _post_file(url, data, files):
     return _post(url, data, files, None)
 
+
 def _post_with_auth(url, data, auth):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth))
+
 
 def _post_with_qiniu_mac(url, data, auth):
 
     qn_auth = qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None
-    timeout=config.get_default('connection_timeout')
+    timeout = config.get_default('connection_timeout')
 
     try:
         r = requests.post(url, json=data, auth=qn_auth, timeout=timeout, headers=_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
+
 
 def _get_with_qiniu_mac(url, params, auth):
     try:
@@ -94,6 +97,7 @@ def _get_with_qiniu_mac(url, params, auth):
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
+
 
 def _delete_with_qiniu_mac(url, params, auth):
     try:
