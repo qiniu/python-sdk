@@ -8,7 +8,6 @@ API_HOST = 'http://api.qiniu.com'  # 数据处理操作Host
 
 _BLOCK_SIZE = 1024 * 1024 * 4  # 断点续上传分块大小，该参数为接口规格，暂不支持修改
 
-
 _config = {
     'default_zone': zone.Zone(),
     'default_rs_host': RS_HOST,

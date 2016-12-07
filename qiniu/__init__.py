@@ -11,7 +11,7 @@ For detailed document, please see:
 
 __version__ = '7.0.10'
 
-from .auth import Auth
+from .auth import Auth, QiniuMacAuth
 
 from .config import set_default
 from .zone import Zone
@@ -20,5 +20,6 @@ from .services.storage.bucket import BucketManager, build_batch_copy, build_batc
 from .services.storage.uploader import put_data, put_file, put_stream
 from .services.processing.pfop import PersistentFop
 from .services.processing.cmd import build_op, pipe_cmd, op_save
+from .services.kirk.app import AccountClient
 
 from .utils import urlsafe_base64_encode, urlsafe_base64_decode, etag, entry
