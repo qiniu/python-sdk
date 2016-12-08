@@ -10,13 +10,13 @@ import time
 import logging
 import pytest
 from qiniu import auth
-from qiniu.services import kirk
+from qiniu.services import compute
 
 
 access_key = os.getenv('QINIU_ACCESS_KEY')
 secret_key = os.getenv('QINIU_SECRET_KEY')
 qn_auth = auth.QiniuMacAuth(access_key, secret_key)
-acc_client = kirk.app.AccountClient(qn_auth)
+acc_client = compute.app.AccountClient(qn_auth)
 qcos_client = None
 user_name = ''
 app_uri = ''
@@ -25,7 +25,7 @@ app_region = 'nq'
 
 
 def setup_module(module):
-    acc_client = kirk.app.AccountClient(qn_auth)
+    acc_client = compute.app.AccountClient(qn_auth)
     user_info = acc_client.get_account_info()[0]
     acc_client.create_app({'name': app_name, 'title': 'whatever', 'region': app_region})
 
