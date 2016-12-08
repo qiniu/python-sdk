@@ -18,7 +18,7 @@ packages = [
     'qiniu.services',
     'qiniu.services.storage',
     'qiniu.services.processing',
-    'qiniu.services.kirk',
+    'qiniu.services.compute',
 ]
 
 
