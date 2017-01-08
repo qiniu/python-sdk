@@ -21,7 +21,7 @@ before_script:
 script:
 - if [[ "$TRAVIS_PYTHON_VERSION" != "2.6.9" ]]; then flake8 --show-source --max-line-length=160 .; fi
 - py.test --cov qiniu
-- ocular --data-file .coverage
+- if [[ "$TRAVIS_PYTHON_VERSION" != "2.6.9" ]]; then ocular --data-file .coverage; fi
 deploy:
   provider: pypi
   user: qiniusdk
