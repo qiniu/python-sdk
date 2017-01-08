@@ -162,22 +162,26 @@ class CdnManager(object):
         return http._post_with_auth_and_headers(url, data, self.auth, headers)
 
 
-def create_timestamp_anti_leech_url(host, file_name, query_string, encrypt_key, deadline):
+def create_timestamp_anti_leech_url(host, file_name, query_string_dict, encrypt_key, deadline):
     """
     创建时间戳防盗链
 
     Args:
-        host:         带访问协议的域名
-        file_name:    原始文件名，不需要urlencode
-        query_string: 查询参数，不需要urlencode
-        encrypt_key:  时间戳防盗链密钥
-        deadline:     链接有效期时间戳（以秒为单位）
+        host:              带访问协议的域名
+        file_name:         原始文件名，不需要urlencode
+        query_string_dict: 查询参数，不需要urlencode
+        encrypt_key:       时间戳防盗链密钥
+        deadline:          链接有效期时间戳（以秒为单位）
 
     Returns:
         带时间戳防盗链鉴权访问链接
     """
-    if len(query_string) > 0:
-        url_to_sign = '{0}/{1}?{2}'.format(host, urlencode(file_name), urlencode(query_string))
+    if query_string_dict is not None and len(query_string_dict) > 0:
+        query_string_items = []
+        for k, v in query_string_dict.items():
+            query_string_items.append('{0}={1}'.format(urlencode(str(k)), urlencode(str(v))))
+        query_string = '&'.join(query_string_items)
+        url_to_sign = '{0}/{1}?{2}'.format(host, urlencode(file_name), query_string)
     else:
         url_to_sign = '{0}/{1}'.format(host, urlencode(file_name))
 
@@ -186,7 +190,7 @@ def create_timestamp_anti_leech_url(host, file_name, query_string, encrypt_key, 
     str_to_sign = '{0}{1}{2}'.format(encrypt_key, path, expire_hex).encode()
     sign_str = hashlib.md5(str_to_sign).hexdigest()
 
-    if len(query_string) > 0:
+    if query_string_dict is not None and len(query_string_dict) > 0:
         signed_url = '{0}&sign={1}&t={2}'.format(url_to_sign, sign_str, expire_hex)
     else:
         signed_url = '{0}?sign={1}&t={2}'.format(url_to_sign, sign_str, expire_hex)

@@ -89,14 +89,18 @@ print_result(log_data)
 print('构建时间戳防盗链')
 
 # 时间戳防盗链密钥，后台获取
-encrypt_key = '...'
+encrypt_key = 'xxx'
 
 # 原始文件名，必须是utf8编码
 test_file_name1 = '基本概括.mp4'
 test_file_name2 = '2017/01/07/test.png'
 
 # 查询参数列表
-query_string = 'name=七牛&year=2017'
+query_string_dict = {
+    'name': '七牛',
+    'year': 2017,
+    '年龄': 28,
+}
 
 # 带访问协议的域名
 host = 'http://video.example.com'
@@ -105,17 +109,17 @@ host = 'http://video.example.com'
 deadline = int(time.time()) + 3600
 
 # 带查询参数，中文文件名
-signed_url1 = create_timestamp_anti_leech_url(host, test_file_name1, query_string, encrypt_key, deadline)
+signed_url1 = create_timestamp_anti_leech_url(host, test_file_name1, query_string_dict, encrypt_key, deadline)
 print(signed_url1)
 
 # 带查询参数，英文文件名
-signed_url2 = create_timestamp_anti_leech_url(host, test_file_name2, query_string, encrypt_key, deadline)
+signed_url2 = create_timestamp_anti_leech_url(host, test_file_name2, query_string_dict, encrypt_key, deadline)
 print(signed_url2)
 
 # 不带查询参数，中文文件名
-signed_url3 = create_timestamp_anti_leech_url(host, test_file_name1, '', encrypt_key, deadline)
+signed_url3 = create_timestamp_anti_leech_url(host, test_file_name1, None, encrypt_key, deadline)
 print(signed_url3)
 
 # 不带查询参数，英文文件名
-signed_url4 = create_timestamp_anti_leech_url(host, test_file_name2, '', encrypt_key, deadline)
+signed_url4 = create_timestamp_anti_leech_url(host, test_file_name2, None, encrypt_key, deadline)
 print(signed_url4)
