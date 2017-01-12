@@ -36,7 +36,7 @@ class AccountClient(object):
         if (auth is None):
             self.host = KIRK_HOST['APPPROXY']
         else:
-            self.host = KIRK_HOST['APPGLOBAL']
+            self.host = host or KIRK_HOST['APPGLOBAL']
         acc, info = self.get_account_info()
         self.uri = acc.get('name')
 
