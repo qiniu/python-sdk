@@ -181,7 +181,10 @@ class Auth(object):
             if k in _deprecated_policy_fields:
                 raise ValueError(k + ' has deprecated')
             if (not strict_policy) or k in _policy_fields:
-                to[k] = v
+                if isinstance(v, dict):
+                    to[k] = json.dumps(v)
+                else:
+                    to[k] = v
 
 
 class RequestsAuth(AuthBase):
