@@ -19,6 +19,6 @@ key = 'python-logo.png'
 #将文件从文件key 移动到文件key2，可以实现文件的重命名 可以在不同bucket移动
 key2 = 'python-logo2.png'
 
-ret, info = bucket.move(bucket_name, key, bucket, key2)
+ret, info = bucket.move(bucket_name, key, bucket_name, key2)
 print(info)
 assert ret == {}
