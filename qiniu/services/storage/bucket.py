@@ -246,6 +246,28 @@ class BucketManager(object):
         """
         return self.__rs_do('buckets')
 
+    def delete_after_days(self, bucket, key, days):
+        """更新文件生命周期
+
+        Returns:
+            一个dict变量，返回结果类似：
+                [
+                    { "code": <HttpCode int>, "data": <Data> },
+                    { "code": <HttpCode int> },
+                    { "code": <HttpCode int> },
+                    { "code": <HttpCode int> },
+                    { "code": <HttpCode int>, "data": { "error": "<ErrorMessage string>" } },
+                    ...
+                ]
+            一个ResponseInfo对象
+        Args:
+            bucket: 目标资源空间
+            key:    目标资源文件名
+            days:   指定天数
+        """
+        resource = entry(bucket, key)
+        return self.__rs_do('deleteAfterDays', resource, days)
+
     def __rs_do(self, operation, *args):
         return self.__server_do(config.get_default('default_rs_host'), operation, *args)
 

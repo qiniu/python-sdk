@@ -264,6 +264,15 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert ret[0]['code'] == 200
 
+    def test_delete_after_days(self):
+        days = '5'
+        ret, info = self.bucket.delete_after_days(bucket_name,'invaild.html', days)
+        assert info.status_code == 612
+        key = 'copyto'+rand_string(8)
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
+        ret, info = self.bucket.delete_after_days(bucket_name, key, days)
+        assert info.status_code == 200
+
 
 class UploaderTestCase(unittest.TestCase):
 
