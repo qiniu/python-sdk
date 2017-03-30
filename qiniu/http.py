@@ -8,7 +8,6 @@ from qiniu import config
 import qiniu.auth
 from . import __version__
 
-
 _sys_info = '{0}; {1}'.format(platform.system(), platform.machine())
 _python_ver = platform.python_version()
 
@@ -35,12 +34,17 @@ def _init():
     _session = session
 
 
-def _post(url, data, files, auth):
+def _post(url, data, files, auth, headers=None):
     if _session is None:
         _init()
     try:
+        post_headers = _headers
+        if headers is not None:
+            for k, v in headers.items():
+                post_headers.update({k: v})
         r = _session.post(
-            url, data=data, files=files, auth=auth, headers=_headers, timeout=config.get_default('connection_timeout'))
+            url, data=data, files=files, auth=auth, headers=post_headers,
+            timeout=config.get_default('connection_timeout'))
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -75,6 +79,41 @@ def _post_file(url, data, files):
 
 def _post_with_auth(url, data, auth):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth))
+
+
+def _post_with_auth_and_headers(url, data, auth, headers):
+    return _post(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
+
+
+def _post_with_qiniu_mac(url, data, auth):
+    qn_auth = qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None
+    timeout = config.get_default('connection_timeout')
+
+    try:
+        r = requests.post(url, json=data, auth=qn_auth, timeout=timeout, headers=_headers)
+    except Exception as e:
+        return None, ResponseInfo(None, e)
+    return __return_wrapper(r)
+
+
+def _get_with_qiniu_mac(url, params, auth):
+    try:
+        r = requests.get(
+            url, params=params, auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
+            timeout=config.get_default('connection_timeout'), headers=_headers)
+    except Exception as e:
+        return None, ResponseInfo(None, e)
+    return __return_wrapper(r)
+
+
+def _delete_with_qiniu_mac(url, params, auth):
+    try:
+        r = requests.delete(
+            url, params=params, auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
+            timeout=config.get_default('connection_timeout'), headers=_headers)
+    except Exception as e:
+        return None, ResponseInfo(None, e)
+    return __return_wrapper(r)
 
 
 class ResponseInfo(object):

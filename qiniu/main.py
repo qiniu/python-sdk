@@ -30,5 +30,6 @@ def main():
         else:
             print(' '.join(r))
 
+
 if __name__ == '__main__':
     main()

@@ -264,6 +264,15 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert ret[0]['code'] == 200
 
+    def test_delete_after_days(self):
+        days = '5'
+        ret, info = self.bucket.delete_after_days(bucket_name,'invaild.html', days)
+        assert info.status_code == 612
+        key = 'copyto'+rand_string(8)
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
+        ret, info = self.bucket.delete_after_days(bucket_name, key, days)
+        assert info.status_code == 200
+
 
 class UploaderTestCase(unittest.TestCase):
 
@@ -355,7 +364,7 @@ class UploaderTestCase(unittest.TestCase):
         key = 'withReadAndWithoutSeek_retry2'
         data = urlopen("http://www.qiniu.com")
         set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
-        token = self.q.upload_token(bucket_name)
+        token = self.q.upload_token(bucket_name, key)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret is not None

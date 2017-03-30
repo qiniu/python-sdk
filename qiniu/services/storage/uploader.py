@@ -10,7 +10,8 @@ from .upload_progress_recorder import UploadProgressRecorder
 
 
 def put_data(
-        up_token, key, data, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None, fname=None):
+        up_token, key, data, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None,
+        fname=None):
     """上传二进制流到七牛
 
     Args:
@@ -160,7 +161,7 @@ class _Resume(object):
 
         try:
             if not record['modify_time'] or record['size'] != self.size or \
-                    record['modify_time'] != self.modify_time:
+                            record['modify_time'] != self.modify_time:
                 return 0
         except KeyError:
             return 0
@@ -187,8 +188,8 @@ class _Resume(object):
             self.blockStatus.append(ret)
             offset += length
             self.record_upload_progress(offset)
-            if(callable(self.progress_handler)):
-                self.progress_handler(((len(self.blockStatus) - 1) * config._BLOCK_SIZE)+length, self.size)
+            if (callable(self.progress_handler)):
+                self.progress_handler(((len(self.blockStatus) - 1) * config._BLOCK_SIZE) + length, self.size)
         return self.make_file(host)
 
     def make_block(self, block, block_size, host):
@@ -223,6 +224,7 @@ class _Resume(object):
         """创建文件"""
         url = self.file_url(host)
         body = ','.join([status['ctx'] for status in self.blockStatus])
+        self.upload_progress_recorder.delete_upload_record(self.file_name, self.key)
         return self.post(url, body)
 
     def post(self, url, data):

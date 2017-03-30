@@ -196,3 +196,87 @@ class RequestsAuth(AuthBase):
             token = self.auth.token_of_request(r.url)
         r.headers['Authorization'] = 'QBox {0}'.format(token)
         return r
+
+
+class QiniuMacAuth(object):
+    """
+    Sign Requests
+
+    Attributes:
+        __access_key
+        __secret_key
+
+    http://kirk-docs.qiniu.com/apidocs/#TOC_325b437b89e8465e62e958cccc25c63f
+    """
+
+    def __init__(self, access_key, secret_key):
+        self.qiniu_header_prefix = "X-Qiniu-"
+        self.__checkKey(access_key, secret_key)
+        self.__access_key = access_key
+        self.__secret_key = b(secret_key)
+
+    def __token(self, data):
+        data = b(data)
+        hashed = hmac.new(self.__secret_key, data, sha1)
+        return urlsafe_base64_encode(hashed.digest())
+
+    def token_of_request(self, method, host, url, qheaders, content_type=None, body=None):
+        """
+        <Method> <PathWithRawQuery>
+        Host: <Host>
+        Content-Type: <ContentType>
+        [<X-Qiniu-*> Headers]
+
+        [<Body>] #这里的 <Body> 只有在 <ContentType> 存在且不为 application/octet-stream 时才签进去。
+
+        """
+        parsed_url = urlparse(url)
+        netloc = parsed_url.netloc
+        path = parsed_url.path
+        query = parsed_url.query
+
+        if not host:
+            host = netloc
+
+        path_with_query = path
+        if query != '':
+            path_with_query = ''.join([path_with_query, '?', query])
+        data = ''.join(["%s %s" % (method, path_with_query), "\n", "Host: %s" % host, "\n"])
+
+        if content_type:
+            data += "Content-Type: %s" % (content_type) + "\n"
+
+        data += qheaders
+        data += "\n"
+
+        if content_type and content_type != "application/octet-stream" and body:
+            data += body
+
+        return '{0}:{1}'.format(self.__access_key, self.__token(data))
+
+    def qiniu_headers(self, headers):
+        res = ""
+        for key in headers:
+            if key.startswith(self.qiniu_header_prefix):
+                res += key+": %s\n" % (headers.get(key))
+        return res
+
+    @staticmethod
+    def __checkKey(access_key, secret_key):
+        if not (access_key and secret_key):
+            raise ValueError('QiniuMacAuthSign : Invalid key')
+
+
+class QiniuMacRequestsAuth(AuthBase):
+    def __init__(self, auth):
+        self.auth = auth
+
+    def __call__(self, r):
+        token = self.auth.token_of_request(
+            r.method, r.headers.get('Host', None),
+            r.url, self.auth.qiniu_headers(r.headers),
+            r.headers.get('Content-Type', None),
+            r.body
+            )
+        r.headers['Authorization'] = 'Qiniu {0}'.format(token)
+        return r

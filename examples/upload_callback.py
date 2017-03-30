@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 
-from qiniu import Auth, put_file, etag,
+from qiniu import Auth, put_file, etag
 import qiniu.config
 
 access_key = '...'
-secret_key = ...'
+secret_key = '...'
 
 q = Auth(access_key, secret_key)
 
 bucket_name = 'Bucket_Name'
 
-key = 'my-python-logo.png';
+key = 'my-python-logo.png'
 
 #上传文件到七牛后， 七牛将文件名和文件大小回调给业务服务器。
 policy={
@@ -27,3 +27,4 @@ ret, info = put_file(token, key, localfile)
 print(info)
 assert ret['key'] == key
 assert ret['hash'] == etag(localfile)
+
