@@ -151,7 +151,7 @@ class CdnManager(object):
         """
         req = {}
         req.update({"domains": ';'.join(domains)})
-        req.update({"startDate": log_date})
+        req.update({"day": log_date})
 
         body = json.dumps(req)
         url = '{0}/v2/tune/log/list'.format(self.server)
