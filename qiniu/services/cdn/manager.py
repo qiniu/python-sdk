@@ -159,7 +159,7 @@ class CdnManager(object):
 
     def __post(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
-        return http._post_with_auth_and_head2ers(url, data, self.auth, headers)
+        return http._post_with_auth_and_headers(url, data, self.auth, headers)
 
 
 def create_timestamp_anti_leech_url(host, file_name, query_string_dict, encrypt_key, deadline):
