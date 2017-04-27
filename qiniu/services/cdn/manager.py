@@ -151,7 +151,7 @@ class CdnManager(object):
         """
         req = {}
         req.update({"domains": ';'.join(domains)})
-        req.update({"startDate": log_date})
+        req.update({"day": log_date})
 
         body = json.dumps(req)
         url = '{0}/v2/tune/log/list'.format(self.server)
@@ -159,7 +159,7 @@ class CdnManager(object):
 
     def __post(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
-        return http._post_with_auth_and_headers(url, data, self.auth, headers)
+        return http._post_with_auth_and_head2ers(url, data, self.auth, headers)
 
 
 def create_timestamp_anti_leech_url(host, file_name, query_string_dict, encrypt_key, deadline):
