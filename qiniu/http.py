@@ -38,7 +38,7 @@ def _post(url, data, files, auth, headers=None):
     if _session is None:
         _init()
     try:
-        post_headers = _headers
+        post_headers = _headers.copy()
         if headers is not None:
             for k, v in headers.items():
                 post_headers.update({k: v})
