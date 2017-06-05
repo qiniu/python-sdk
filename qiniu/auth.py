@@ -11,7 +11,7 @@ from .utils import urlsafe_base64_encode
 
 
 # 上传策略，参数规格详见
-# http://developer.qiniu.com/docs/v6/api/reference/security/put-policy.html
+# https://developer.qiniu.com/kodo/manual/1206/put-policy
 _policy_fields = set([
     'callbackUrl',       # 回调URL
     'callbackBody',      # 回调Body
@@ -37,19 +37,14 @@ _policy_fields = set([
     'deleteAfterDays',      # 文件多少天后自动删除
 ])
 
-_deprecated_policy_fields = set([
-    'asyncOps'
-])
-
-
 class Auth(object):
     """七牛安全机制类
 
     该类主要内容是七牛上传凭证、下载凭证、管理凭证三种凭证的签名接口的实现，以及回调验证。
 
     Attributes:
-        __access_key: 账号密钥对中的accessKey，详见 https://portal.qiniu.com/setting/key
-        __secret_key: 账号密钥对重的secretKey，详见 https://portal.qiniu.com/setting/key
+        __access_key: 账号密钥对中的accessKey，详见 https://portal.qiniu.com/user/key
+        __secret_key: 账号密钥对重的secretKey，详见 https://portal.qiniu.com/user/key
     """
 
     def __init__(self, access_key, secret_key):
@@ -178,8 +173,6 @@ class Auth(object):
     @staticmethod
     def __copy_policy(policy, to, strict_policy):
         for k, v in policy.items():
-            if k in _deprecated_policy_fields:
-                raise ValueError(k + ' has deprecated')
             if (not strict_policy) or k in _policy_fields:
                 to[k] = v
 
@@ -189,7 +182,6 @@ class RequestsAuth(AuthBase):
         self.auth = auth
 
     def __call__(self, r):
-        token = None
         if r.body is not None and r.headers['Content-Type'] == 'application/x-www-form-urlencoded':
             token = self.auth.token_of_request(r.url, r.body, 'application/x-www-form-urlencoded')
         else:
