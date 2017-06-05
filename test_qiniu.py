@@ -98,10 +98,6 @@ class AuthTestCase(unittest.TestCase):
         token = dummy_auth.token_of_request('http://www.qiniu.com?go=1', 'test', 'application/x-www-form-urlencoded')
         assert token == 'abcdefghklmnopq:svWRNcacOE-YMsc70nuIYdaa1e4='
 
-    def test_deprecatedPolicy(self):
-        with pytest.raises(ValueError):
-            dummy_auth.upload_token('1', None, policy={'asyncOps': 1})
-
     def test_verify_callback(self):
         body = 'name=sunflower.jpg&hash=Fn6qeQi4VDLQ347NiRm-RlQx_4O2&location=Shanghai&price=1500.00&uid=123'
         url = 'test.qiniu.com/callback'
@@ -118,7 +114,7 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert eof is False
         assert len(ret.get('items')) == 4
-        ret, eof, info = self.bucket.list(bucket_name, limit=100)
+        ret, eof, info = self.bucket.list(bucket_name, limit=1000)
         print(info)
         assert eof is True
 
