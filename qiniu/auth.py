@@ -37,6 +37,7 @@ _policy_fields = set([
     'deleteAfterDays',      # 文件多少天后自动删除
 ])
 
+
 class Auth(object):
     """七牛安全机制类
 
