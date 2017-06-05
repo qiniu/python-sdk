@@ -11,7 +11,8 @@ import pytest
 
 from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save, Zone
 from qiniu import put_data, put_file, put_stream
-from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, build_batch_delete
+from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, \
+    build_batch_delete
 from qiniu import urlsafe_base64_encode, urlsafe_base64_decode
 
 from qiniu.compat import is_py2, is_py3, b
@@ -24,6 +25,7 @@ if is_py2:
     import sys
     import StringIO
     import urllib
+
     reload(sys)
     sys.setdefaultencoding('utf-8')
     StringIO = StringIO.StringIO
@@ -31,6 +33,7 @@ if is_py2:
 elif is_py3:
     import io
     import urllib
+
     StringIO = io.StringIO
     urlopen = urllib.request.urlopen
 
@@ -51,7 +54,7 @@ def rand_string(length):
 def create_temp_file(size):
     t = tempfile.mktemp()
     f = open(t, 'wb')
-    f.seek(size-1)
+    f.seek(size - 1)
     f.write(b('0'))
     f.close()
     return t
@@ -69,7 +72,6 @@ def is_travis():
 
 
 class UtilsTest(unittest.TestCase):
-
     def test_urlsafe(self):
         a = 'hello\x96'
         u = urlsafe_base64_encode(a)
@@ -77,7 +79,6 @@ class UtilsTest(unittest.TestCase):
 
 
 class AuthTestCase(unittest.TestCase):
-
     def test_token(self):
         token = dummy_auth.token('test')
         assert token == 'abcdefghklmnopq:mSNBTR7uS2crJsyFr2Amwv1LaYg='
@@ -129,7 +130,8 @@ class BucketTestCase(unittest.TestCase):
         assert ret['key'] == 'python-sdk.html'
 
     def test_fetch(self):
-        ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name, 'fetch.html')
+        ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name,
+                                      'fetch.html')
         print(info)
         assert ret['key'] == 'fetch.html'
         assert 'hash' in ret
@@ -152,7 +154,7 @@ class BucketTestCase(unittest.TestCase):
         assert info.status_code == 612
 
     def test_rename(self):
-        key = 'renameto'+rand_string(8)
+        key = 'renameto' + rand_string(8)
         self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
         key2 = key + 'move'
         ret, info = self.bucket.rename(bucket_name, key, key2)
@@ -163,7 +165,7 @@ class BucketTestCase(unittest.TestCase):
         assert ret == {}
 
     def test_copy(self):
-        key = 'copyto'+rand_string(8)
+        key = 'copyto' + rand_string(8)
         ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
         print(info)
         assert ret == {}
@@ -176,27 +178,24 @@ class BucketTestCase(unittest.TestCase):
         print(info)
         assert ret == {}
 
-    def test_copy(self):
-        key = 'copyto'+rand_string(8)
-        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
+    def test_change_type(self):
+        target_key = 'copyto' + rand_string(8)
+        self.bucket.copy(bucket_name, 'copyfrom', bucket_name, target_key)
+        ret, info = self.bucket.change_type(bucket_name, target_key, 1)
         print(info)
         assert ret == {}
-        ret, info = self.bucket.delete(bucket_name, key)
+        ret, info = self.bucket.stat(bucket_name, target_key)
         print(info)
-        assert ret == {}
+        assert 'type' in ret
+        self.bucket.delete(bucket_name, target_key)
 
     def test_copy_force(self):
         ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, 'copyfrom', force='true')
         print(info)
         assert info.status_code == 200
 
-    def test_change_mime(self):
-        ret, info = self.bucket.change_mime(bucket_name, 'python-sdk.html', 'text/html')
-        print(info)
-        assert ret == {}
-
     def test_batch_copy(self):
-        key = 'copyto'+rand_string(8)
+        key = 'copyto' + rand_string(8)
         ops = build_batch_copy(bucket_name, {'copyfrom': key}, bucket_name)
         ret, info = self.bucket.batch(ops)
         print(info)
@@ -213,7 +212,7 @@ class BucketTestCase(unittest.TestCase):
         assert ret[0]['code'] == 200
 
     def test_batch_move(self):
-        key = 'moveto'+rand_string(8)
+        key = 'moveto' + rand_string(8)
         self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
         key2 = key + 'move'
         ops = build_batch_move(bucket_name, {key: key2}, bucket_name)
@@ -225,16 +224,16 @@ class BucketTestCase(unittest.TestCase):
         assert ret == {}
 
     def test_batch_move_force(self):
-        ret,info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, 'copyfrom', force='true')
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, 'copyfrom', force='true')
         print(info)
         assert info.status_code == 200
-        ops = build_batch_move(bucket_name, {'copyfrom':'copyfrom'}, bucket_name,force='true')
+        ops = build_batch_move(bucket_name, {'copyfrom': 'copyfrom'}, bucket_name, force='true')
         ret, info = self.bucket.batch(ops)
         print(info)
         assert ret[0]['code'] == 200
 
     def test_batch_rename(self):
-        key = 'rename'+rand_string(8)
+        key = 'rename' + rand_string(8)
         self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
         key2 = key + 'rename'
         ops = build_batch_move(bucket_name, {key: key2}, bucket_name)
@@ -246,10 +245,10 @@ class BucketTestCase(unittest.TestCase):
         assert ret == {}
 
     def test_batch_rename_force(self):
-        ret,info = self.bucket.rename(bucket_name, 'copyfrom', 'copyfrom', force='true')
+        ret, info = self.bucket.rename(bucket_name, 'copyfrom', 'copyfrom', force='true')
         print(info)
         assert info.status_code == 200
-        ops = build_batch_rename(bucket_name, {'copyfrom':'copyfrom'}, force='true')
+        ops = build_batch_rename(bucket_name, {'copyfrom': 'copyfrom'}, force='true')
         ret, info = self.bucket.batch(ops)
         print(info)
         assert ret[0]['code'] == 200
@@ -262,16 +261,15 @@ class BucketTestCase(unittest.TestCase):
 
     def test_delete_after_days(self):
         days = '5'
-        ret, info = self.bucket.delete_after_days(bucket_name,'invaild.html', days)
+        ret, info = self.bucket.delete_after_days(bucket_name, 'invaild.html', days)
         assert info.status_code == 612
-        key = 'copyto'+rand_string(8)
+        key = 'copyto' + rand_string(8)
         ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
         ret, info = self.bucket.delete_after_days(bucket_name, key, days)
         assert info.status_code == 200
 
 
 class UploaderTestCase(unittest.TestCase):
-
     mime_type = "text/plain"
     params = {'x:a': 'a'}
     q = Auth(access_key, secret_key)
@@ -400,7 +398,6 @@ class UploaderTestCase(unittest.TestCase):
 
 
 class ResumableUploaderTestCase(unittest.TestCase):
-
     mime_type = "text/plain"
     params = {'x:a': 'a'}
     q = Auth(access_key, secret_key)
@@ -411,7 +408,8 @@ class ResumableUploaderTestCase(unittest.TestCase):
         size = os.stat(localfile).st_size
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, self.params, self.mime_type)
+            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, self.params,
+                                   self.mime_type)
             print(info)
             assert ret['key'] == key
 
@@ -438,13 +436,12 @@ class ResumableUploaderTestCase(unittest.TestCase):
 
 
 class DownloadTestCase(unittest.TestCase):
-
     q = Auth(access_key, secret_key)
 
     def test_private_url(self):
         private_bucket = 'private-res'
         private_key = 'gogopher.jpg'
-        base_url = 'http://%s/%s' % (private_bucket+'.qiniudn.com', private_key)
+        base_url = 'http://%s/%s' % (private_bucket + '.qiniudn.com', private_key)
         private_url = self.q.private_download_url(base_url, expires=3600)
         print(private_url)
         r = requests.get(private_url)
@@ -469,11 +466,13 @@ class EtagTestCase(unittest.TestCase):
         hash = etag("x")
         assert hash == 'Fto5o-5ea0sNMlW_75VgGJCv2AcJ'
         remove_temp_file("x")
+
     def test_small_size(self):
         localfile = create_temp_file(1024 * 1024)
         hash = etag(localfile)
         assert hash == 'FnlAdmDasGTQOIgrU1QIZaGDv_1D'
         remove_temp_file(localfile)
+
     def test_large_size(self):
         localfile = create_temp_file(4 * 1024 * 1024 + 1)
         hash = etag(localfile)
@@ -488,6 +487,7 @@ class ReadWithoutSeek(object):
 
     def read(self):
         print(self.str)
+
 
 if __name__ == '__main__':
     unittest.main()
