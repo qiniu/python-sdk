@@ -213,10 +213,10 @@ class BucketManager(object):
 
     def change_type(self, bucket, key, storage_type):
         """修改文件的存储类型
-        
-        修改文件的存储类型为普通存储或者是低频存储，参考温度：
+
+        修改文件的存储类型为普通存储或者是低频存储，参考文档：
         https://developer.qiniu.com/kodo/api/3710/modify-the-file-type
-        
+
         Args:
             bucket:         待操作资源所在空间
             key:            待操作资源文件名
