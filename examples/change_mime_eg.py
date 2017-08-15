@@ -7,17 +7,14 @@ from qiniu import BucketManager
 access_key = '...'
 secret_key = '...'
 
-#初始化Auth状态
 q = Auth(access_key, secret_key)
 
-#初始化BucketManager
 bucket = BucketManager(q)
 
-#你要测试的空间， 并且这个key在你空间中存在
 bucket_name = 'Bucket_Name'
-key = 'python-logo.png'
 
-#删除bucket_name 中的文件 key
-ret, info = bucket.delete(bucket_name, key)
+key = '...'
+
+ret, info = bucket.change_mime(bucket_name, key, 'image/jpg')
 print(info)
-assert ret == {}
+assert info.status_code == 200
