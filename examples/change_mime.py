@@ -4,18 +4,17 @@
 from qiniu import Auth
 from qiniu import BucketManager
 
-access_key = ''
-secret_key = ''
+access_key = '...'
+secret_key = '...'
 
 q = Auth(access_key, secret_key)
 
 bucket = BucketManager(q)
 
-bucket_name = ''
+bucket_name = 'Bucket_Name'
 
-key = 'example.png'
+key = '...'
 
-mime_type = 'image/jpeg'
-
-ret, info = bucket.change_mime(bucket_name, key, mime_type)
+ret, info = bucket.change_mime(bucket_name, key, 'image/jpg')
 print(info)
+assert info.status_code == 200
