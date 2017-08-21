@@ -4,12 +4,12 @@ Qiniu Resource Storage SDK for Python
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For detailed document, please see:
-<http://developer.qiniu.com>
+<https://developer.qiniu.com/kodo/sdk/1242/python>
 '''
 
 # flake8: noqa
 
-__version__ = '7.1.2'
+__version__ = '7.1.4'
 
 from .auth import Auth, QiniuMacAuth
 

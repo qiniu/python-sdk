@@ -17,7 +17,7 @@ class BucketManager(object):
 
     def __init__(self, auth, zone=None):
         self.auth = auth
-        if(zone is None):
+        if (zone is None):
             self.zone = config.get_default('default_zone')
         else:
             self.zone = zone
@@ -68,7 +68,7 @@ class BucketManager(object):
         """获取文件信息:
 
         获取资源的元信息，但不返回文件内容，具体规格参考：
-        http://developer.qiniu.com/docs/v6/api/reference/rs/stat.html
+        https://developer.qiniu.com/kodo/api/1308/stat
 
         Args:
             bucket: 待获取信息资源所在的空间
@@ -81,6 +81,7 @@ class BucketManager(object):
                     "hash":         "ljfockr0lOil_bZfyaI2ZY78HWoH",
                     "mimeType":     "application/octet-stream",
                     "putTime":      13603956734587420
+                    "type":         0
                 }
             一个ResponseInfo对象
         """
@@ -210,6 +211,20 @@ class BucketManager(object):
         encode_mime = urlsafe_base64_encode(mime)
         return self.__rs_do('chgm', resource, 'mime/{0}'.format(encode_mime))
 
+    def change_type(self, bucket, key, storage_type):
+        """修改文件的存储类型
+
+        修改文件的存储类型为普通存储或者是低频存储，参考文档：
+        https://developer.qiniu.com/kodo/api/3710/modify-the-file-type
+
+        Args:
+            bucket:         待操作资源所在空间
+            key:            待操作资源文件名
+            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储
+        """
+        resource = entry(bucket, key)
+        return self.__rs_do('chtype', resource, 'type/{0}'.format(storage_type))
+
     def batch(self, operations):
         """批量操作:
 
@@ -319,4 +334,5 @@ def _one_key_batch(operation, bucket, keys):
 def _two_key_batch(operation, source_bucket, key_pairs, target_bucket, force='false'):
     if target_bucket is None:
         target_bucket = source_bucket
-    return [_build_op(operation, entry(source_bucket, k), entry(target_bucket, v), 'force/{0}'.format(force)) for k, v in key_pairs.items()]
+    return [_build_op(operation, entry(source_bucket, k), entry(target_bucket, v), 'force/{0}'.format(force)) for k, v
+            in key_pairs.items()]
