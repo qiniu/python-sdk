@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+获取指定域名指定时间内的日志链接
+"""
 import qiniu
 from qiniu import CdnManager
 
@@ -17,7 +20,7 @@ urls = [
     'b.example.com'
 ]
 
-# 获得指定域名流量
+
 ret, info = cdn_manager.get_log_list_data(urls, log_date)
 
 print(ret)

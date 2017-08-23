@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-批量删除文件
+批量查询文件信息
 
 https://developer.qiniu.com/kodo/api/1250/batch
 """

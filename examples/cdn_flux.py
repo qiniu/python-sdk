@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+查询指定域名指定时间段内的流量
+"""
 import qiniu
 from qiniu import CdnManager
 
