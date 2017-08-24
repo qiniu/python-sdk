@@ -3,11 +3,10 @@
 import os
 import time
 import requests
-import tempfile
 from qiniu import compat
 from qiniu import utils
 
-UC_HOST = 'https://uc.qbox.me'      # 获取空间信息Host
+UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
 
 
 class Zone(object):
@@ -19,7 +18,9 @@ class Zone(object):
         up_host: 首选上传地址
         up_host_backup: 备用上传地址
     """
-    def __init__(self, up_host=None, up_host_backup=None, io_host=None, host_cache={}, scheme="http", home_dir=tempfile.gettempdir()):
+
+    def __init__(self, up_host=None, up_host_backup=None, io_host=None, host_cache={}, scheme="http",
+                 home_dir=os.getcwd()):
         """初始化Zone类"""
         self.up_host, self.up_host_backup, self.io_host = up_host, up_host_backup, io_host
         self.host_cache = host_cache
@@ -53,7 +54,7 @@ class Zone(object):
 
     def unmarshal_up_token(self, up_token):
         token = up_token.split(':')
-        if(len(token) != 3):
+        if (len(token) != 3):
             raise ValueError('invalid up_token')
 
         ak = token[0]
@@ -61,7 +62,7 @@ class Zone(object):
 
         scope = policy["scope"]
         bucket = scope
-        if(':' in scope):
+        if (':' in scope):
             bucket = scope.split(':')[0]
 
         return ak, bucket
@@ -70,10 +71,30 @@ class Zone(object):
         key = self.scheme + ":" + ak + ":" + bucket
 
         bucket_hosts = self.get_bucket_hosts_to_cache(key)
-        if(len(bucket_hosts) > 0):
+        if (len(bucket_hosts) > 0):
             return bucket_hosts
 
-        hosts = compat.json.loads(self.bucket_hosts(ak, bucket))
+        hosts = {}
+        hosts.update({self.scheme: {}})
+
+        hosts[self.scheme].update({'up': []})
+        hosts[self.scheme].update({'io': []})
+
+        if self.up_host != None:
+            hosts[self.scheme]['up'].append(self.scheme + "://" + self.up_host)
+
+        if self.up_host_backup != None:
+            hosts[self.scheme]['up'].append(self.scheme + "://" + self.up_host_backup)
+
+        if self.io_host != None:
+            hosts[self.scheme]['io'].append(self.scheme + "://" + self.io_host)
+
+        if len(hosts[self.scheme]) == 0 or self.io_host == None:
+            # print(hosts)
+            hosts = compat.json.loads(self.bucket_hosts(ak, bucket))
+        else:
+            # 1 year
+            hosts['ttl'] = int(time.time()) + 31536000
 
         scheme_hosts = hosts[self.scheme]
         bucket_hosts = {
@@ -88,13 +109,13 @@ class Zone(object):
 
     def get_bucket_hosts_to_cache(self, key):
         ret = []
-        if(len(self.host_cache) == 0):
+        if (len(self.host_cache) == 0):
             self.host_cache_from_file()
 
-        if(not (key in self.host_cache)):
+        if (not (key in self.host_cache)):
             return ret
 
-        if(self.host_cache[key]['deadline'] > time.time()):
+        if (self.host_cache[key]['deadline'] > time.time()):
             ret = self.host_cache[key]
 
         return ret
@@ -126,6 +147,5 @@ class Zone(object):
     def bucket_hosts(self, ak, bucket):
         url = "{0}/v1/query?ak={1}&bucket={2}".format(UC_HOST, ak, bucket)
         ret = requests.get(url)
-        # ret, info = http._get(url, None, None)
         data = compat.json.dumps(ret.json(), separators=(',', ':'))
         return data
