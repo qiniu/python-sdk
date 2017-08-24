@@ -3,7 +3,6 @@
 import os
 import time
 import requests
-import tempfile
 from qiniu import compat
 from qiniu import utils
 
