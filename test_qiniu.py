@@ -335,34 +335,6 @@ class UploaderTestCase(unittest.TestCase):
         assert ret['key'] == key
         assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
 
-    def test_hasRead_hasSeek_retry(self):
-        key = 'withReadAndSeek_retry'
-        data = StringIO('hello retry again!')
-        set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
-        token = self.q.upload_token(bucket_name)
-        ret, info = put_data(token, key, data)
-        print(info)
-        assert ret['key'] == key
-        assert ret['hash'] == 'FuEbdt6JP2BqwQJi7PezYhmuVYOo'
-
-    def test_hasRead_withoutSeek_retry(self):
-        key = 'withReadAndWithoutSeek_retry'
-        data = ReadWithoutSeek('I only have read attribute!')
-        set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
-        token = self.q.upload_token(bucket_name)
-        ret, info = put_data(token, key, data)
-        print(info)
-        assert ret is None
-
-    def test_hasRead_WithoutSeek_retry2(self):
-        key = 'withReadAndWithoutSeek_retry2'
-        data = urlopen("http://www.qiniu.com")
-        set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
-        token = self.q.upload_token(bucket_name, key)
-        ret, info = put_data(token, key, data)
-        print(info)
-        assert ret is not None
-
     def test_putData_without_fname(self):
         if is_travis():
             return
