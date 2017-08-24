@@ -27,7 +27,7 @@ def put_data(
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
         一个ResponseInfo对象
     """
-    crc = crc32(data) if check_crc else None
+    crc = crc32(data)
     return _form_put(up_token, key, data, params, mime_type, crc, progress_handler, fname)
 
 
@@ -61,7 +61,7 @@ def put_file(up_token, key, file_path, params=None,
                                    upload_progress_recorder=upload_progress_recorder,
                                    modify_time=(int)(os.path.getmtime(file_path)))
         else:
-            crc = file_crc32(file_path) if check_crc else None
+            crc = file_crc32(file_path)
             ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler, file_name)
             # ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler)
     return ret, info
