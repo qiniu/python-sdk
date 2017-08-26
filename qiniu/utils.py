@@ -155,6 +155,6 @@ def entry(bucket, key):
         符合七牛API规格的数据格式
     """
     if key is None:
-        return urlsafe_base64_encode('{0}'.format(bucket))
+        return urlsafe_base64_encode(b'{0}'.format(b(bucket)))
     else:
-        return urlsafe_base64_encode('{0}:{1}'.format(bucket, key))
+        return urlsafe_base64_encode(b'{0}:{1}'.format(b(bucket), b(key)))
