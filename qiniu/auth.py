@@ -177,7 +177,10 @@ class Auth(object):
     def __copy_policy(policy, to, strict_policy):
         for k, v in policy.items():
             if (not strict_policy) or k in _policy_fields:
-                to[k] = v
+                if isinstance(v, dict):
+                    to[k] = json.dumps(v)
+                else:
+                    to[k] = v
 
 
 class RequestsAuth(AuthBase):
