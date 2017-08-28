@@ -25,6 +25,3 @@ deadline = int(time.time())+3600
 timestamp_url = create_timestamp_anti_leech_url(host, file_name, query_string, encrypt_key, deadline)
 
 print(timestamp_url)
-
-
-

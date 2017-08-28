@@ -80,16 +80,16 @@ class Zone(object):
         hosts[self.scheme].update({'up': []})
         hosts[self.scheme].update({'io': []})
 
-        if self.up_host != None:
+        if self.up_host is not None:
             hosts[self.scheme]['up'].append(self.scheme + "://" + self.up_host)
 
-        if self.up_host_backup != None:
+        if self.up_host_backup is not None:
             hosts[self.scheme]['up'].append(self.scheme + "://" + self.up_host_backup)
 
-        if self.io_host != None:
+        if self.io_host is not None:
             hosts[self.scheme]['io'].append(self.scheme + "://" + self.io_host)
 
-        if len(hosts[self.scheme]) == 0 or self.io_host == None:
+        if len(hosts[self.scheme]) == 0 or self.io_host is None:
             # print(hosts)
             hosts = compat.json.loads(self.bucket_hosts(ak, bucket))
         else:
