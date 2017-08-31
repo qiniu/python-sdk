@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 
-from qiniu import Auth, put_file, etag, urlsafe_base64_encode
-import qiniu.config
+from qiniu import Auth, put_file, etag
 
 #需要填写你的 Access Key 和 Secret Key
 access_key = '...'
