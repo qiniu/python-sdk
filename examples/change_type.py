@@ -15,7 +15,7 @@ bucket_name = 'Bucket_Name'
 
 key = '...'
 
-ret, info = bucket.change_type(bucket_name, key ,1)#1表示低频存储，0是标准存储
+# 1表示低频存储，0是标准存储
+ret, info = bucket.change_type(bucket_name, key, 1)
 
 print(info)
-# assert info.status_code == 200
