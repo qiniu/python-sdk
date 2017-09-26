@@ -2,11 +2,12 @@
 
 from hashlib import sha1
 from base64 import urlsafe_b64encode, urlsafe_b64decode
-
+from datetime import datetime
 from .compat import b, s
 
 try:
     import zlib
+
     binascii = zlib
 except ImportError:
     zlib = None
@@ -158,3 +159,14 @@ def entry(bucket, key):
         return urlsafe_base64_encode('{0}'.format(bucket))
     else:
         return urlsafe_base64_encode('{0}:{1}'.format(bucket, key))
+
+
+def rfc_from_timestamp(timestamp):
+    """将时间戳转换为HTTP RFC格式
+
+    Args:
+        timestamp: 整型Unix时间戳（单位秒）
+    """
+    last_modified_date = datetime.fromtimestamp(timestamp)
+    last_modified_str = last_modified_date.strftime('%a, %d %b %Y %H:%M:%S GMT')
+    return last_modified_str

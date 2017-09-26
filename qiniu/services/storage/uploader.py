@@ -4,7 +4,7 @@ import os
 import time
 
 from qiniu import config
-from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter
+from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter, rfc_from_timestamp
 from qiniu import http
 from .upload_progress_recorder import UploadProgressRecorder
 
@@ -33,7 +33,7 @@ def put_data(
 
 def put_file(up_token, key, file_path, params=None,
              mime_type='application/octet-stream', check_crc=False,
-             progress_handler=None, upload_progress_recorder=None):
+             progress_handler=None, upload_progress_recorder=None, keep_last_modified=False):
     """上传文件到七牛
 
     Args:
@@ -55,19 +55,22 @@ def put_file(up_token, key, file_path, params=None,
     # fname = os.path.basename(file_path)
     with open(file_path, 'rb') as input_stream:
         file_name = os.path.basename(file_path)
+        modify_time = int(os.path.getmtime(file_path))
         if size > config._BLOCK_SIZE * 2:
             ret, info = put_stream(up_token, key, input_stream, file_name, size, params,
                                    mime_type, progress_handler,
                                    upload_progress_recorder=upload_progress_recorder,
-                                   modify_time=(int)(os.path.getmtime(file_path)))
+                                   modify_time=modify_time, keep_last_modified=keep_last_modified)
         else:
             crc = file_crc32(file_path)
-            ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler, file_name)
-            # ret, info = _form_put(up_token, key, input_stream, params, mime_type, crc, progress_handler)
+            ret, info = _form_put(up_token, key, input_stream, params, mime_type,
+                                  crc, progress_handler, file_name,
+                                  modify_time=modify_time, keep_last_modified=keep_last_modified)
     return ret, info
 
 
-def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None, file_name=None):
+def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None, file_name=None, modify_time=None,
+              keep_last_modified=False):
     fields = {}
     if params:
         for k, v in params.items():
@@ -84,6 +87,10 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
     fname = file_name
     if not fname or not fname.strip():
         fname = 'file_name'
+
+    # last modify time
+    if modify_time and keep_last_modified:
+        fields['x-qn-meta-!Last-Modified'] = rfc_from_timestamp(modify_time)
 
     r, info = http._post_file(url, data=fields, files={'file': (fname, data, mime_type)})
     if r is None and info.need_retry():
@@ -102,9 +109,9 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
 
 def put_stream(up_token, key, input_stream, file_name, data_size, params=None,
                mime_type=None, progress_handler=None,
-               upload_progress_recorder=None, modify_time=None):
+               upload_progress_recorder=None, modify_time=None, keep_last_modified=False):
     task = _Resume(up_token, key, input_stream, data_size, params, mime_type,
-                   progress_handler, upload_progress_recorder, modify_time, file_name)
+                   progress_handler, upload_progress_recorder, modify_time, file_name, keep_last_modified)
     return task.upload()
 
 
@@ -128,7 +135,7 @@ class _Resume(object):
     """
 
     def __init__(self, up_token, key, input_stream, data_size, params, mime_type,
-                 progress_handler, upload_progress_recorder, modify_time, file_name):
+                 progress_handler, upload_progress_recorder, modify_time, file_name, keep_last_modified):
         """初始化断点续上传"""
         self.up_token = up_token
         self.key = key
@@ -140,6 +147,7 @@ class _Resume(object):
         self.upload_progress_recorder = upload_progress_recorder or UploadProgressRecorder()
         self.modify_time = modify_time or time.time()
         self.file_name = file_name
+        self.keep_last_modified = keep_last_modified
         # print(self.modify_time)
         # print(modify_time)
 
@@ -216,6 +224,11 @@ class _Resume(object):
             for k, v in self.params.items():
                 url.append('{0}/{1}'.format(k, urlsafe_base64_encode(v)))
             pass
+
+        if self.modify_time and self.keep_last_modified:
+            url.append(
+                "x-qn-meta-!Last-Modified/{0}".format(urlsafe_base64_encode(rfc_from_timestamp(self.modify_time))))
+
         url = '/'.join(url)
         # print url
         return url
