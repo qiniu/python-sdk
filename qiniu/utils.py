@@ -167,6 +167,6 @@ def rfc_from_timestamp(timestamp):
     Args:
         timestamp: 整型Unix时间戳（单位秒）
     """
-    last_modified_date = datetime.fromtimestamp(timestamp)
+    last_modified_date = datetime.utcfromtimestamp(timestamp)
     last_modified_str = last_modified_date.strftime('%a, %d %b %Y %H:%M:%S GMT')
     return last_modified_str
