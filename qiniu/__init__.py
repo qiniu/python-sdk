@@ -9,7 +9,7 @@ For detailed document, please see:
 
 # flake8: noqa
 
-__version__ = '7.1.7'
+__version__ = '7.1.8'
 
 from .auth import Auth, QiniuMacAuth
 
@@ -22,5 +22,7 @@ from .services.storage.uploader import put_data, put_file, put_stream
 from .services.cdn.manager import CdnManager, create_timestamp_anti_leech_url
 from .services.processing.pfop import PersistentFop
 from .services.processing.cmd import build_op, pipe_cmd, op_save
+from .services.compute.app import AccountClient
+from .services.compute.qcos_api import QcosClient
 
 from .utils import urlsafe_base64_encode, urlsafe_base64_decode, etag, entry

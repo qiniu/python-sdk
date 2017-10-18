@@ -7,17 +7,18 @@ import re
 
 try:
     import setuptools
+
     setup = setuptools.setup
 except ImportError:
     setuptools = None
     from distutils.core import setup
-
 
 packages = [
     'qiniu',
     'qiniu.services',
     'qiniu.services.storage',
     'qiniu.services.processing',
+    'qiniu.services.compute',
     'qiniu.services.cdn',
 ]
 
