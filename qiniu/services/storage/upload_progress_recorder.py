@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import tempfile
+from qiniu.compat import is_py2, is_py3
 
 
 class UploadProgressRecorder(object):
@@ -27,8 +28,11 @@ class UploadProgressRecorder(object):
 
     def get_upload_record(self, file_name, key):
         record_key = '{0}/{1}'.format(key, file_name)
+        if is_py2:
+            record_file_name = hashlib.md5(record_key).hexdigest()
+        else:
+            record_file_name = hashlib.md5(record_key.encode('utf-8')).hexdigest()
 
-        record_file_name = hashlib.md5(record_key.encode('utf-8')).hexdigest()
         upload_record_file_path = os.path.join(self.record_folder, record_file_name)
         if not os.path.isfile(upload_record_file_path):
             return None
@@ -38,13 +42,21 @@ class UploadProgressRecorder(object):
 
     def set_upload_record(self, file_name, key, data):
         record_key = '{0}/{1}'.format(key, file_name)
-        record_file_name = hashlib.md5(record_key.encode('utf-8')).hexdigest()
+        if is_py2:
+            record_file_name = hashlib.md5(record_key).hexdigest()
+        else:
+            record_file_name = hashlib.md5(record_key.encode('utf-8')).hexdigest()
+
         upload_record_file_path = os.path.join(self.record_folder, record_file_name)
         with open(upload_record_file_path, 'w') as f:
             json.dump(data, f)
 
     def delete_upload_record(self, file_name, key):
         record_key = '{0}/{1}'.format(key, file_name)
-        record_file_name = hashlib.md5(record_key.encode('utf-8')).hexdigest()
+        if is_py2:
+            record_file_name = hashlib.md5(record_key).hexdigest()
+        else:
+            record_file_name = hashlib.md5(record_key.encode('utf-8')).hexdigest()
+
         upload_record_file_path = os.path.join(self.record_folder, record_file_name)
         os.remove(upload_record_file_path)
