@@ -141,7 +141,7 @@ class Auth(object):
 
         scope = bucket
         if key is not None:
-            scope = u'{0}:{1}'.format(bucket, key)
+            scope = '{0}:{1}'.format(bucket, key)
 
         args = dict(
             scope=scope,
