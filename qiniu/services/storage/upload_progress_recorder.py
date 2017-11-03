@@ -4,7 +4,7 @@ import hashlib
 import json
 import os
 import tempfile
-from qiniu.compat import is_py2, is_py3
+from qiniu.compat import is_py2
 
 
 class UploadProgressRecorder(object):
