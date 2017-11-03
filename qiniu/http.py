@@ -4,6 +4,7 @@ import platform
 import requests
 from requests.auth import AuthBase
 
+from qiniu.compat import is_py2, is_py3
 from qiniu import config
 import qiniu.auth
 from . import __version__
@@ -21,7 +22,7 @@ def __return_wrapper(resp):
     if resp.status_code != 200 or resp.headers.get('X-Reqid') is None:
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
-    ret = resp.json() if resp.text != '' else {}
+    ret = resp.json(encoding='utf-8') if resp.text != '' else {}
     return ret, ResponseInfo(resp)
 
 
@@ -169,7 +170,10 @@ class ResponseInfo(object):
         return self.__response is None or self.req_id is None
 
     def __str__(self):
-        return ', '.join(['%s:%s' % item for item in self.__dict__.items()])
+        if is_py2:
+            return ', '.join(['%s:%s' % item for item in self.__dict__.items()]).encode('utf-8')
+        elif is_py3:
+            return ', '.join(['%s:%s' % item for item in self.__dict__.items()])
 
     def __repr__(self):
         return self.__str__()
