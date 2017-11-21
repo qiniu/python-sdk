@@ -29,7 +29,7 @@ class PersistentFop(object):
 
         Args:
             key:    待处理的源文件
-            fops:   处理详细操作，规格详见 http://developer.qiniu.com/docs/v6/api/reference/fop/
+            fops:   处理详细操作，规格详见 https://developer.qiniu.com/dora/manual/1291/persistent-data-processing-pfop
             force:  强制执行持久化处理开关
 
         Returns:

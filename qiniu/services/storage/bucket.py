@@ -283,6 +283,18 @@ class BucketManager(object):
         resource = entry(bucket, key)
         return self.__rs_do('deleteAfterDays', resource, days)
 
+    def mkbucketv2(self, bucket_name, region):
+        """
+        创建存储空间
+        https://developer.qiniu.com/kodo/api/1382/mkbucketv2
+
+        Args:
+            bucket_name: 存储空间名
+            region: 存储区域
+        """
+        bucket_name = urlsafe_base64_encode(bucket_name)
+        return self.__rs_do('mkbucketv2', bucket_name, 'region', region)
+
     def __rs_do(self, operation, *args):
         return self.__server_do(config.get_default('default_rs_host'), operation, *args)
 
