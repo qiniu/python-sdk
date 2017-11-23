@@ -27,8 +27,19 @@ def put_data(
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
         一个ResponseInfo对象
     """
-    crc = crc32(data)
-    return _form_put(up_token, key, data, params, mime_type, crc, progress_handler, fname)
+    final_data = ''
+    if hasattr(data, 'read'):
+        while True:
+            tmp_data = data.read(config._BLOCK_SIZE)
+            if len(tmp_data) == 0:
+                break
+            else:
+                final_data += tmp_data
+    else:
+        final_data = data
+
+    crc = crc32(final_data)
+    return _form_put(up_token, key, final_data, params, mime_type, crc, progress_handler, fname)
 
 
 def put_file(up_token, key, file_path, params=None,
