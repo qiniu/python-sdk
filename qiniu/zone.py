@@ -95,8 +95,10 @@ class Zone(object):
         else:
             # 1 year
             hosts['ttl'] = int(time.time()) + 31536000
-
-        scheme_hosts = hosts[self.scheme]
+        try:
+            scheme_hosts = hosts[self.scheme]
+        except KeyError:
+            raise KeyError("Please check your BUCKET_NAME! The UpHosts is %s" % hosts)
         bucket_hosts = {
             'upHosts': scheme_hosts['up'],
             'ioHosts': scheme_hosts['io'],
