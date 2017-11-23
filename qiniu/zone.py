@@ -99,7 +99,6 @@ class Zone(object):
             scheme_hosts = hosts[self.scheme]
         except KeyError:
              raise KeyError("Please check your BUCKET_NAME! The UpHosts is %s" % hosts)
-        scheme_hosts = hosts[self.scheme]
         bucket_hosts = {
             'upHosts': scheme_hosts['up'],
             'ioHosts': scheme_hosts['io'],
