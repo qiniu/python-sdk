@@ -5,6 +5,12 @@ import json, hashlib, hmac, base64
 
 class RtcServer(object):
 	"""
+	直播连麦管理类
+	主要涉及了直播连麦管理及操作接口的实现，具体的接口规格可以参考：
+    https://github.com/pili-engineering/QNRTC-Server/blob/master/docs/api.md#41-listuser  #这个是内部文档，等外部文档发布了，这一行要换成外部文档
+
+    Attributes:
+        auth: 账号管理密钥对，Auth对象
 
 	"""
 	def __init__(self, auth):
@@ -351,76 +357,15 @@ def RtcRoomToken(access_key, secret_key, roomAccess ):
 		# 3. 将AccessKey与以上两者拼接得到房间鉴权
 		roomToken = "<AccessKey>" + ":" + encodedSign + ":" + encodedRoomAccess
 	"""
-	def b(data):
-		return bytes(data)
-
-	def urlsafe_base64_encode(data):
-		ret = base64.urlsafe_b64encode(b(data))
-		return b(ret)
-
-	def pre_token(data, SecretKey):
-		data = b(data)
-		SecretKey = b(SecretKey)
-		hashed = hmac.new(SecretKey, data, hashlib.sha1)
-		return urlsafe_base64_encode(hashed.digest())
-
-
 	roomAccessString = json.dumps(roomAccess)
 	byte_result = bytes(roomAccessString, 'utf-8' )
-	encodedRoomAccess = base64.urlsafe_b64encode( byte_result   )
+	encodedRoomAccess = base64.urlsafe_b64encode( byte_result )
 
-	encodedSign = pre_token( encodedRoomAccess, secret_key )
-
-	#roomToken = bytes(access_key, 'utf-8') + bytes(':','utf-8') + encodedSign + bytes(':','utf-8') + encodedRoomAccess
+	sign = hmac.new( bytes(secret_key, 'utf-8') , encodedRoomAccess, hashlib.sha1).digest()
+	encodedSign = base64.urlsafe_b64encode( sign   )
 	roomToken = access_key + ':' + str(encodedSign, encoding = "utf-8") + ':' + str(encodedRoomAccess, encoding = "utf-8")
 
-	print ( access_key  )
-	print ( encodedSign )
-	print ( encodedRoomAccess )
 	return roomToken
-
-
-
-
-
-	#
-	# roomAccessString = json.dumps(roomAccess)
-	# byte_result = bytes(roomAccessString, 'utf-8' )
-	# encodedRoomAccess = base64.urlsafe_b64encode( byte_result   )
-	#
-	#
-	# sign = hmac.new( bytes(secret_key, 'utf-8') , encodedRoomAccess, hashlib.sha1).digest()
-	# encodedSign = base64.urlsafe_b64encode( sign   )
-	# #roomToken = bytes(access_key, 'utf-8') + bytes(':','utf-8') + encodedSign + bytes(':','utf-8') + encodedRoomAccess
-	# roomToken = access_key + ':' + str(encodedSign, encoding = "utf-8") + ':' + str(encodedRoomAccess, encoding = "utf-8")
-	#
-	# print ( access_key  )
-	# print ( encodedSign )
-	# print ( encodedRoomAccess )
-	# return roomToken
-
-
-
-
-
-
-
-
-	# roomAccessString = json.dumps(roomAccess)
-	# byte_result = bytes(roomAccessString, 'utf-8' )
-	# encodedRoomAccess = base64.urlsafe_b64encode( byte_result   )
-	# print ( type(encodedRoomAccess ) )
-	# #print (encodedRoomAccess)
-	#
-	# sign = hmac.new( bytes( secret_key, 'utf-8' ) , encodedRoomAccess, hashlib.sha1).digest()
-	# encodedSign = base64.urlsafe_b64encode( sign   )
-	# #roomToken = bytes(access_key, 'utf-8') + bytes(':','utf-8') + encodedSign + bytes(':','utf-8') + encodedRoomAccess
-	# roomToken = access_key + ':' + str(encodedSign, encoding = "utf-8") + ':' + str(encodedRoomAccess, encoding = "utf-8")
-	#
-	# print ( access_key  )
-	# print ( encodedSign )
-	# print ( encodedRoomAccess )
-	# return roomToken
 
 
 
