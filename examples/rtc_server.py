@@ -4,7 +4,6 @@ from qiniu import QiniuMacAuth
 from qiniu import RtcServer, RtcRoomToken
 import time
 
-# UID 1380668373  PILI—VDN内部测试账号
 
 # 需要填写你的 Access Key 和 Secret Key
 access_key = '...'
@@ -25,8 +24,6 @@ create_data={
 	"hub": 'python_test_hub',                   # Hub: 绑定的直播 hub，可选，使用此 hub 的资源进行推流等业务功能，hub 与 app 必须属于同一个七牛账户。
 	"title": 'python_test_app',                 # Title: app 的名称，可选，注意，Title 不是唯一标识，重复 create 动作将生成多个 app。
 	# "maxUsers": MaxUsers,                     # MaxUsers: int 类型，可选，连麦房间支持的最大在线人数。
-	# "noAutoCloseRoom": NoAutoCloseRoom,       # NoAutoCloseRoom: bool 类型，可选，禁止自动关闭房间。默认为 false ，即用户退出房间后，房间会被主动清理释放。
-	# "noAutoCreateRoom": NoAutoCreateRoom,     # NoAutoCreateRoom: bool 类型，可选，禁止自动创建房间。默认为 false ，即不需要主动调用接口创建即可加入房间。
 	# "noAutoKickUser": NoAutoKickUser          # NoAutoKickUser: bool 类型，可选，禁止自动踢人（抢流）。默认为 false ，即同一个身份的 client (app/room/user) ，新的连麦请求可以成功，旧连接被关闭。
 }
 # 然后运行 rtc.CreateApp(<创建APP相关参数的字典变量>)
@@ -37,7 +34,7 @@ print ('\n\n\n')
 # 查询一个APP
 # 查询某一个具体的APP的相关信息的方法为 print ( rtc.GetApp(<AppID>) ) ，其中 AppID是类似 'desls83s2' 这样在创建时由七牛自动生成的数字字母乱序组合的字符串
 # 如果不指定具体的AppID，直接运行 print ( rtc.GetApp() ) ，那么就会列举出该账号下所有的APP
-print ( rtc.GetApp() )
+print ( rtc.GetApp('<AppID>:可选填') )
 print ('\n\n\n')
 
 
@@ -53,8 +50,6 @@ update_data={
     "hub": "python_new_hub",                        # Hub: 绑定的直播 hub，可选，用于合流后 rtmp 推流。
     "title": "python_new_app",                      # Title: app 的名称， 可选。
     # "maxUsers": <MaxUsers>,                       # MaxUsers: int 类型，可选，连麦房间支持的最大在线人数。
-    # "noAutoCloseRoom": <NoAutoCloseRoom>,         # NoAutoCloseRoom: bool 指针类型，可选，true 表示禁止自动关闭房间。
-    # "noAutoCreateRoom": <NoAutoCreateRoom>,       # NoAutoCreateRoom: bool 指针指型，可选，true 表示禁止自动创建房间。
     # "noAutoKickUser": <NoAutoKickUser>,           # NoAutoKickUser: bool 类型，可选，禁止自动踢人。
     # "mergePublishRtmp": {                         # MergePublishRtmp: 连麦合流转推 RTMP 的配置，可选择。其详细配置包括如下
     #     "enable": <Enable>,                       # Enable: 布尔类型，用于开启和关闭所有房间的合流功能。

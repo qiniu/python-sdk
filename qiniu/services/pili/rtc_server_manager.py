@@ -28,8 +28,6 @@ class RtcServer(object):
 	        "hub": "<Hub>",
 	        "title": "<Title>",
 	        "maxUsers": <MaxUsers>,
-	        "noAutoCloseRoom": <NoAutoCloseRoom>,
-	        "noAutoCreateRoom": <NoAutoCreateRoom>,
 	        "noAutoKickUser": <NoAutoKickUser>
 		}
 
@@ -40,10 +38,6 @@ class RtcServer(object):
 
 			MaxUsers: int 类型，可选，连麦房间支持的最大在线人数。
 
-			NoAutoCloseRoom: bool 类型，可选，禁止自动关闭房间。默认为 false ，即用户退出房间后，房间会被主动清理释放。
-
-			NoAutoCreateRoom: bool 类型，可选，禁止自动创建房间。默认为 false ，即不需要主动调用接口创建即可加入房间。
-
 			NoAutoKickUser: bool 类型，可选，禁止自动踢人（抢流）。默认为 false ，即同一个身份的 client (app/room/user) ，新的连麦请求可以成功，旧连接被关闭。
 
 		:return:
@@ -53,8 +47,6 @@ class RtcServer(object):
 			    "hub": "<Hub>",
 			    "title": "<Title>",
 			    "maxUsers": <MaxUsers>,
-			    "noAutoCloseRoom": <NoAutoCloseRoom>,
-			    "noAutoCreateRoom": <NoAutoCreateRoom>,
 			    "noAutoKickUser": <NoAutoKickUser>,
 			    "createdAt": <CreatedAt>,
 			    "updatedAt": <UpdatedAt>
@@ -85,8 +77,6 @@ class RtcServer(object):
 			    "hub": "<Hub>",
 			    "title": "<Title>",
 			    "maxUsers": <MaxUsers>,
-			    "noAutoCloseRoom": <NoAutoCloseRoom>,
-			    "noAutoCreateRoom": <NoAutoCreateRoom>,
 			    "noAutoKickUser": <NoAutoKickUser>,
 			    "mergePublishRtmp": {
 			        "audioOnly": <AudioOnly>,
@@ -116,10 +106,6 @@ class RtcServer(object):
 			Title: app 的名称，注意，Title不是唯一标识。
 
 			MaxUsers: int 类型，连麦房间支持的最大在线人数。
-
-			NoAutoCloseRoom: bool 类型，禁止自动关闭房间。
-
-			NoAutoCreateRoom: bool 类型，禁止自动创建房间。
 
 			NoAutoKickUser: bool 类型，禁止自动踢人。
 
@@ -165,10 +151,6 @@ class RtcServer(object):
 
 			MaxUsers: int 类型，可选，连麦房间支持的最大在线人数。
 
-			NoAutoCloseRoom: bool 指针类型，可选，true 表示禁止自动关闭房间。
-
-			NoAutoCreateRoom: bool 指针指型，可选，true 表示禁止自动创建房间。
-
 			NoAutoKickUser: bool 类型，可选，禁止自动踢人。
 
 			MergePublishRtmp: 连麦合流转推 RTMP 的配置，可选择。其详细配置包括如下
@@ -188,8 +170,6 @@ class RtcServer(object):
 			    "hub": "<Hub>",
 			    "title": "<Title>",
 			    "maxUsers": <MaxUsers>,
-			    "noAutoCloseRoom": <NoAutoCloseRoom>,
-			    "noAutoCreateRoom": <NoAutoCreateRoom>,
 			    "noAutoKickUser": <NoAutoKickUser>,
 			    "mergePublishRtmp": {
 			        "enable": <Enable>,
