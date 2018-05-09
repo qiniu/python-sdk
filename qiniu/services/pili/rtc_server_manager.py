@@ -57,6 +57,5 @@ class RtcServer(object):
 def get_room_token(access_key, secret_key, room_access):
     auth = Auth(access_key, secret_key)
     room_access_str = json.dumps(room_access)
-    encoded_room_access = urlsafe_base64_encode(room_access_str)
-    room_token = auth.token_with_data(encoded_room_access)
+    room_token = auth.token_with_data(room_access_str)
     return room_token
