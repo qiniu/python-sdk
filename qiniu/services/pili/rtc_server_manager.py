@@ -199,13 +199,13 @@ class RtcServer(object):
 	def list_user(self, app_id, room_name):
 		"""
 		Host rtc.qiniuapi.com
-		GET /v3/apps/<AppID>/rooms/<RoomName>/users
+		GET /v3/apps/<app_id>/rooms/<room_name>/users
 		Authorization: qiniu mac
 
 		:param:
-			AppID: 连麦房间所属的 app 。
+			app_id: 连麦房间所属的 app 。
 
-			RoomName: 操作所查询的连麦房间。
+			room_name: 操作所查询的连麦房间。
 
 		:return:
 			200 OK
@@ -226,15 +226,15 @@ class RtcServer(object):
 	def kick_user(self, app_id, room_name, user_id):
 		"""
 		Host rtc.qiniuapi.com
-		DELETE /v3/apps/<AppID>/rooms/<RoomName>/users/<UserID>
+		DELETE /v3/apps/<app_id>/rooms/<room_name>/users/<user_id>
 		Authorization: qiniu mac
 
 		:param:
-			AppID: 连麦房间所属的 app 。
+			app_id: 连麦房间所属的 app 。
 
-			RoomName: 连麦房间。
+			room_name: 连麦房间。
 
-			UserID: 操作所剔除的用户。
+			user_id: 操作所剔除的用户。
 
 		:return:
 			200 OK
@@ -256,17 +256,17 @@ class RtcServer(object):
 	def list_active_room(self, app_id, room_name_prefix=None):
 		"""
 		Host rtc.qiniuapi.com
-		GET /v3/apps/<AppID>/rooms?prefix=<RoomNamePrefix>&offset=<Offset>&limit=<Limit>
+		GET /v3/apps/<app_id>/rooms?prefix=<room_name_prefix>&offset=<off_set>&limit=<limit>
 		Authorization: qiniu mac
 
 		:param:
-			AppID: 连麦房间所属的 app 。
+			app_id: 连麦房间所属的 app 。
 
-			RoomNamePrefix: 所查询房间名的前缀索引，可以为空。
+			room_name_prefix: 所查询房间名的前缀索引，可以为空。
 
-			Offset: int 类型，分页查询的位移标记。
+			off_set: int 类型，分页查询的位移标记。
 
-			Limit: int 类型，此次查询的最大长度。
+			limit: int 类型，此次查询的最大长度。
 
 		:return:
 			200 OK
