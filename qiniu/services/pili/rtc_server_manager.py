@@ -60,7 +60,7 @@ class RtcServer(object):
 
 		return self.__post(self.host + '/v3/apps', data, )
 
-	def get_app(self, appid=None):
+	def get_app(self, app_id=None):
 		"""
 		Host rtc.qiniuapi.com
 		GET /v3/apps/<AppID>
@@ -114,12 +114,12 @@ class RtcServer(object):
 
 			UpdatedAt: time 类型，app 更新的时间。
 		"""
-		if appid:
-			return self.__get(self.host + '/v3/apps/%s' % appid)
+		if app_id:
+			return self.__get(self.host + '/v3/apps/%s' % app_id)
 		else:
 			return self.__get(self.host + '/v3/apps')
 
-	def delete_app(self, appid):
+	def delete_app(self, app_id):
 		"""
 		Host rtc.qiniuapi.com
 		DELETE /v3/apps/<AppID>
@@ -133,9 +133,9 @@ class RtcServer(object):
 			    "error": "app not found"
 			}
 		"""
-		return self.__delete(self.host + '/v3/apps/%s' % appid)
+		return self.__delete(self.host + '/v3/apps/%s' % app_id)
 
-	def update_app(self, appid, data):
+	def update_app(self, app_id, data):
 		"""
 		Host rtc.qiniuapi.com
 		Post /v3/apps/<AppID>
@@ -194,9 +194,9 @@ class RtcServer(object):
 			}
 		"""
 
-		return self.__post(self.host + '/v3/apps/%s' % appid, data, )
+		return self.__post(self.host + '/v3/apps/%s' % app_id, data, )
 
-	def list_user(self, AppID, RoomName):
+	def list_user(self, app_id, room_name):
 		"""
 		Host rtc.qiniuapi.com
 		GET /v3/apps/<AppID>/rooms/<RoomName>/users
@@ -221,9 +221,9 @@ class RtcServer(object):
 			    "error": "app not found"
 			}
 		"""
-		return self.__get(self.host + '/v3/apps/%s/rooms/%s/users' % (AppID, RoomName))
+		return self.__get(self.host + '/v3/apps/%s/rooms/%s/users' % (app_id, room_name))
 
-	def kick_user(self, AppID, RoomName, UserID):
+	def kick_user(self, app_id, room_name, user_id):
 		"""
 		Host rtc.qiniuapi.com
 		DELETE /v3/apps/<AppID>/rooms/<RoomName>/users/<UserID>
@@ -251,9 +251,9 @@ class RtcServer(object):
 			    "error": "room not active"
 			}
 		"""
-		return self.__delete(self.host + '/v3/apps/%s/rooms/%s/users/%s' % (AppID, RoomName, UserID))
+		return self.__delete(self.host + '/v3/apps/%s/rooms/%s/users/%s' % (app_id, room_name, user_id))
 
-	def list_active_room(self, AppID, RoomNamePrefix=None):
+	def list_active_room(self, app_id, room_name_prefix=None):
 		"""
 		Host rtc.qiniuapi.com
 		GET /v3/apps/<AppID>/rooms?prefix=<RoomNamePrefix>&offset=<Offset>&limit=<Limit>
@@ -289,10 +289,10 @@ class RtcServer(object):
 
 			RoomName: 当前活跃的房间名。
 		"""
-		if RoomNamePrefix:
-			return self.__get(self.host + '/v3/apps/%s/rooms?prefix=%s' % (AppID, RoomNamePrefix))
+		if room_name_prefix:
+			return self.__get(self.host + '/v3/apps/%s/rooms?prefix=%s' % (app_id, room_name_prefix))
 		else:
-			return self.__get(self.host + '/v3/apps/%s/rooms' % AppID)
+			return self.__get(self.host + '/v3/apps/%s/rooms' % app_id)
 
 	def __post(self, url, data=None):
 		return http._post_with_qiniu_mac(url, data, self.auth)
@@ -304,7 +304,7 @@ class RtcServer(object):
 		return http._delete_with_qiniu_mac(url, params, self.auth)
 
 
-def rtc_room_token(access_key, secret_key, roomAccess):
+def rtc_room_token(access_key, secret_key, room_access):
 	"""
 	:arg:
 		AppID: 房间所属帐号的 app 。
@@ -336,7 +336,7 @@ def rtc_room_token(access_key, secret_key, roomAccess):
 		# 3. 将AccessKey与以上两者拼接得到房间鉴权
 		roomToken = "<AccessKey>" + ":" + encodedSign + ":" + encodedRoomAccess
 	"""
-	roomAccessString = json.dumps(roomAccess)
+	roomAccessString = json.dumps(room_access)
 	byte_result = bytes(roomAccessString, 'utf-8')
 	encodedRoomAccess = base64.urlsafe_b64encode(byte_result)
 

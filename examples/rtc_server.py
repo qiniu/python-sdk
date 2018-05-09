@@ -27,13 +27,13 @@ create_data = {
 print (rtc.create_app(create_data))
 
 # 查询一个APP
-# 查询某一个具体的APP的相关信息的方法为 print ( rtc.GetApp(<AppID>) ) ，其中 AppID是类似 'desls83s2' 这样在创建时由七牛自动生成的数字字母乱序组合的字符串
-# 如果不指定具体的AppID，直接运行 print ( rtc.GetApp() ) ，那么就会列举出该账号下所有的APP
-print (rtc.get_app('<AppID>:可选填'))
+# 查询某一个具体的APP的相关信息的方法为 print ( rtc.GetApp(<app_id>) ) ，其中 app_id 是类似 'desls83s2' 这样在创建时由七牛自动生成的数字字母乱序组合的字符串
+# 如果不指定具体的app_id，直接运行 print ( rtc.GetApp() ) ，那么就会列举出该账号下所有的APP
+print (rtc.get_app('<app_id>:可选填'))
 
 # 删除一个APP
-# 使用方法为：rtc.DeleteApp(<AppID>)，例如： rtc.DeleteApp('desls83s2')
-print (rtc.delete_app('<AppID>:必填'))
+# 使用方法为：rtc.DeleteApp(<app_id>)，例如： rtc.DeleteApp('desls83s2')
+print (rtc.delete_app('<app_id>:必填'))
 
 # 更新一个APP的相关参数
 # 首先需要写好更新的APP的各个参数。参数如下：
@@ -53,22 +53,22 @@ update_data = {
 	#     "streamTitle": "<StreamTitle>"            # StreamTitle: 转推七牛直播云的流名，可选，支持魔法变量配置按照连麦房间号生成不同的流名。例如，配置 Hub 为 qn-zhibo ，配置 StreamTitle 为 $(roomName) ，则房间 meeting-001 的合流将会被转推到 rtmp://pili-publish.qn-zhibo.***.com/qn-zhibo/meeting-001地址。详细配置细则，请咨询七牛技术支持。
 	# }
 }
-# 使用方法为：rtc.UpdateApp('<AppID>:必填', update_data)，例如：AppID 是形如 desmfnkw5 的字符串
-print (rtc.update_app('<AppID>:必填', update_data))
+# 使用方法为：rtc.UpdateApp('<app_id>:必填', update_data)，例如：app_id 是形如 desmfnkw5 的字符串
+print (rtc.update_app('<app_id>:必填', update_data))
 
 # 列举一个APP下面，某个房间的所有用户
-print (rtc.list_user('<AppID>:必填', '<房间名>:必填'))
+print (rtc.list_user('<app_id>:必填', '<房间名>:必填'))
 
 # 踢出一个APP下面，某个房间的某个用户
-print (rtc.kick_user('<AppID>:必填', '<房间名>:必填', '<客户ID>:必填'))
+print (rtc.kick_user('<app_id>:必填', '<房间名>:必填', '<客户ID>:必填'))
 
 # 列举一个APP下面，所有的房间
-print (rtc.list_active_room('<AppID>:必填'))
+print (rtc.list_active_room('<app_id>:必填'))
 
 # 计算房间管理鉴权。连麦用户终端通过房间管理鉴权获取七牛连麦服务
 # 首先需要写好房间鉴权的各个参数。参数如下：
 roomAccess = {
-	"appId": "<AppID>:必填",  # AppID: 房间所属帐号的 app 。
+	"AppID": "<AppID>:必填",  # AppID: 房间所属帐号的 app 。
 	"roomName": "<房间名>:必填",  # RoomName: 房间名称，需满足规格 ^[a-zA-Z0-9_-]{3,64}$
 	"userId": "<用户名>:必填",  # UserID: 请求加入房间的用户 ID，需满足规格 ^[a-zA-Z0-9_-]{3,50}$
 	"expireAt": int(time.time()) + 3600,  # ExpireAt: int64 类型，鉴权的有效时间，传入以秒为单位的64位Unix绝对时间，token 将在该时间后失效。
