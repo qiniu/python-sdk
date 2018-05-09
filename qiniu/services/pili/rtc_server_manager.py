@@ -18,7 +18,7 @@ class RtcServer(object):
 		self.auth = auth
 		self.host = 'http://rtc.qiniuapi.com'
 
-	def CreateApp(self, data):
+	def create_app(self, data):
 		"""
 		Host rtc.qiniuapi.com
 		POST /v3/apps
@@ -60,7 +60,7 @@ class RtcServer(object):
 
 		return self.__post(self.host + '/v3/apps', data, )
 
-	def GetApp(self, appid=None):
+	def get_app(self, appid=None):
 		"""
 		Host rtc.qiniuapi.com
 		GET /v3/apps/<AppID>
@@ -119,7 +119,7 @@ class RtcServer(object):
 		else:
 			return self.__get(self.host + '/v3/apps')
 
-	def DeleteApp(self, appid):
+	def delete_app(self, appid):
 		"""
 		Host rtc.qiniuapi.com
 		DELETE /v3/apps/<AppID>
@@ -135,7 +135,7 @@ class RtcServer(object):
 		"""
 		return self.__delete(self.host + '/v3/apps/%s' % appid)
 
-	def UpdateApp(self, appid, data):
+	def update_app(self, appid, data):
 		"""
 		Host rtc.qiniuapi.com
 		Post /v3/apps/<AppID>
@@ -196,7 +196,7 @@ class RtcServer(object):
 
 		return self.__post(self.host + '/v3/apps/%s' % appid, data, )
 
-	def ListUser(self, AppID, RoomName):
+	def list_user(self, AppID, RoomName):
 		"""
 		Host rtc.qiniuapi.com
 		GET /v3/apps/<AppID>/rooms/<RoomName>/users
@@ -223,7 +223,7 @@ class RtcServer(object):
 		"""
 		return self.__get(self.host + '/v3/apps/%s/rooms/%s/users' % (AppID, RoomName))
 
-	def KickUser(self, AppID, RoomName, UserID):
+	def kick_user(self, AppID, RoomName, UserID):
 		"""
 		Host rtc.qiniuapi.com
 		DELETE /v3/apps/<AppID>/rooms/<RoomName>/users/<UserID>
@@ -253,7 +253,7 @@ class RtcServer(object):
 		"""
 		return self.__delete(self.host + '/v3/apps/%s/rooms/%s/users/%s' % (AppID, RoomName, UserID))
 
-	def ListActiveRoom(self, AppID, RoomNamePrefix=None):
+	def list_active_room(self, AppID, RoomNamePrefix=None):
 		"""
 		Host rtc.qiniuapi.com
 		GET /v3/apps/<AppID>/rooms?prefix=<RoomNamePrefix>&offset=<Offset>&limit=<Limit>
@@ -304,7 +304,7 @@ class RtcServer(object):
 		return http._delete_with_qiniu_mac(url, params, self.auth)
 
 
-def RtcRoomToken(access_key, secret_key, roomAccess):
+def rtc_room_token(access_key, secret_key, roomAccess):
 	"""
 	:arg:
 		AppID: 房间所属帐号的 app 。

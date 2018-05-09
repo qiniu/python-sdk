@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from qiniu import QiniuMacAuth
-from qiniu import RtcServer, RtcRoomToken
+from qiniu import RtcServer, rtc_room_token
 import time
 
 # 需要填写你的 Access Key 和 Secret Key
@@ -24,19 +24,16 @@ create_data = {
 	# "noAutoKickUser": NoAutoKickUser          # NoAutoKickUser: bool 类型，可选，禁止自动踢人（抢流）。默认为 false ，即同一个身份的 client (app/room/user) ，新的连麦请求可以成功，旧连接被关闭。
 }
 # 然后运行 rtc.CreateApp(<创建APP相关参数的字典变量>)
-print (rtc.CreateApp(create_data))
-print ('\n\n\n')
+print (rtc.create_app(create_data))
 
 # 查询一个APP
 # 查询某一个具体的APP的相关信息的方法为 print ( rtc.GetApp(<AppID>) ) ，其中 AppID是类似 'desls83s2' 这样在创建时由七牛自动生成的数字字母乱序组合的字符串
 # 如果不指定具体的AppID，直接运行 print ( rtc.GetApp() ) ，那么就会列举出该账号下所有的APP
-print (rtc.GetApp('<AppID>:可选填'))
-print ('\n\n\n')
+print (rtc.get_app('<AppID>:可选填'))
 
 # 删除一个APP
 # 使用方法为：rtc.DeleteApp(<AppID>)，例如： rtc.DeleteApp('desls83s2')
-print (rtc.DeleteApp('<AppID>:必填'))
-print ('\n\n\n')
+print (rtc.delete_app('<AppID>:必填'))
 
 # 更新一个APP的相关参数
 # 首先需要写好更新的APP的各个参数。参数如下：
@@ -57,20 +54,16 @@ update_data = {
 	# }
 }
 # 使用方法为：rtc.UpdateApp('<AppID>:必填', update_data)，例如：AppID 是形如 desmfnkw5 的字符串
-print (rtc.UpdateApp('<AppID>:必填', update_data))
-print ('\n\n\n')
+print (rtc.update_app('<AppID>:必填', update_data))
 
 # 列举一个APP下面，某个房间的所有用户
-print (rtc.ListUser('<AppID>:必填', '<房间名>:必填'))
-print ('\n\n\n')
+print (rtc.list_user('<AppID>:必填', '<房间名>:必填'))
 
 # 踢出一个APP下面，某个房间的某个用户
-print (rtc.KickUser('<AppID>:必填', '<房间名>:必填', '<客户ID>:必填'))
-print ('\n\n\n')
+print (rtc.kick_user('<AppID>:必填', '<房间名>:必填', '<客户ID>:必填'))
 
 # 列举一个APP下面，所有的房间
-print (rtc.ListActiveRoom('<AppID>:必填'))
-print ('\n\n\n')
+print (rtc.list_active_room('<AppID>:必填'))
 
 # 计算房间管理鉴权。连麦用户终端通过房间管理鉴权获取七牛连麦服务
 # 首先需要写好房间鉴权的各个参数。参数如下：
@@ -82,4 +75,4 @@ roomAccess = {
 	"permission": "user"  # 该用户的房间管理权限，"admin" 或 "user"，默认为 "user" 。当权限角色为 "admin" 时，拥有将其他用户移除出房间等特权.
 }
 # 获得房间管理鉴权的方法：print (RtcRoomToken ( access_key, secret_key, roomAccess ) )
-print (RtcRoomToken(access_key, secret_key, roomAccess))
+print (rtc_room_token(access_key, secret_key, roomAccess))
