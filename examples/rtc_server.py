@@ -24,17 +24,17 @@ create_data = {
     # 即同一个身份的 client (app/room/user) ，新的连麦请求可以成功，旧连接被关闭。
 }
 # 然后运行 rtc.CreateApp(<创建APP相关参数的字典变量>)
-print (rtc.create_app(create_data))
+print(rtc.create_app(create_data))
 
 # 查询一个APP
-# 查询某一个具体的APP的相关信息的方法为 print ( rtc.GetApp(<app_id>) ) ，其中 app_id 是类似 'desls83s2'
+# 查询某一个具体的APP的相关信息的方法为 print( rtc.GetApp(<app_id>) ) ，其中 app_id 是类似 'desls83s2'
 # 这样在创建时由七牛自动生成的数字字母乱序组合的字符串
-# 如果不指定具体的app_id，直接运行 print ( rtc.GetApp() ) ，那么就会列举出该账号下所有的APP
-print (rtc.get_app('<app_id>:可选填'))
+# 如果不指定具体的app_id，直接运行 print( rtc.GetApp() ) ，那么就会列举出该账号下所有的APP
+print(rtc.get_app('<app_id>:可选填'))
 
 # 删除一个APP
 # 使用方法为：rtc.DeleteApp(<app_id>)，例如： rtc.DeleteApp('desls83s2')
-print (rtc.delete_app('<app_id>:必填'))
+print(rtc.delete_app('<app_id>:必填'))
 
 # 更新一个APP的相关参数
 # 首先需要写好更新的APP的各个参数。参数如下：
@@ -60,16 +60,16 @@ update_data = {
     # }
 }
 # 使用方法为：rtc.UpdateApp('<app_id>:必填', update_data)，例如：app_id 是形如 desmfnkw5 的字符串
-print (rtc.update_app('<app_id>:必填', update_data))
+print(rtc.update_app('<app_id>:必填', update_data))
 
 # 列举一个APP下面，某个房间的所有用户
-print (rtc.list_user('<app_id>:必填', '<房间名>:必填'))
+print(rtc.list_user('<app_id>:必填', '<房间名>:必填'))
 
 # 踢出一个APP下面，某个房间的某个用户
-print (rtc.kick_user('<app_id>:必填', '<房间名>:必填', '<客户ID>:必填'))
+print(rtc.kick_user('<app_id>:必填', '<房间名>:必填', '<客户ID>:必填'))
 
 # 列举一个APP下面，所有的房间
-print (rtc.list_active_rooms('<app_id>:必填'))
+print(rtc.list_active_rooms('<app_id>:必填'))
 
 # 计算房间管理鉴权。连麦用户终端通过房间管理鉴权获取七牛连麦服务
 # 首先需要写好房间鉴权的各个参数。参数如下：
@@ -82,5 +82,5 @@ roomAccess = {
     "permission": "user"  # 该用户的房间管理权限，"admin" 或 "user"，默认为 "user" 。当权限角色为 "admin" 时，
     # 拥有将其他用户移除出房间等特权.
 }
-# 获得房间管理鉴权的方法：print (RtcRoomToken ( access_key, secret_key, roomAccess ) )
-print (get_room_token(access_key, secret_key, roomAccess))
+# 获得房间管理鉴权的方法：print(RtcRoomToken ( access_key, secret_key, roomAccess ) )
+print(get_room_token(access_key, secret_key, roomAccess))

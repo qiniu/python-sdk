@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from qiniu.utils import urlsafe_base64_encode
 from qiniu import http, Auth
 import json
 
