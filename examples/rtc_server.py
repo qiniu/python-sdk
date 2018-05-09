@@ -63,7 +63,7 @@ print (rtc.list_user('<app_id>:必填', '<房间名>:必填'))
 print (rtc.kick_user('<app_id>:必填', '<房间名>:必填', '<客户ID>:必填'))
 
 # 列举一个APP下面，所有的房间
-print (rtc.list_active_room('<app_id>:必填'))
+print (rtc.list_active_rooms('<app_id>:必填'))
 
 # 计算房间管理鉴权。连麦用户终端通过房间管理鉴权获取七牛连麦服务
 # 首先需要写好房间鉴权的各个参数。参数如下：
