@@ -20,6 +20,7 @@ packages = [
     'qiniu.services.processing',
     'qiniu.services.compute',
     'qiniu.services.cdn',
+    'qiniu.services.pili',
 ]
 
 
