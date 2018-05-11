@@ -51,6 +51,20 @@ def _post(url, data, files, auth, headers=None):
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
 
+def _put(url, data, files, auth, headers=None):
+    if _session is None:
+        _init()
+    try:
+        post_headers = _headers.copy()
+        if headers is not None:
+            for k, v in headers.items():
+                post_headers.update({k: v})
+        r = _session.put(
+            url, data=data, files=files, auth=auth, headers=post_headers,
+            timeout=config.get_default('connection_timeout'))
+    except Exception as e:
+        return None, ResponseInfo(None, e)
+    return __return_wrapper(r)
 
 def _get(url, params, auth):
     try:
@@ -85,6 +99,12 @@ def _post_with_auth(url, data, auth):
 
 def _post_with_auth_and_headers(url, data, auth, headers):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
+
+def _put_with_auth(url, data, auth):
+    return _put(url, data, None, qiniu.auth.RequestsAuth(auth))
+
+def _put_with_auth_and_headers(url, data, auth, headers):
+    return _put(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
 
 
 def _post_with_qiniu_mac(url, data, auth):

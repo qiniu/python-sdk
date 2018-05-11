@@ -157,9 +157,116 @@ class CdnManager(object):
         url = '{0}/v2/tune/log/list'.format(self.server)
         return self.__post(url, body)
 
+    def put_httpsconf(self, name, certid, forceHttps=False):
+        """
+        修改证书，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#11
+
+        Args:
+           domains:     域名name
+           CertID:      证书id，从上传或者获取证书列表里拿到证书id
+           ForceHttps:  是否强制https跳转
+
+        Returns:
+           {}
+        """
+        req = {}
+        req.update({"certid": certid})
+        req.update({"forceHttps": forceHttps})
+
+        body = json.dumps(req)
+        url = '{0}/domain/{1}/httpsconf'.format(self.server, name)
+        return self.__post(url, body)
+
     def __post(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
         return http._post_with_auth_and_headers(url, data, self.auth, headers)
+
+
+class DomainManager(object):
+    def __init__(self, auth):
+        self.auth = auth
+        self.server = 'http://api.qiniu.com'
+
+    def create_domain(self, name, body):
+        """
+        创建域名，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name
+
+        Args:
+           name:     域名, 如果是泛域名，必须以点号 . 开头
+           bosy:     创建域名参数
+        Returns:
+           {}
+        """
+        url = '{0}/domain/{1}'.format(self.server, name)
+        return self.__post(url, body)
+
+    def get_domain(self, name):
+        """
+        获取域名信息，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name
+
+        Args:
+           name:     域名, 如果是泛域名，必须以点号 . 开头
+        Returns:
+            返回一个tuple对象，其格式为(<result>, <ResponseInfo>)
+            - result          成功返回dict{}，失败返回{"error": "<errMsg string>"}
+            - ResponseInfo    请求的Response信息
+        """
+        url = '{0}/domain/{1}'.format(self.server, name)
+        return self.__post(url)
+
+    def put_httpsconf(self, name, certid, forceHttps):
+        """
+        修改证书，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#11
+
+        Args:
+           domains:     域名name
+           CertID:      证书id，从上传或者获取证书列表里拿到证书id
+           ForceHttps:  是否强制https跳转
+
+        Returns:
+           {}
+        """
+        req = {}
+        req.update({"certid": certid})
+        req.update({"forceHttps": forceHttps})
+
+        body = json.dumps(req)
+        url = '{0}/domain/{1}/httpsconf'.format(self.server, name)
+        return self.__put(url, body)
+
+    def create_sslcert(self, name, common_name, pri, ca):
+        """
+        修改证书，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#11
+
+        Args:
+           name:        证书名称
+           common_name: 相关域名
+           pri:         证书私钥
+           ca:          证书内容
+        Returns:
+            返回一个tuple对象，其格式为(<result>, <ResponseInfo>)
+            - result          成功返回dict{certID: <CertID>}，失败返回{"error": "<errMsg string>"}
+            - ResponseInfo    请求的Response信息
+
+
+        """
+        req = {}
+        req.update({"name": name})
+        req.update({"common_name": common_name})
+        req.update({"pri": pri})
+        req.update({"ca": ca})
+
+        body = json.dumps(req)
+        url = '{0}/sslcert'.format(self.server)
+        return self.__post(url, body)
+
+    def __post(self, url, data=None):
+        headers = {'Content-Type': 'application/json'}
+        return http._post_with_auth_and_headers(url, data, self.auth, headers)
+
+    def __put(self, url, data=None):
+        headers = {'Content-Type': 'application/json'}
+        return http._put_with_auth_and_headers(url, data, self.auth, headers)
 
 
 def create_timestamp_anti_leech_url(host, file_name, query_string, encrypt_key, deadline):
