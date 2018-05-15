@@ -18,7 +18,7 @@ pipeline = 'pipeline_name'
 base64URL = urlsafe_base64_encode('http://developer.qiniu.com/resource/logo-2.jpg')
 
 # 视频水印参数
-fops = 'avthumb/mp4/'+base64URL
+fops = 'avthumb/mp4/wmImage/'+base64URL
 
 # 可以对转码后的文件进行使用saveas参数自定义命名，当然也可以不指定文件会默认命名并保存在当前空间
 saveas_key = urlsafe_base64_encode('目标Bucket_Name:自定义文件key')
