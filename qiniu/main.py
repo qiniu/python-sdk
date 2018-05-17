@@ -11,9 +11,14 @@ def main():
     sub_parsers = parser.add_subparsers()
 
     parser_etag = sub_parsers.add_parser(
-        'etag', description='calculate the etag of the file', help='etag [file...]')
+        'etag',
+        description='calculate the etag of the file',
+        help='etag [file...]')
     parser_etag.add_argument(
-        'etag_files', metavar='N', nargs='+', help='the file list for calculate')
+        'etag_files',
+        metavar='N',
+        nargs='+',
+        help='the file list for calculate')
 
     args = parser.parse_args()
 

@@ -77,7 +77,8 @@ roomAccess = {
     "appId": "<AppID>:必填",  # AppID: 房间所属帐号的 app 。
     "roomName": "<房间名>:必填",  # RoomName: 房间名称，需满足规格 ^[a-zA-Z0-9_-]{3,64}$
     "userId": "<用户名>:必填",  # UserID: 请求加入房间的用户 ID，需满足规格 ^[a-zA-Z0-9_-]{3,50}$
-    "expireAt": int(time.time()) + 3600,  # ExpireAt: int64 类型，鉴权的有效时间，传入以秒为单位的64位Unix绝对时间，
+    # ExpireAt: int64 类型，鉴权的有效时间，传入以秒为单位的64位Unix绝对时间，
+    "expireAt": int(time.time()) + 3600,
     # token 将在该时间后失效。
     "permission": "user"  # 该用户的房间管理权限，"admin" 或 "user"，默认为 "user" 。当权限角色为 "admin" 时，
     # 拥有将其他用户移除出房间等特权.

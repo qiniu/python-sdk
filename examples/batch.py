@@ -4,7 +4,7 @@
 from qiniu import Auth
 from qiniu import BucketManager
 from qiniu import build_batch_copy
-from qiniu import build_batch_move,build_batch_rename
+from qiniu import build_batch_move, build_batch_rename
 
 access_key = '...'
 secret_key = '...'

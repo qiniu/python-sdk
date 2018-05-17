@@ -14,16 +14,17 @@ domain_manager = DomainManager(auth)
 
 privatekey = "ssl/www.qiniu.com/privkey.pem"
 ca = "ssl/www.qiniu.com/fullchain.pem"
-domain_name='www.qiniu.com'
+domain_name = 'www.qiniu.com'
 
-with open(privatekey,'r') as f:
-    privatekey_str=f.read()
+with open(privatekey, 'r') as f:
+    privatekey_str = f.read()
 
-with open(ca,'r') as f:
-    ca_str=f.read()
+with open(ca, 'r') as f:
+    ca_str = f.read()
 
-ret, info = domain_manager.create_sslcert(domain_name, domain_name, privatekey_str, ca_str)
+ret, info = domain_manager.create_sslcert(
+    domain_name, domain_name, privatekey_str, ca_str)
 print(ret['certID'])
 
-ret, info = domain_manager.put_httpsconf(domain_name, ret['certID'],False)
+ret, info = domain_manager.put_httpsconf(domain_name, ret['certID'], False)
 print(info)

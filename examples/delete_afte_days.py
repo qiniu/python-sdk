@@ -22,5 +22,3 @@ days = '5'
 
 ret, info = bucket.delete_after_days(bucket_name, key, days)
 print(info)
-
-

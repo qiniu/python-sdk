@@ -12,7 +12,8 @@ from . import __version__
 _sys_info = '{0}; {1}'.format(platform.system(), platform.machine())
 _python_ver = platform.python_version()
 
-USER_AGENT = 'QiniuPython/{0} ({1}; ) Python/{2}'.format(__version__, _sys_info, _python_ver)
+USER_AGENT = 'QiniuPython/{0} ({1}; ) Python/{2}'.format(
+    __version__, _sys_info, _python_ver)
 
 _session = None
 _headers = {'User-Agent': USER_AGENT}
@@ -29,7 +30,8 @@ def __return_wrapper(resp):
 def _init():
     session = requests.Session()
     adapter = requests.adapters.HTTPAdapter(
-        pool_connections=config.get_default('connection_pool'), pool_maxsize=config.get_default('connection_pool'),
+        pool_connections=config.get_default('connection_pool'),
+        pool_maxsize=config.get_default('connection_pool'),
         max_retries=config.get_default('connection_retries'))
     session.mount('http://', adapter)
     global _session
@@ -51,6 +53,7 @@ def _post(url, data, files, auth, headers=None):
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
 
+
 def _put(url, data, files, auth, headers=None):
     if _session is None:
         _init()
@@ -66,11 +69,15 @@ def _put(url, data, files, auth, headers=None):
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
 
+
 def _get(url, params, auth):
     try:
         r = requests.get(
-            url, params=params, auth=qiniu.auth.RequestsAuth(auth) if auth is not None else None,
-            timeout=config.get_default('connection_timeout'), headers=_headers)
+            url,
+            params=params,
+            auth=qiniu.auth.RequestsAuth(auth) if auth is not None else None,
+            timeout=config.get_default('connection_timeout'),
+            headers=_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -100,19 +107,27 @@ def _post_with_auth(url, data, auth):
 def _post_with_auth_and_headers(url, data, auth, headers):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
 
+
 def _put_with_auth(url, data, auth):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth))
+
 
 def _put_with_auth_and_headers(url, data, auth, headers):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
 
 
 def _post_with_qiniu_mac(url, data, auth):
-    qn_auth = qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None
+    qn_auth = qiniu.auth.QiniuMacRequestsAuth(
+        auth) if auth is not None else None
     timeout = config.get_default('connection_timeout')
 
     try:
-        r = requests.post(url, json=data, auth=qn_auth, timeout=timeout, headers=_headers)
+        r = requests.post(
+            url,
+            json=data,
+            auth=qn_auth,
+            timeout=timeout,
+            headers=_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -121,8 +136,11 @@ def _post_with_qiniu_mac(url, data, auth):
 def _get_with_qiniu_mac(url, params, auth):
     try:
         r = requests.get(
-            url, params=params, auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
-            timeout=config.get_default('connection_timeout'), headers=_headers)
+            url,
+            params=params,
+            auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
+            timeout=config.get_default('connection_timeout'),
+            headers=_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -131,8 +149,11 @@ def _get_with_qiniu_mac(url, params, auth):
 def _delete_with_qiniu_mac(url, params, auth):
     try:
         r = requests.delete(
-            url, params=params, auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
-            timeout=config.get_default('connection_timeout'), headers=_headers)
+            url,
+            params=params,
+            auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
+            timeout=config.get_default('connection_timeout'),
+            headers=_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -191,9 +212,11 @@ class ResponseInfo(object):
 
     def __str__(self):
         if is_py2:
-            return ', '.join(['%s:%s' % item for item in self.__dict__.items()]).encode('utf-8')
+            return ', '.join(
+                ['%s:%s' % item for item in self.__dict__.items()]).encode('utf-8')
         elif is_py3:
-            return ', '.join(['%s:%s' % item for item in self.__dict__.items()])
+            return ', '.join(['%s:%s' %
+                              item for item in self.__dict__.items()])
 
     def __repr__(self):
         return self.__str__()

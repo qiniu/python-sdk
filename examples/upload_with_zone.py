@@ -16,7 +16,7 @@ q = Auth(access_key, secret_key)
 bucket_name = 'Bucket_Name'
 
 # 上传到七牛后保存的文件名
-key = 'my-python-logo.png';
+key = 'my-python-logo.png'
 
 # 生成上传 Token，可以指定过期时间等
 token = q.upload_token(bucket_name, key, 3600)
@@ -25,7 +25,11 @@ token = q.upload_token(bucket_name, key, 3600)
 localfile = 'stat.py'
 
 # 指定固定的zone
-zone = Zone(up_host='uptest.qiniu.com', up_host_backup='uptest.qiniu.com', io_host='iovip.qbox.me', scheme='http')
+zone = Zone(
+    up_host='uptest.qiniu.com',
+    up_host_backup='uptest.qiniu.com',
+    io_host='iovip.qbox.me',
+    scheme='http')
 set_default(default_zone=zone)
 
 ret, info = put_file(token, key, localfile)

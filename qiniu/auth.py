@@ -69,7 +69,8 @@ class Auth(object):
 
     def token_with_data(self, data):
         data = urlsafe_base64_encode(data)
-        return '{0}:{1}:{2}'.format(self.__access_key, self.__token(data), data)
+        return '{0}:{1}:{2}'.format(
+            self.__access_key, self.__token(data), data)
 
     def token_of_request(self, url, body=None, content_type=None):
         """带请求体的签名（本质上是管理凭证的签名）
@@ -124,7 +125,13 @@ class Auth(object):
         token = self.token(url)
         return '{0}&token={1}'.format(url, token)
 
-    def upload_token(self, bucket, key=None, expires=3600, policy=None, strict_policy=True):
+    def upload_token(
+            self,
+            bucket,
+            key=None,
+            expires=3600,
+            policy=None,
+            strict_policy=True):
         """生成上传凭证
 
         Args:
@@ -157,7 +164,12 @@ class Auth(object):
         data = json.dumps(policy, separators=(',', ':'))
         return self.token_with_data(data)
 
-    def verify_callback(self, origin_authorization, url, body, content_type='application/x-www-form-urlencoded'):
+    def verify_callback(
+            self,
+            origin_authorization,
+            url,
+            body,
+            content_type='application/x-www-form-urlencoded'):
         """回调验证
 
         Args:
@@ -186,7 +198,8 @@ class RequestsAuth(AuthBase):
 
     def __call__(self, r):
         if r.body is not None and r.headers['Content-Type'] == 'application/x-www-form-urlencoded':
-            token = self.auth.token_of_request(r.url, r.body, 'application/x-www-form-urlencoded')
+            token = self.auth.token_of_request(
+                r.url, r.body, 'application/x-www-form-urlencoded')
         else:
             token = self.auth.token_of_request(r.url)
         r.headers['Authorization'] = 'QBox {0}'.format(token)
@@ -215,7 +228,14 @@ class QiniuMacAuth(object):
         hashed = hmac.new(self.__secret_key, data, sha1)
         return urlsafe_base64_encode(hashed.digest())
 
-    def token_of_request(self, method, host, url, qheaders, content_type=None, body=None):
+    def token_of_request(
+            self,
+            method,
+            host,
+            url,
+            qheaders,
+            content_type=None,
+            body=None):
         """
         <Method> <PathWithRawQuery>
         Host: <Host>
@@ -236,7 +256,9 @@ class QiniuMacAuth(object):
         path_with_query = path
         if query != '':
             path_with_query = ''.join([path_with_query, '?', query])
-        data = ''.join(["%s %s" % (method, path_with_query), "\n", "Host: %s" % host, "\n"])
+        data = ''.join(["%s %s" %
+                        (method, path_with_query), "\n", "Host: %s" %
+                        host, "\n"])
 
         if content_type:
             data += "Content-Type: %s" % (content_type) + "\n"
@@ -253,7 +275,7 @@ class QiniuMacAuth(object):
         res = ""
         for key in headers:
             if key.startswith(self.qiniu_header_prefix):
-                res += key+": %s\n" % (headers.get(key))
+                res += key + ": %s\n" % (headers.get(key))
         return res
 
     @staticmethod
@@ -272,6 +294,6 @@ class QiniuMacRequestsAuth(AuthBase):
             r.url, self.auth.qiniu_headers(r.headers),
             r.headers.get('Content-Type', None),
             r.body
-            )
+        )
         r.headers['Authorization'] = 'Qiniu {0}'.format(token)
         return r

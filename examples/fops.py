@@ -19,7 +19,7 @@ fops = 'avthumb/mp4/s/640x360/vb/1.25m'
 
 # 可以对转码后的文件进行使用saveas参数自定义命名，当然也可以不指定文件会默认命名并保存在当前空间
 saveas_key = urlsafe_base64_encode('目标Bucket_Name:自定义文件key')
-fops = fops+'|saveas/'+saveas_key
+fops = fops + '|saveas/' + saveas_key
 ops = []
 pfop = PersistentFop(q, bucket_name, pipeline)
 
