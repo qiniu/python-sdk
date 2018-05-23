@@ -24,7 +24,8 @@ urls = [
     'b.example.com'
 ]
 
-ret, info = cdn_manager.get_bandwidth_data(urls, startDate, endDate, granularity)
+ret, info = cdn_manager.get_bandwidth_data(
+    urls, startDate, endDate, granularity)
 
 print(ret)
 print(info)

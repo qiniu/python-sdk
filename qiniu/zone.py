@@ -19,8 +19,14 @@ class Zone(object):
         up_host_backup: 备用上传地址
     """
 
-    def __init__(self, up_host=None, up_host_backup=None, io_host=None, host_cache={}, scheme="http",
-                 home_dir=os.getcwd()):
+    def __init__(
+            self,
+            up_host=None,
+            up_host_backup=None,
+            io_host=None,
+            host_cache={},
+            scheme="http",
+            home_dir=os.getcwd()):
         """初始化Zone类"""
         self.up_host, self.up_host_backup, self.io_host = up_host, up_host_backup, io_host
         self.host_cache = host_cache
@@ -58,7 +64,10 @@ class Zone(object):
             raise ValueError('invalid up_token')
 
         ak = token[0]
-        policy = compat.json.loads(compat.s(utils.urlsafe_base64_decode(token[2])))
+        policy = compat.json.loads(
+            compat.s(
+                utils.urlsafe_base64_decode(
+                    token[2])))
 
         scope = policy["scope"]
         bucket = scope
@@ -84,7 +93,8 @@ class Zone(object):
             hosts[self.scheme]['up'].append(self.scheme + "://" + self.up_host)
 
         if self.up_host_backup is not None:
-            hosts[self.scheme]['up'].append(self.scheme + "://" + self.up_host_backup)
+            hosts[self.scheme]['up'].append(
+                self.scheme + "://" + self.up_host_backup)
 
         if self.io_host is not None:
             hosts[self.scheme]['io'].append(self.scheme + "://" + self.io_host)
@@ -98,7 +108,9 @@ class Zone(object):
         try:
             scheme_hosts = hosts[self.scheme]
         except KeyError:
-            raise KeyError("Please check your BUCKET_NAME! The UpHosts is %s" % hosts)
+            raise KeyError(
+                "Please check your BUCKET_NAME! The UpHosts is %s" %
+                hosts)
         bucket_hosts = {
             'upHosts': scheme_hosts['up'],
             'ioHosts': scheme_hosts['io'],
