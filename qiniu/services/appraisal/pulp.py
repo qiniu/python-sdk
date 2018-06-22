@@ -1,4 +1,4 @@
-import json
+# -*- coding: utf-8 -*-
 from qiniu.http import _post_with_qiniu_mac
 from qiniu.auth import QiniuMacAuth
 
@@ -79,6 +79,7 @@ def video_pulp(auth, vid, url, op=None, params=None):
             raise ValueError("pulp appraisal operation must be pulp: %s" % op.op)
     return video_appraisal(auth, vid, url, [op], params)
 
+
 def video_terror(auth, vid, url, op=None, params=None):
     if op is None:
         op = AppraisalOperation("terror")
@@ -88,6 +89,7 @@ def video_terror(auth, vid, url, op=None, params=None):
         if op.op != "politician":
             raise ValueError("terror appraisal operation must be terror: %s" % op.op)
     return video_appraisal(auth, vid, url, [op], params)
+
 
 def video_politician(auth, vid, url, op=None, params=None):
     if op is None:
