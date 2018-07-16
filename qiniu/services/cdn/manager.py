@@ -214,6 +214,25 @@ class DomainManager(object):
         url = '{0}/domain/{1}'.format(self.server, name)
         return self.__get(url)
 
+    def get_domain_list(self, marker="", limit=100):
+        """
+        获取域名信息，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name
+
+        Args:
+           name:     域名, 如果是泛域名，必须以点号 . 开头
+        Returns:
+            返回一个tuple对象，其格式为(<result>, <ResponseInfo>)
+            - result          成功返回dict{}，失败返回{"error": "<errMsg string>"}
+            - ResponseInfo    请求的Response信息
+        """
+        url = '{0}/domain'.format(self.server)
+        ret, respInfo = self.__get(url, params={"marker": marker, "limit": limit})
+        yield ret, respInfo
+
+        if ret.get("marker", ""):
+            for result in self.get_domain_list(marker=ret['marker'], limit=limit):
+                yield result
+
     def put_httpsconf(self, name, certid, forceHttps):
         """
         修改证书，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#11
