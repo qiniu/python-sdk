@@ -212,7 +212,7 @@ class DomainManager(object):
             - ResponseInfo    请求的Response信息
         """
         url = '{0}/domain/{1}'.format(self.server, name)
-        return self.__post(url)
+        return self.__get(url)
 
     def put_httpsconf(self, name, certid, forceHttps):
         """
@@ -263,6 +263,10 @@ class DomainManager(object):
     def __post(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
         return http._post_with_auth_and_headers(url, data, self.auth, headers)
+
+    def __get(self, url, params=None):
+        headers = {'Content-Type': 'application/json'}
+        return http._get(url, params, self.auth)
 
     def __put(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
