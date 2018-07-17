@@ -6,7 +6,7 @@ from hashlib import sha1
 
 from requests.auth import AuthBase
 
-from .compat import urlparse, json, b
+from .compat import urlparse, json, b, s
 from .utils import urlsafe_base64_encode
 
 
@@ -55,6 +55,9 @@ class Auth(object):
         self.__checkKey(access_key, secret_key)
         self.__access_key = access_key
         self.__secret_key = b(secret_key)
+
+    def get_secret_key(self):
+        return s(self.__secret_key)
 
     def get_access_key(self):
         return self.__access_key

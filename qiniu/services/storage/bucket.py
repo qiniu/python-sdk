@@ -161,6 +161,49 @@ class BucketManager(object):
         to = entry(bucket_to, key_to)
         return self.__rs_do('copy', resource, to, 'force/{0}'.format(force))
 
+    def async_fetch(self, urls, bucket, host=None, key=None, md5=None, etag=None, callback_url=None,
+                    callback_body=None, callback_body_type=None, callback_host=None, file_type=0):
+        """异步抓取文件:
+        从指定URL抓取资源，并将该资源存储到指定空间中，具体规格参考：
+        https://developer.qiniu.com/kodo/api/4097/asynch-fetch
+
+        Args:
+            url:    指定的URL
+            bucket: 目标资源空间
+            key:    目标资源文件名
+
+        Returns:
+            一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
+            一个ResponseInfo对象
+        """
+        data = {"url": ";".join(urls), "bucket": bucket}
+        if host:
+            data["host"] = host
+        if md5:
+            data["md5"] = md5
+        if key:
+            data["key"] = key
+        if etag:
+            data["etag"] = etag
+        if callback_url:
+            data["callbackurl"] = callback_url
+        if callback_body:
+            data["callbackbody"] = callback_body
+        if callback_body_type:
+            data["callbackbodytype"] = callback_body_type
+        if callback_host:
+            data["callbackhost"] = callback_host
+        if file_type:
+            data["file_type"] = file_type
+
+        api_host = self.zone.get_api_host(bucket, self.auth)
+        url = "http://%s/%s" % (api_host, "sisyphus/fetch")
+        return http._post_with_qiniu_mac(url, data, self.auth, headers={
+            "Host": api_host,
+            "Content-Type": "application/json",
+        })
+
+
     def fetch(self, url, bucket, key=None):
         """抓取文件:
         从指定URL抓取资源，并将该资源存储到指定空间中，具体规格参考：
@@ -348,3 +391,13 @@ def _two_key_batch(operation, source_bucket, key_pairs, target_bucket, force='fa
         target_bucket = source_bucket
     return [_build_op(operation, entry(source_bucket, k), entry(target_bucket, v), 'force/{0}'.format(force)) for k, v
             in key_pairs.items()]
+
+
+def get_bucket_info(bucket, auth):
+    """
+    Args:
+      bucket - 存储空间名字
+    获取存储空间所在的存储区域
+    """
+    url = '%s/bucket/%s' % (config.BUCKET_RS_HOST, bucket)
+    return http._post_with_auth_and_headers(url, None, auth, headers={"Content-Type": "application/x-www-form-urlencoded"})
