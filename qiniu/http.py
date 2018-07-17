@@ -111,14 +111,18 @@ def _post_with_auth_and_headers(url, data, auth, headers):
 def _put_with_auth(url, data, auth):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth))
 
-
 def _put_with_auth_and_headers(url, data, auth, headers):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
 
-
-def _post_with_qiniu_mac(url, data, auth):
+def _post_with_qiniu_mac(url, data, auth, headers=None):
+    post_headers = _headers.copy()
+    if headers is not None:
+        for k, v in headers.items():
+            post_headers.update({k: v})
+    access_key = auth.get_access_key()
+    secret_key = auth.get_secret_key()
     qn_auth = qiniu.auth.QiniuMacRequestsAuth(
-        auth) if auth is not None else None
+        qiniu.auth.QiniuMacAuth(access_key, secret_key)) if auth is not None else None
     timeout = config.get_default('connection_timeout')
 
     try:
@@ -127,7 +131,7 @@ def _post_with_qiniu_mac(url, data, auth):
             json=data,
             auth=qn_auth,
             timeout=timeout,
-            headers=_headers)
+            headers=post_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)

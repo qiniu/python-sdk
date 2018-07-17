@@ -24,6 +24,7 @@ from .services.processing.pfop import PersistentFop
 from .services.processing.cmd import build_op, pipe_cmd, op_save
 from .services.compute.app import AccountClient
 from .services.compute.qcos_api import QcosClient
+from .services.appraisal.pulp import video_pulp, video_terror, video_politician, video_appraisal, AppraisalOperation
 
 from .services.pili.rtc_server_manager import RtcServer, get_room_token
 

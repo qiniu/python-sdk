@@ -5,6 +5,7 @@ import time
 import requests
 from qiniu import compat
 from qiniu import utils
+from qiniu.services.storage.bucket import get_bucket_info
 
 UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
 
@@ -24,6 +25,7 @@ class Zone(object):
             up_host=None,
             up_host_backup=None,
             io_host=None,
+            api_host=None,
             host_cache={},
             scheme="http",
             home_dir=os.getcwd()):
@@ -57,6 +59,13 @@ class Zone(object):
         bucket_hosts = self.get_bucket_hosts(ak, bucket)
         up_hosts = bucket_hosts['upHosts']
         return up_hosts
+
+    def get_api_host(self, bucket, auth):
+        ret, resp_info = get_bucket_info(bucket, auth)
+        if ret:
+            return "api-%s.qiniu.com" % ret['region']
+        else:
+            raise ValueError(ret)
 
     def unmarshal_up_token(self, up_token):
         token = up_token.split(':')

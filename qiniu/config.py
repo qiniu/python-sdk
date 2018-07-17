@@ -5,6 +5,7 @@ from qiniu import zone
 RS_HOST = 'http://rs.qbox.me'      # 管理操作Host
 RSF_HOST = 'http://rsf.qbox.me'    # 列举操作Host
 API_HOST = 'http://api.qiniu.com'  # 数据处理操作Host
+BUCKET_RS_HOST = 'http://rs.qiniu.com' # 获取bucket信息
 
 _BLOCK_SIZE = 1024 * 1024 * 4  # 断点续上传分块大小，该参数为接口规格，暂不支持修改
 
