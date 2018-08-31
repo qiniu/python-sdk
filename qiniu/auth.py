@@ -72,7 +72,7 @@ class Auth(object):
         return '{0}:{1}:{2}'.format(
             self.__access_key, self.__token(data), data)
 
-    def token_of_request(self, url, body=None, content_type=None):
+    def token_of_request(self, url,body=None, content_type=None):
         """带请求体的签名（本质上是管理凭证的签名）
 
         Args:
@@ -84,12 +84,16 @@ class Auth(object):
             管理凭证
         """
         parsed_url = urlparse(url)
+        print("parsed_url:",parsed_url)
         query = parsed_url.query
+        print("query:",query)
         path = parsed_url.path
+        print("path:",path)
         data = path
         if query != '':
             data = ''.join([data, '?', query])
         data = ''.join([data, "\n"])
+        print('data:',data)
 
         if body:
             mimes = [
@@ -97,6 +101,7 @@ class Auth(object):
             ]
             if content_type in mimes:
                 data += body
+        print("body",body)
 
         return '{0}:{1}'.format(self.__access_key, self.__token(data))
 
@@ -231,9 +236,8 @@ class QiniuMacAuth(object):
     def token_of_request(
             self,
             method,
-            host,
             url,
-            qheaders,
+            qheaders=None,
             content_type=None,
             body=None):
         """
@@ -249,26 +253,23 @@ class QiniuMacAuth(object):
         netloc = parsed_url.netloc
         path = parsed_url.path
         query = parsed_url.query
-
-        if not host:
-            host = netloc
-
         path_with_query = path
         if query != '':
             path_with_query = ''.join([path_with_query, '?', query])
         data = ''.join(["%s %s" %
                         (method, path_with_query), "\n", "Host: %s" %
-                        host, "\n"])
+                        netloc, "\n"])
 
         if content_type:
             data += "Content-Type: %s" % (content_type) + "\n"
+        if qheaders:
+            data += "qheaders: %s" % (qheaders) + "\n"
 
-        data += qheaders
         data += "\n"
 
         if content_type and content_type != "application/octet-stream" and body:
-            data += body.decode(encoding='UTF-8')
-
+            data += body
+        print(data)
         return '{0}:{1}'.format(self.__access_key, self.__token(data))
 
     def qiniu_headers(self, headers):
