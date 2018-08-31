@@ -269,7 +269,6 @@ class QiniuMacAuth(object):
 
         if content_type and content_type != "application/octet-stream" and body:
             data += body
-        print(data)
         return '{0}:{1}'.format(self.__access_key, self.__token(data))
 
     def qiniu_headers(self, headers):
