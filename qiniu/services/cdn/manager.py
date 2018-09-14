@@ -280,7 +280,7 @@ class DomainManager(object):
         p = dict(limit=limit)
         if marker:
             p['marker']=marker
-        return self.__get(self.server+"/domain", p)[0]
+        return self.__get("domain", p)[0]
 
 
     def __post(self, url, data=None):
@@ -292,7 +292,7 @@ class DomainManager(object):
         return http._put_with_auth_and_headers(url, data, self.auth, headers)
 
     def __get(self, url, params=None):
-        return http._get(url, params, self.auth)
+        return http._get(self.server+"/"+url, params, self.auth)
 
 
 def create_timestamp_anti_leech_url(host, file_name, query_string, encrypt_key, deadline):
