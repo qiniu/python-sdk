@@ -260,6 +260,29 @@ class DomainManager(object):
         url = '{0}/sslcert'.format(self.server)
         return self.__post(url, body)
 
+    def domain_iter(self):
+        """
+        遍历所有域名
+        """
+        marker = None
+        while 1:
+            r = self.domain_list(200, marker)
+            li = r['domains']
+            if li:
+                for i in li:
+                    yield i
+                marker = r['marker']
+            else:
+                break
+
+
+    def domain_list(self, limit=10, marker=None):
+        p = dict(limit=limit)
+        if marker:
+            p['marker']=marker
+        return self.__get(self.server+"/domain", p)[0]
+
+
     def __post(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
         return http._post_with_auth_and_headers(url, data, self.auth, headers)
@@ -267,6 +290,9 @@ class DomainManager(object):
     def __put(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
         return http._put_with_auth_and_headers(url, data, self.auth, headers)
+
+    def __get(self, url, params=None):
+        return http._get(url, params, self.auth)
 
 
 def create_timestamp_anti_leech_url(host, file_name, query_string, encrypt_key, deadline):
