@@ -67,7 +67,7 @@ def put_file(up_token, key, file_path, params=None,
     with open(file_path, 'rb') as input_stream:
         file_name = os.path.basename(file_path)
         modify_time = int(os.path.getmtime(file_path))
-        if size > config._BLOCK_SIZE * 2:
+        if size > config._BLOCK_SIZE:
             ret, info = put_stream(up_token, key, input_stream, file_name, size, params,
                                    mime_type, progress_handler,
                                    upload_progress_recorder=upload_progress_recorder,
