@@ -24,13 +24,12 @@ token = q.upload_token(bucket_name, key, 3600)
 # 要上传文件的本地路径
 localfile = 'stat.py'
 
-# 指定固定的zone 自行指定上传域名及空间源站域名，可用于qvm云主机的内网上传，选择服务端或客户端优化的域名，或http\https上传
+# up_host, 指定上传域名，注意不同区域的qvm上传域名不同
 # https://developer.qiniu.com/qvm/manual/4269/qvm-kodo
-# https://developer.qiniu.com/kodo/manual/1671/region-endpoint
 
 zone = Zone(
-    up_host='uptest.qiniu.com',
-    up_host_backup='uptest.qiniu.com',
+    up_host='free-qvm-z1-zz.qiniup.com',
+    up_host_backup='free-qvm-z1-zz.qiniup.com',
     io_host='iovip.qbox.me',
     scheme='http')
 set_default(default_zone=zone)
