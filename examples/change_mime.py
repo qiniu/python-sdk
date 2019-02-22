@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-# flake8: noqa
-
+"""
+改变文件的mimeType
+"""
 from qiniu import Auth
 from qiniu import BucketManager
 
