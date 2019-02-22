@@ -5,11 +5,9 @@
 https://developer.qiniu.com/kodo/api/1250/batch
 """
 
-
 from qiniu import build_batch_stat, Auth, BucketManager
 
 access_key = ''
-
 secret_key = ''
 
 q = Auth(access_key, secret_key)
