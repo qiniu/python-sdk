@@ -107,8 +107,6 @@ class AuthTestCase(unittest.TestCase):
 
 
 class BucketTestCase(unittest.TestCase):
-    print(access_key)
-    print(secret_key)
     q = Auth(access_key, secret_key)
     bucket = BucketManager(q)
 
