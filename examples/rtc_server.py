@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# flake8: noqa
 
 from qiniu import QiniuMacAuth
 from qiniu import RtcServer, get_room_token

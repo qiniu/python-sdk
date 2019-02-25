@@ -3,7 +3,6 @@
 from qiniu import config
 from qiniu import http
 from qiniu.utils import urlsafe_base64_encode, entry
-import json
 
 
 class BucketManager(object):
@@ -239,8 +238,8 @@ class BucketManager(object):
         resource = entry(bucket, key)
         if cond and isinstance(cond, dict):
             condstr = ""
-            for k,v in cond.items():
-                condstr+="{0}={1}&".format(k, v)
+            for k, v in cond.items():
+                condstr += "{0}={1}&".format(k, v)
             condstr = urlsafe_base64_encode(condstr[:-1])
             return self.__rs_do('chstatus', resource, 'status/{0}'.format(status), 'cond', condstr)
         return self.__rs_do('chstatus', resource, 'status/{0}'.format(status))

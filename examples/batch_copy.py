@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# flake8: noqa
+
+
 """
 批量拷贝文件
 

@@ -211,7 +211,7 @@ class _Resume(object):
                 if config.get_default('default_zone').up_host_backup:
                     host = config.get_default('default_zone').up_host_backup
                 else:
-                    host = config.get_default('default_zone').get_up_host_backup_by_token(up_token)
+                    host = config.get_default('default_zone').get_up_host_backup_by_token(self.up_token)
             if info.need_retry() or crc != ret['crc32']:
                 ret, info = self.make_block(block, length, host)
                 if ret is None or crc != ret['crc32']:

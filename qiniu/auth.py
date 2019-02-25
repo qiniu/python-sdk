@@ -9,34 +9,33 @@ from requests.auth import AuthBase
 from .compat import urlparse, json, b
 from .utils import urlsafe_base64_encode
 
-
 # 上传策略，参数规格详见
 # https://developer.qiniu.com/kodo/manual/1206/put-policy
 _policy_fields = set([
-    'callbackUrl',       # 回调URL
-    'callbackBody',      # 回调Body
-    'callbackHost',      # 回调URL指定的Host
+    'callbackUrl',  # 回调URL
+    'callbackBody',  # 回调Body
+    'callbackHost',  # 回调URL指定的Host
     'callbackBodyType',  # 回调Body的Content-Type
     'callbackFetchKey',  # 回调FetchKey模式开关
 
-    'returnUrl',         # 上传端的303跳转URL
-    'returnBody',        # 上传端简单反馈获取的Body
+    'returnUrl',  # 上传端的303跳转URL
+    'returnBody',  # 上传端简单反馈获取的Body
 
-    'endUser',           # 回调时上传端标识
-    'saveKey',           # 自定义资源名
-    'insertOnly',        # 插入模式开关
+    'endUser',  # 回调时上传端标识
+    'saveKey',  # 自定义资源名
+    'insertOnly',  # 插入模式开关
 
-    'detectMime',        # MimeType侦测开关
-    'mimeLimit',         # MimeType限制
-    'fsizeLimit',        # 上传文件大小限制
-    'fsizeMin',          # 上传文件最少字节数
+    'detectMime',  # MimeType侦测开关
+    'mimeLimit',  # MimeType限制
+    'fsizeLimit',  # 上传文件大小限制
+    'fsizeMin',  # 上传文件最少字节数
 
-    'persistentOps',        # 持久化处理操作
+    'persistentOps',  # 持久化处理操作
     'persistentNotifyUrl',  # 持久化处理结果通知URL
-    'persistentPipeline',   # 持久化处理独享队列
-    'deleteAfterDays',      # 文件多少天后自动删除
-    'fileType',             # 文件的存储类型，0为普通存储，1为低频存储
-    'isPrefixalScope'       # 指定上传文件必须使用的前缀
+    'persistentPipeline',  # 持久化处理独享队列
+    'deleteAfterDays',  # 文件多少天后自动删除
+    'fileType',  # 文件的存储类型，0为普通存储，1为低频存储
+    'isPrefixalScope'  # 指定上传文件必须使用的前缀
 ])
 
 
