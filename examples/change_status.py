@@ -8,8 +8,8 @@ from qiniu import Auth
 from qiniu import BucketManager
 
 # 需要填写你的 Access Key 和 Secret Key
-access_key = 'C3S6li9F4Iq9toDkq3tzoHz_tRwS2LWNE9aUjIJy'
-secret_key = 'VsjH9zF3XdFfeo6K6y-nyEU5ia62NTW4KM7xcwt4'
+access_key = ''
+secret_key = ''
 
 q = Auth(access_key, secret_key)
 
