@@ -225,6 +225,25 @@ class BucketManager(object):
         resource = entry(bucket, key)
         return self.__rs_do('chtype', resource, 'type/{0}'.format(storage_type))
 
+    def change_status(self, bucket, key, status, cond):
+        """修改文件的状态
+
+        修改文件的存储类型为可用或禁用：
+
+        Args:
+            bucket:         待操作资源所在空间
+            key:            待操作资源文件名
+            storage_type:   待操作资源存储类型，0为启用，1为禁用
+        """
+        resource = entry(bucket, key)
+        if cond and isinstance(cond, dict):
+            condstr = ""
+            for k, v in cond.items():
+                condstr += "{0}={1}&".format(k, v)
+            condstr = urlsafe_base64_encode(condstr[:-1])
+            return self.__rs_do('chstatus', resource, 'status/{0}'.format(status), 'cond', condstr)
+        return self.__rs_do('chstatus', resource, 'status/{0}'.format(status))
+
     def batch(self, operations):
         """批量操作:
 
@@ -294,6 +313,26 @@ class BucketManager(object):
         """
         bucket_name = urlsafe_base64_encode(bucket_name)
         return self.__rs_do('mkbucketv2', bucket_name, 'region', region)
+
+    def list_bucket(self, region):
+        """
+        列举存储空间列表
+
+        Args:
+        """
+        return self.__uc_do('v3/buckets?region={0}'.format(region))
+
+    def bucket_info(self, bucket_name):
+        """
+        获取存储空间信息
+
+        Args:
+            bucket_name: 存储空间名
+        """
+        return self.__post('v2/bucketInfo?bucket={}'.format(bucket_name), )
+
+    def __uc_do(self, operation, *args):
+        return self.__server_do(config.get_default('default_uc_host'), operation, *args)
 
     def __rs_do(self, operation, *args):
         return self.__server_do(config.get_default('default_rs_host'), operation, *args)

@@ -92,7 +92,10 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
         fields['key'] = key
 
     fields['token'] = up_token
-    url = config.get_default('default_zone').get_up_host_by_token(up_token) + '/'
+    if config.get_default('default_zone').up_host:
+        url = config.get_default('default_zone').up_host
+    else:
+        url = config.get_default('default_zone').get_up_host_by_token(up_token)
     # name = key if key else file_name
 
     fname = file_name
@@ -106,7 +109,10 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
     r, info = http._post_file(url, data=fields, files={'file': (fname, data, mime_type)})
     if r is None and info.need_retry():
         if info.connect_failed:
-            url = config.get_default('default_zone').get_up_host_backup_by_token(up_token) + '/'
+            if config.get_default('default_zone').up_host_backup:
+                url = config.get_default('default_zone').up_host_backup
+            else:
+                url = config.get_default('default_zone').get_up_host_backup_by_token(up_token)
         if hasattr(data, 'read') is False:
             pass
         elif hasattr(data, 'seek') and (not hasattr(data, 'seekable') or data.seekable()):
@@ -190,7 +196,10 @@ class _Resume(object):
     def upload(self):
         """上传操作"""
         self.blockStatus = []
-        host = config.get_default('default_zone').get_up_host_by_token(self.up_token)
+        if config.get_default('default_zone').up_host:
+            host = config.get_default('default_zone').up_host
+        else:
+            host = config.get_default('default_zone').get_up_host_by_token(self.up_token)
         offset = self.recovery_from_record()
         for block in _file_iter(self.input_stream, config._BLOCK_SIZE, offset):
             length = len(block)
@@ -199,7 +208,10 @@ class _Resume(object):
             if ret is None and not info.need_retry():
                 return ret, info
             if info.connect_failed():
-                host = config.get_default('default_zone').get_up_host_backup_by_token(self.up_token)
+                if config.get_default('default_zone').up_host_backup:
+                    host = config.get_default('default_zone').up_host_backup
+                else:
+                    host = config.get_default('default_zone').get_up_host_backup_by_token(self.up_token)
             if info.need_retry() or crc != ret['crc32']:
                 ret, info = self.make_block(block, length, host)
                 if ret is None or crc != ret['crc32']:
