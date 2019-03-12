@@ -88,14 +88,13 @@ class Region(object):
         hosts[self.scheme].update({'io': []})
 
         if self.up_host is not None:
-            hosts[self.scheme]['up'].append(self.scheme + "://" + self.up_host)
+            hosts[self.scheme]['up'].append(self.up_host)
 
         if self.up_host_backup is not None:
-            hosts[self.scheme]['up'].append(
-                self.scheme + "://" + self.up_host_backup)
+            hosts[self.scheme]['up'].append(self.up_host_backup)
 
         if self.io_host is not None:
-            hosts[self.scheme]['io'].append(self.scheme + "://" + self.io_host)
+            hosts[self.scheme]['io'].append(self.io_host)
 
         if len(hosts[self.scheme]) == 0 or self.io_host is None:
             hosts = compat.json.loads(self.bucket_hosts(ak, bucket))
@@ -113,7 +112,6 @@ class Region(object):
             'ioHosts': scheme_hosts['io'],
             'deadline': int(time.time()) + hosts['ttl']
         }
-
         self.set_bucket_hosts_to_cache(key, bucket_hosts)
         return bucket_hosts
 
@@ -127,7 +125,6 @@ class Region(object):
 
         if (self.host_cache[key]['deadline'] > time.time()):
             ret = self.host_cache[key]
-
         return ret
 
     def set_bucket_hosts_to_cache(self, key, val):
