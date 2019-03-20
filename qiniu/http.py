@@ -24,6 +24,8 @@ def __return_wrapper(resp):
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
     ret = resp.json(encoding='utf-8') if resp.text != '' else {}
+    if ret is None: # json null
+        ret = {}
     return ret, ResponseInfo(resp)
 
 
