@@ -15,6 +15,7 @@ from .auth import Auth, QiniuMacAuth
 
 from .config import set_default
 from .zone import Zone
+from .region import Region
 
 from .services.storage.bucket import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, \
     build_batch_stat, build_batch_delete
