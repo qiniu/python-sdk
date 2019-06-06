@@ -1,0 +1,29 @@
+sudo: false
+language: python
+python:
+- 2.6.9
+- '2.7'
+- '3.4'
+- '3.5'
+install:
+- pip install flake8
+- pip install pytest
+- pip install pytest-cov
+- pip install requests
+- pip install scrutinizer-ocular
+before_script:
+- export QINIU_TEST_BUCKET="pythonsdk"
+- export QINIU_TEST_DOMAIN="pythonsdk.qiniudn.com"
+- export QINIU_TEST_ENV="travis"
+- export PYTHONPATH="$PYTHONPATH:."
+script:
+- if [[ "$TRAVIS_PYTHON_VERSION" != "2.6.9" ]]; then flake8 --show-source --max-line-length=160
+  .; fi
+- py.test --cov qiniu
+- if [[ "$TRAVIS_PYTHON_VERSION" != "2.6.9" ]]; then ocular --data-file .coverage;
+  fi
+
+env:
+  global:
+    secure: McZuxM4UAKabtGvCi+t1F/Spb/3Yzb6O7hEk0JLwJEYCnl7hkfV1ogAgjjYdHwkNPjOwUaz3rpdmahz64ohtpucPsIyQjgK7tigTM+UgdAcg77RflB50yJ3yCnJOHMxVRF0RNLZqFeuf3GkfnOyzZFynN+LmM5n+0/iIuC4LXgs=
+    QINIU_ACCESS_KEY=vHg2e7nOh7Jsucv2Azr5FH6omPgX22zoJRWa0FN5
