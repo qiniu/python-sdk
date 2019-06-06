@@ -8,10 +8,7 @@ from qiniu.compat import is_py2, is_py3
 from qiniu import config
 import qiniu.auth
 from . import __version__
-<<<<<<< HEAD
-import logging
-=======
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
+
 
 _sys_info = '{0}; {1}'.format(platform.system(), platform.machine())
 _python_ver = platform.python_version()
@@ -28,11 +25,7 @@ def __return_wrapper(resp):
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
     ret = resp.json(encoding='utf-8') if resp.text != '' else {}
-<<<<<<< HEAD
     if ret is None:  # json null
-=======
-    if ret is None: # json null
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
         ret = {}
     return ret, ResponseInfo(resp)
 
@@ -60,10 +53,6 @@ def _post(url, data, files, auth, headers=None):
             url, data=data, files=files, auth=auth, headers=post_headers,
             timeout=config.get_default('connection_timeout'))
     except Exception as e:
-<<<<<<< HEAD
-        logging.exception(e)
-=======
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
 
@@ -122,13 +111,10 @@ def _post_with_auth_and_headers(url, data, auth, headers):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
 
 
-<<<<<<< HEAD
 def _post_with_qiniu_mac_and_headers(url, data, auth, headers):
     return _post(url, data, None, qiniu.auth.QiniuMacRequestsAuth(auth), headers)
 
 
-=======
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
 def _put_with_auth(url, data, auth):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth))
 
@@ -137,21 +123,14 @@ def _put_with_auth_and_headers(url, data, auth, headers):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
 
 
-<<<<<<< HEAD
 def _put_with_qiniu_mac_and_headers(url, data, auth, headers):
     return _put(url, data, None, qiniu.auth.QiniuMacRequestsAuth(auth), headers)
 
 
-=======
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
 def _post_with_qiniu_mac(url, data, auth):
     qn_auth = qiniu.auth.QiniuMacRequestsAuth(
         auth) if auth is not None else None
     timeout = config.get_default('connection_timeout')
-<<<<<<< HEAD
-=======
-
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
     try:
         r = requests.post(
             url,
@@ -177,7 +156,6 @@ def _get_with_qiniu_mac(url, params, auth):
     return __return_wrapper(r)
 
 
-<<<<<<< HEAD
 def _get_with_qiniu_mac_and_headers(url, params, auth, headers):
     try:
         post_headers = _headers.copy()
@@ -195,8 +173,6 @@ def _get_with_qiniu_mac_and_headers(url, params, auth, headers):
     return __return_wrapper(r)
 
 
-=======
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
 def _delete_with_qiniu_mac(url, params, auth):
     try:
         r = requests.delete(
@@ -210,7 +186,6 @@ def _delete_with_qiniu_mac(url, params, auth):
     return __return_wrapper(r)
 
 
-<<<<<<< HEAD
 def _delete_with_qiniu_mac_and_headers(url, params, auth, headers):
     try:
         post_headers = _headers.copy()
@@ -228,8 +203,6 @@ def _delete_with_qiniu_mac_and_headers(url, params, auth, headers):
     return __return_wrapper(r)
 
 
-=======
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
 class ResponseInfo(object):
     """七牛HTTP请求返回信息类
 

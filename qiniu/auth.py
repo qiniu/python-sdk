@@ -3,13 +3,7 @@
 import hmac
 import time
 from hashlib import sha1
-<<<<<<< HEAD
 from requests.auth import AuthBase
-=======
-
-from requests.auth import AuthBase
-
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
 from .compat import urlparse, json, b
 from .utils import urlsafe_base64_encode
 
@@ -270,13 +264,8 @@ class QiniuMacAuth(object):
         data += "\n"
 
         if content_type and content_type != "application/octet-stream" and body:
-<<<<<<< HEAD
             # data += body.decode(encoding='UTF-8')
             data += body
-=======
-            data += body.decode(encoding='UTF-8')
-
->>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
         return '{0}:{1}'.format(self.__access_key, self.__token(data))
 
     def qiniu_headers(self, headers):
