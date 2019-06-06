@@ -9,7 +9,11 @@ For detailed document, please see:
 
 # flake8: noqa
 
+<<<<<<< HEAD
 __version__ = '7.2.5'
+=======
+__version__ = '7.2.4'
+>>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
 
 from .auth import Auth, QiniuMacAuth
 
@@ -25,7 +29,11 @@ from .services.processing.pfop import PersistentFop
 from .services.processing.cmd import build_op, pipe_cmd, op_save
 from .services.compute.app import AccountClient
 from .services.compute.qcos_api import QcosClient
+<<<<<<< HEAD
 from .services.sms.sms import Sms
+=======
+
+>>>>>>> a69fbef4e3e6ea1ebe09f4610a5b18bb2c17de59
 from .services.pili.rtc_server_manager import RtcServer, get_room_token
 
 from .utils import urlsafe_base64_encode, urlsafe_base64_decode, etag, entry
