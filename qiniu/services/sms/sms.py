@@ -1,20 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from qiniu import config
 from qiniu import http
+import json
 
-from qiniu.compat import is_py2
-from qiniu.compat import is_py3
-
-import hashlib, json
-
-def urlencode(str):
-    if is_py2:
-        import urllib2
-        return urllib2.quote(str)
-    elif is_py3:
-        import urllib.parse
-        return urllib.parse.quote(str)
 
 class Sms(object):
     def __init__(self, auth):
@@ -26,7 +14,6 @@ class Sms(object):
         *创建签名
         *signature: string类型，必填，【长度限制8个字符内】超过长度会报错
         *source: string类型，必填，申请签名时必须指定签名来源。取值范围为：
-	        签名来源，申请签名时必须指定签名来源。取值范围为：
             enterprises_and_institutions 企事业单位的全称或简称
             website 工信部备案网站的全称或简称
             app APP应用的全称或简称
@@ -174,7 +161,7 @@ class Sms(object):
         req['description'] = description
         req['signature_id'] = signature_id
         body = json.dumps(req)
-        return self.__put(url,body)
+        return self.__put(url, body)
 
     def deleteTemplate(self, id):
         """
@@ -218,4 +205,3 @@ class Sms(object):
     def __delete(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
         return http._delete_with_qiniu_mac_and_headers(url, data, self.auth, headers)
-
