@@ -5,8 +5,8 @@ from qiniu import QiniuMacAuth
 from qiniu import Sms
 
 
-access_key = 'bjtWBQXrcxgo7HWwlC_bgHg81j352_GhgBGZPeOW'
-secret_key = 'pCav6rTslxP2SIFg0XJmAw53D9PjWEcuYWVdUqAf'
+access_key = ''
+secret_key = ''
 
 # 初始化Auth状态
 q = QiniuMacAuth(access_key, secret_key)
