@@ -146,7 +146,8 @@ class Region(object):
         return
 
     def host_cache_file_path(self):
-        return os.path.join(self.home_dir, ".qiniu_pythonsdk_hostscache.json")
+        host_cache_dir = os.getenv('QINIU_HOST_CACHE_DIR', self.home_dir)
+        return os.path.join(host_cache_dir, ".qiniu_pythonsdk_hostscache.json")
 
     def host_cache_to_file(self):
         path = self.host_cache_file_path()
