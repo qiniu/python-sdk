@@ -25,6 +25,6 @@ from .services.processing.pfop import PersistentFop
 from .services.processing.cmd import build_op, pipe_cmd, op_save
 from .services.compute.app import AccountClient
 from .services.compute.qcos_api import QcosClient
-from .services.sms.sms import Sms
-from .services.pili.rtc_server_manager import RtcServer, get_room_token
+#from .services.sms.sms import Sms
+#from .services.pili.rtc_server_manager import RtcServer, get_room_token
 from .utils import urlsafe_base64_encode, urlsafe_base64_decode, etag, entry
