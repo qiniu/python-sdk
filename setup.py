@@ -21,6 +21,7 @@ packages = [
     'qiniu.services.compute',
     'qiniu.services.cdn',
     'qiniu.services.pili',
+    'qiniu.services.sms',
 ]
 
 
