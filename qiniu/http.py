@@ -232,7 +232,10 @@ class ResponseInfo(object):
             self.req_id = response.headers.get('X-Reqid')
             self.x_log = response.headers.get('X-Log')
             if self.status_code >= 400:
-                ret = response.json() if response.text != '' else None
+                try:
+                    ret = response.json() if response.text != '' else None
+                except ValueError:
+                    ret = None
                 if ret is None or ret['error'] is None:
                     self.error = 'unknown'
                 else:
