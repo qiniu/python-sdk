@@ -214,7 +214,7 @@ class DomainManager(object):
         url = '{0}/domain/{1}'.format(self.server, name)
         return self.__post(url)
 
-    def put_httpsconf(self, name, certid, forceHttps):
+    def put_httpsconf(self, name, certid, forceHttps, http2Enable=False):
         """
         修改证书，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#11
 
@@ -229,6 +229,7 @@ class DomainManager(object):
         req = {}
         req.update({"certid": certid})
         req.update({"forceHttps": forceHttps})
+        req.update({"http2Enable": http2Enable})
 
         body = json.dumps(req)
         url = '{0}/domain/{1}/httpsconf'.format(self.server, name)
