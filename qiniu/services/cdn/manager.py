@@ -157,7 +157,7 @@ class CdnManager(object):
         url = '{0}/v2/tune/log/list'.format(self.server)
         return self.__post(url, body)
 
-    def put_httpsconf(self, name, certid, forceHttps=False):
+    def put_httpsconf(self, name, certid, forceHttps=False, http2Enable=False):
         """
         修改证书，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#11
 
@@ -165,6 +165,7 @@ class CdnManager(object):
            domains:     域名name
            CertID:      证书id，从上传或者获取证书列表里拿到证书id
            ForceHttps:  是否强制https跳转
+           http2Enable: 是否开启http2
 
         Returns:
            {}
@@ -172,6 +173,7 @@ class CdnManager(object):
         req = {}
         req.update({"certid": certid})
         req.update({"forceHttps": forceHttps})
+        req.update({"http2Enable": http2Enable})
 
         body = json.dumps(req)
         url = '{0}/domain/{1}/httpsconf'.format(self.server, name)
@@ -222,6 +224,7 @@ class DomainManager(object):
            domains:     域名name
            CertID:      证书id，从上传或者获取证书列表里拿到证书id
            ForceHttps:  是否强制https跳转
+           http2Enable: 是否开启http2
 
         Returns:
            {}
