@@ -96,7 +96,7 @@ def _session_get(url, params, auth):
         _init()
     try:
         r = _session.get(
-            url, params=params, auth=auth,
+            url, params=params, auth=qiniu.auth.RequestsAuth(auth) if auth is not None else None,
             timeout=config.get_default('connection_timeout'))
     except Exception as e:
         return None, ResponseInfo(None, e)
