@@ -16,6 +16,7 @@ except ImportError:
 packages = [
     'qiniu',
     'qiniu.services',
+    'qiniu.services.media',
     'qiniu.services.storage',
     'qiniu.services.processing',
     'qiniu.services.compute',
