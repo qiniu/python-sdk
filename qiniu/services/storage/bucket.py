@@ -327,7 +327,7 @@ class BucketManager(object):
         Args:
             bucket_name: 存储空间名
         """
-        return self.__post('v2/bucketInfo?bucket={}'.format(bucket_name), )
+        return self.__uc_do('v2/bucketInfo?bucket={}'.format(bucket_name), )
 
     def __uc_do(self, operation, *args):
         return self.__server_do(config.get_default('default_uc_host'), operation, *args)
