@@ -1,4 +1,6 @@
 # Changelog
+# 7.2.7(2020-03-10)
+* fix bucket_info
 
 # 7.2.6(2019-06-26)
 * 添加sms
