@@ -220,10 +220,24 @@ class BucketManager(object):
         Args:
             bucket:         待操作资源所在空间
             key:            待操作资源文件名
-            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储
+            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储，2 为归档存储
         """
         resource = entry(bucket, key)
         return self.__rs_do('chtype', resource, 'type/{0}'.format(storage_type))
+
+    def restoreAr(self, bucket, key, freezeAfter_days):
+        """解冻归档存储文件
+
+        修改文件的存储类型为普通存储或者是低频存储，参考文档：
+        https://developer.qiniu.com/kodo/api/6380/restore-archive
+
+        Args:
+            bucket:         待操作资源所在空间
+            key:            待操作资源文件名
+            freezeAfter_days:   解冻有效时长，取值范围 1～7
+        """
+        resource = entry(bucket, key)
+        return self.__rs_do('restoreAr', resource, 'freezeAfterDays/{0}'.format(freezeAfter_days))
 
     def change_status(self, bucket, key, status, cond):
         """修改文件的状态

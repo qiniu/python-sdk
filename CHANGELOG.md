@@ -1,4 +1,6 @@
 # Changelog
+# 7.2.8(2020-03-27)
+* add restoreAr
 
 # 7.2.7(2020-03-10)
 * fix bucket_info
