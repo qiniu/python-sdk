@@ -92,12 +92,12 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
         fields['key'] = key
 
     fields['token'] = up_token
+
     if config.get_default('default_zone').up_host:
         url = config.get_default('default_zone').up_host
     else:
         url = config.get_default('default_zone').get_up_host_by_token(up_token)
     # name = key if key else file_name
-
     fname = file_name
     if not fname or not fname.strip():
         fname = 'file_name'
@@ -105,7 +105,6 @@ def _form_put(up_token, key, data, params, mime_type, crc, progress_handler=None
     # last modify time
     if modify_time and keep_last_modified:
         fields['x-qn-meta-!Last-Modified'] = rfc_from_timestamp(modify_time)
-
     r, info = http._post_file(url, data=fields, files={'file': (fname, data, mime_type)})
     if r is None and info.need_retry():
         if info.connect_failed:
@@ -165,8 +164,7 @@ class _Resume(object):
         self.modify_time = modify_time or time.time()
         self.file_name = file_name
         self.keep_last_modified = keep_last_modified
-        # print(self.modify_time)
-        # print(modify_time)
+
 
     def record_upload_progress(self, offset):
         record_data = {
@@ -176,7 +174,6 @@ class _Resume(object):
         }
         if self.modify_time:
             record_data['modify_time'] = self.modify_time
-        # print(record_data)
         self.upload_progress_recorder.set_upload_record(self.file_name, self.key, record_data)
 
     def recovery_from_record(self):
@@ -253,7 +250,6 @@ class _Resume(object):
                 "x-qn-meta-!Last-Modified/{0}".format(urlsafe_base64_encode(rfc_from_timestamp(self.modify_time))))
 
         url = '/'.join(url)
-        # print url
         return url
 
     def make_file(self, host):

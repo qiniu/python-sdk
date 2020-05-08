@@ -368,6 +368,38 @@ class UploaderTestCase(unittest.TestCase):
             print(info)
             assert ret is not None
 
+    def test_put_zone(self):
+        zone = Zone(
+            up_host='http://upload.qiniup.com',
+            up_host_backup='http://up.qiniup.com',
+            io_host='https://iovip.qbox.me',
+            scheme='https')
+        set_default(default_zone=zone)
+        key = 'big'
+        token = self.q.upload_token(bucket_name, key)
+        localfile = create_temp_file(4 * 1024 * 1024 + 1)
+        progress_handler = lambda progress, total: progress
+        ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
+        print(info)
+        assert ret['key'] == key
+        remove_temp_file(localfile)
+
+    def test_put_zone_without_host(self):
+        zone = Zone(
+            up_host=None,
+            up_host_backup=None,
+            io_host=None,
+            scheme='https')
+        set_default(default_zone=zone)
+        key = 'big'
+        token = self.q.upload_token(bucket_name, key)
+        localfile = create_temp_file(4 * 1024 * 1024 + 1)
+        progress_handler = lambda progress, total: progress
+        ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
+        print(info)
+        assert ret['key'] == key
+        remove_temp_file(localfile)
+
 
 class ResumableUploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
