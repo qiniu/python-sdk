@@ -8,6 +8,7 @@ from qiniu import Sms
 access_key = ''
 secret_key = ''
 
+
 # 初始化Auth状态
 q = QiniuMacAuth(access_key, secret_key)
 

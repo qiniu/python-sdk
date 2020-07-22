@@ -3,6 +3,7 @@
 [![@qiniu on weibo](http://img.shields.io/badge/weibo-%40qiniutek-blue.svg)](http://weibo.com/qiniutek)
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 [![Build Status](https://travis-ci.org/qiniu/python-sdk.svg)](https://travis-ci.org/qiniu/python-sdk)
+[![GitHub release](https://img.shields.io/github/v/tag/qiniu/python-sdk.svg?label=release)](https://github.com/qiniu/python-sdk/releases)
 [![Latest Stable Version](https://img.shields.io/pypi/v/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
 [![Download Times](https://img.shields.io/pypi/dm/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/qiniu/python-sdk/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/qiniu/python-sdk/?branch=master)
