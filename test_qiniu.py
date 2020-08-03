@@ -414,9 +414,9 @@ class DownloadTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
 
     def test_private_url(self):
-        private_bucket = 'private-res'
+        private_bucket_domain = 'private-sdk.peterpy.cn'
         private_key = 'gogopher.jpg'
-        base_url = 'http://%s/%s' % (private_bucket + '.qiniupkg.com', private_key)
+        base_url = 'http://%s/%s' % (private_bucket_domain, private_key)
         private_url = self.q.private_download_url(base_url, expires=3600)
         print(private_url)
         r = requests.get(private_url)
