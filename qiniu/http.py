@@ -9,7 +9,6 @@ from qiniu import config
 import qiniu.auth
 from . import __version__
 
-
 _sys_info = '{0}; {1}'.format(platform.system(), platform.machine())
 _python_ver = platform.python_version()
 
@@ -74,8 +73,10 @@ def _put(url, data, files, auth, headers=None):
 
 
 def _get(url, params, auth):
+    if _session is None:
+        _init()
     try:
-        r = requests.get(
+        r = _session.get(
             url,
             params=params,
             auth=qiniu.auth.RequestsAuth(auth) if auth is not None else None,
@@ -232,11 +233,14 @@ class ResponseInfo(object):
             self.req_id = response.headers.get('X-Reqid')
             self.x_log = response.headers.get('X-Log')
             if self.status_code >= 400:
-                ret = response.json() if response.text != '' else None
-                if ret is None or ret['error'] is None:
-                    self.error = 'unknown'
+                if 600 > self.status_code >= 499:
+                    self.error = response.text
                 else:
-                    self.error = ret['error']
+                    ret = response.json() if response.text != '' else None
+                    if ret is None or ret['error'] is None:
+                        self.error = 'unknown'
+                    else:
+                        self.error = ret['error']
             if self.req_id is None and self.status_code == 200:
                 self.error = 'server is not qiniu'
 
