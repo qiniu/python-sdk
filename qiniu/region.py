@@ -22,37 +22,42 @@ class Region(object):
             up_host_backup=None,
             io_host=None,
             host_cache={},
-            scheme="http",
-            home_dir=os.getcwd()):
+            home_dir=None,
+            scheme="http"):
         """初始化Zone类"""
-        self.up_host, self.up_host_backup, self.io_host = up_host, up_host_backup, io_host
+        self.up_host, self.up_host_backup, self.io_host, self.home_dir = up_host, up_host_backup, io_host, home_dir
         self.host_cache = host_cache
         self.scheme = scheme
-        self.home_dir = home_dir
 
-    def get_up_host_by_token(self, up_token):
+    def get_up_host_by_token(self, up_token, home_dir):
         ak, bucket = self.unmarshal_up_token(up_token)
-        up_hosts = self.get_up_host(ak, bucket)
+        if home_dir is None:
+            home_dir = os.getcwd()
+        up_hosts = self.get_up_host(ak, bucket, home_dir)
         return up_hosts[0]
 
-    def get_up_host_backup_by_token(self, up_token):
+    def get_up_host_backup_by_token(self, up_token, home_dir):
         ak, bucket = self.unmarshal_up_token(up_token)
-        up_hosts = self.get_up_host(ak, bucket)
+        if home_dir is None:
+            home_dir = os.getcwd()
+        up_hosts = self.get_up_host(ak, bucket, home_dir)
         if (len(up_hosts) <= 1):
             up_host = up_hosts[0]
         else:
             up_host = up_hosts[1]
         return up_host
 
-    def get_io_host(self, ak, bucket):
+    def get_io_host(self, ak, bucket, home_dir):
         if self.io_host:
             return self.io_host
-        bucket_hosts = self.get_bucket_hosts(ak, bucket)
+        if home_dir is None:
+            home_dir = os.getcwd()
+        bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
         io_hosts = bucket_hosts['ioHosts']
         return io_hosts[0]
 
-    def get_up_host(self, ak, bucket):
-        bucket_hosts = self.get_bucket_hosts(ak, bucket)
+    def get_up_host(self, ak, bucket, home_dir):
+        bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
         up_hosts = bucket_hosts['upHosts']
         return up_hosts
 
@@ -74,10 +79,10 @@ class Region(object):
 
         return ak, bucket
 
-    def get_bucket_hosts(self, ak, bucket):
+    def get_bucket_hosts(self, ak, bucket, home_dir):
         key = self.scheme + ":" + ak + ":" + bucket
 
-        bucket_hosts = self.get_bucket_hosts_to_cache(key)
+        bucket_hosts = self.get_bucket_hosts_to_cache(key, home_dir)
         if (len(bucket_hosts) > 0):
             return bucket_hosts
 
@@ -113,14 +118,14 @@ class Region(object):
             'ioHosts': scheme_hosts['io'],
             'deadline': int(time.time()) + hosts['ttl']
         }
-
-        self.set_bucket_hosts_to_cache(key, bucket_hosts)
+        home_dir = ""
+        self.set_bucket_hosts_to_cache(key, bucket_hosts, home_dir)
         return bucket_hosts
 
-    def get_bucket_hosts_to_cache(self, key):
+    def get_bucket_hosts_to_cache(self, key, home_dir):
         ret = []
         if (len(self.host_cache) == 0):
-            self.host_cache_from_file()
+            self.host_cache_from_file(home_dir)
 
         if (not (key in self.host_cache)):
             return ret
@@ -130,12 +135,14 @@ class Region(object):
 
         return ret
 
-    def set_bucket_hosts_to_cache(self, key, val):
+    def set_bucket_hosts_to_cache(self, key, val, home_dir):
         self.host_cache[key] = val
-        self.host_cache_to_file()
+        self.host_cache_to_file(home_dir)
         return
 
-    def host_cache_from_file(self):
+    def host_cache_from_file(self, home_dir):
+        if home_dir is not None:
+            self.home_dir = home_dir
         path = self.host_cache_file_path()
         if not os.path.isfile(path):
             return None
@@ -148,7 +155,7 @@ class Region(object):
     def host_cache_file_path(self):
         return os.path.join(self.home_dir, ".qiniu_pythonsdk_hostscache.json")
 
-    def host_cache_to_file(self):
+    def host_cache_to_file(self, home_dir):
         path = self.host_cache_file_path()
         with open(path, 'w') as f:
             compat.json.dump(self.host_cache, f)
