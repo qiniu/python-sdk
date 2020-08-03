@@ -40,6 +40,7 @@ elif is_py3:
 access_key = os.getenv('QINIU_ACCESS_KEY')
 secret_key = os.getenv('QINIU_SECRET_KEY')
 bucket_name = os.getenv('QINIU_TEST_BUCKET')
+hostscache_dir = None
 
 dummy_access_key = 'abcdefghklmnopq'
 dummy_secret_key = '1234567890'
@@ -125,19 +126,20 @@ class BucketTestCase(unittest.TestCase):
         assert bucket_name in ret
 
     def test_prefetch(self):
-        ret, info = self.bucket.prefetch(bucket_name, 'python-sdk.html')
+        ret, info = self.bucket.prefetch(bucket_name, 'python-sdk.html', hostscache_dir=hostscache_dir)
         print(info)
         assert ret['key'] == 'python-sdk.html'
 
     def test_fetch(self):
         ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name,
-                                      'fetch.html')
+                                      'fetch.html', hostscache_dir=hostscache_dir)
         print(info)
         assert ret['key'] == 'fetch.html'
         assert 'hash' in ret
 
     def test_fetch_without_key(self):
-        ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name)
+        ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name,
+                                      hostscache_dir=hostscache_dir)
         print(info)
         assert ret['key'] == ret['hash']
         assert 'hash' in ret
@@ -380,7 +382,8 @@ class ResumableUploaderTestCase(unittest.TestCase):
         size = os.stat(localfile).st_size
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, self.params,
+            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
+                                   self.params,
                                    self.mime_type)
             print(info)
             assert ret['key'] == key
