@@ -1,7 +1,17 @@
 # Changelog
-# 7.2.9(2020-08-06)
+# 7.2.10(2020-08-06)
 *修改二进制对象上传python3 bug
 *修复获取域名列方法
+
+
+## 7.2.9 (2020-08-07)
+* 支持指定本地ctx缓存文件.qiniu_pythonsdk_hostscache.json 文件路径
+* 更正接口返回描述docstring
+* 修复接口对非json response 处理
+* ci 覆盖增加python 3.6 3.7
+* 修复获取域名列方法
+* 修复python3 环境下，二进制对象上传问题
+
 
 # 7.2.8(2020-03-27)
 * add restoreAr
