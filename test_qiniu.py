@@ -12,7 +12,7 @@ import pytest
 from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save, Zone
 from qiniu import put_data, put_file, put_stream
 from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, \
-    build_batch_delete
+    build_batch_delete,DomainManager
 from qiniu import urlsafe_base64_encode, urlsafe_base64_decode
 
 from qiniu.compat import is_py2, is_py3, b
@@ -453,6 +453,15 @@ class EtagTestCase(unittest.TestCase):
         hash = etag(localfile)
         assert hash == 'ljF323utglY3GI6AvLgawSJ4_dgk'
         remove_temp_file(localfile)
+
+
+class CdnTestCase(unittest.TestCase):
+    q = Auth(access_key, secret_key)
+    domain_manager = DomainManager(q)
+
+    ret, info = domain_manager.get_domain('pythonsdk.qiniu.io')
+    print(info)
+    assert info.status_code == 200
 
 
 class ReadWithoutSeek(object):
