@@ -459,9 +459,10 @@ class CdnTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
     domain_manager = DomainManager(q)
 
-    ret, info = domain_manager.get_domain('pythonsdk.qiniu.io')
-    print(info)
-    assert info.status_code == 200
+    def test_get_domain(self):
+        ret, info = self.domain_manager.get_domain('pythonsdk.qiniu.io')
+        print(info)
+        assert info.status_code == 200
 
 
 class ReadWithoutSeek(object):
