@@ -1,9 +1,4 @@
 # Changelog
-# 7.2.10(2020-08-06)
-*修改二进制对象上传python3 bug
-*修复获取域名列方法
-
-
 ## 7.2.9 (2020-08-07)
 * 支持指定本地ctx缓存文件.qiniu_pythonsdk_hostscache.json 文件路径
 * 更正接口返回描述docstring
