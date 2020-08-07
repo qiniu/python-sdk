@@ -28,7 +28,7 @@ def put_data(
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
         一个ResponseInfo对象
     """
-    final_data = ''
+    final_data = b''
     if hasattr(data, 'read'):
         while True:
             tmp_data = data.read(config._BLOCK_SIZE)
