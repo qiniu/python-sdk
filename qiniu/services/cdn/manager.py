@@ -212,7 +212,7 @@ class DomainManager(object):
             - ResponseInfo    请求的Response信息
         """
         url = '{0}/domain/{1}'.format(self.server, name)
-        return self.__get(url, None)
+        return self.__get(url)
 
     def put_httpsconf(self, name, certid, forceHttps):
         """
@@ -268,8 +268,9 @@ class DomainManager(object):
         headers = {'Content-Type': 'application/json'}
         return http._put_with_auth_and_headers(url, data, self.auth, headers)
 
-    def __get(self, url, params):
-        return http._get_with_qiniu_mac(url, params, self.auth)
+    def __get(self, url, data=None):
+        headers = {'Content-Type': 'application/json'}
+        return http._get_with_auth_and_headers(url, data, self.auth, headers)
 
 
 def create_timestamp_anti_leech_url(host, file_name, query_string, encrypt_key, deadline):
