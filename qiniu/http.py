@@ -113,7 +113,7 @@ def _post_with_auth(url, data, auth):
 
 
 def _get_with_auth(url, data, auth):
-    return _get(url, data,  qiniu.auth.RequestsAuth(auth))
+    return _get(url, data, qiniu.auth.RequestsAuth(auth))
 
 
 def _post_with_auth_and_headers(url, data, auth, headers):
@@ -245,14 +245,14 @@ class ResponseInfo(object):
             self.req_id = response.headers.get('X-Reqid')
             self.x_log = response.headers.get('X-Log')
             if self.status_code >= 400:
-                if 600 > self.status_code >= 499:
-                    self.error = response.text
-                else:
+                if self.__check_json(response):
                     ret = response.json() if response.text != '' else None
-                    if ret is None or ret['error'] is None:
+                    if ret is None:
                         self.error = 'unknown'
                     else:
-                        self.error = ret['error']
+                        self.error = response.text
+                else:
+                    self.error = response.text
             if self.req_id is None and self.status_code == 200:
                 self.error = 'server is not qiniu'
 
@@ -280,3 +280,10 @@ class ResponseInfo(object):
 
     def __repr__(self):
         return self.__str__()
+
+    def __check_json(self, reponse):
+        try:
+            reponse.json()
+            return True
+        except:
+            return False

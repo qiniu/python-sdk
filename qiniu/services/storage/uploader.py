@@ -135,6 +135,13 @@ def put_stream(up_token, key, input_stream, file_name, data_size, hostscache_dir
     return task.upload()
 
 
+def append_file(up_token, key, input_stream, offset, data_size=-1, home_dir=None, crc=None,
+                mime_type="application/octet-stream"):
+    task = _Append_file(up_token, key, input_stream, offset, data_size, home_dir, crc, mime_type)
+
+    return task.append_file()
+
+
 class _Resume(object):
     """断点续上传类
 
@@ -268,6 +275,64 @@ class _Resume(object):
         body = ','.join([status['ctx'] for status in self.blockStatus])
         self.upload_progress_recorder.delete_upload_record(self.file_name, self.key)
         return self.post(url, body)
+
+    def post(self, url, data):
+        return http._post_with_token(url, data, self.up_token)
+
+
+class _Append_file(object):
+    """追加文件类
+
+        该类主要实现了追加文件 过程，详细规格参考：
+        https://developer.qiniu.com/kodo/api/4549/append-object
+
+        Attributes:
+            up_token:         上传凭证
+            key:              上传文件名
+            input_stream:     上传二进制流
+            data_size:        上传流大小
+            offset:           追加文件的偏移量
+            home_dir:         host请求 缓存文件保存位置
+            crc:              文件内容的 crc32 校验值，不指定则不进行校验。
+            mime_type:        文件的需要经过 base64 编码。具体可以参照：URL 安全的 Base64 编码。默认是 application/octet-stream,仅第一次调用append时有效,后续无法通过该接口修改。
+        """
+
+    def __init__(self, up_token, key, input_stream, offset, data_size, home_dir, crc, mime_type):
+        """初始化断点续上传"""
+        self.up_token = up_token
+        self.key = key
+        self.input_stream = input_stream
+        self.offset = offset
+        self.size = data_size
+        self.home_dir = home_dir
+        self.crc = crc
+        self.mime_type = mime_type
+
+    def append_file(self):
+        """追加文件"""
+        if config.get_default('default_zone').up_host:
+            host = config.get_default('default_zone').up_host
+        else:
+            host = config.get_default('default_zone').get_up_host_by_token(self.up_token, self.home_dir)
+        url = self.file_url(host)
+        return self.post(url, self.input_stream)
+
+    def file_url(self, host):
+        url = ['{0}/append/{1}/key/{2}'.format(host, self.offset, self.key)]
+
+        if self.size is None:
+            url.append('fsize/{0}'.format(-1))
+        else:
+            url.append('fsiez/{0}'.format(self.size))
+
+        if self.mime_type:
+            url.append('mimeType/{0}'.format(urlsafe_base64_encode(self.mime_type)))
+
+        if self.crc:
+            url.append('crc32/{0}'.format(self.crc))
+
+        url = '/'.join(url)
+        return url
 
     def post(self, url, data):
         return http._post_with_token(url, data, self.up_token)
