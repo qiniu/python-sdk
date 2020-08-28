@@ -56,11 +56,11 @@ class Sms(object):
             "page_size": int,
             }
         """
-        url = '{}/v1/signature'.format(self.server)
+        url = '{0}/v1/signature'.format(self.server)
         if audit_status:
-            url = '{}?audit_status={}&page={}&page_size={}'.format(url, audit_status, page, page_size)
+            url = '{0}?audit_status={1}&page={2}&page_size={3}'.format(url, audit_status, page, page_size)
         else:
-            url = '{}?page={}&page_size={}'.format(url, page, page_size)
+            url = '{0}?page={1}&page_size={2}'.format(url, page, page_size)
         return self.__get(url)
 
     def updateSignature(self, id, signature):
@@ -73,7 +73,7 @@ class Sms(object):
         }
         :return:
         """
-        url = '{}/v1/signature/{}'.format(self.server, id)
+        url = '{0}/v1/signature/{1}'.format(self.server, id)
         req = {}
         req['signature'] = signature
         body = json.dumps(req)
@@ -87,7 +87,7 @@ class Sms(object):
         * @retrun : 请求成功 HTTP 状态码为 200
 
         """
-        url = '{}/v1/signature/{}'.format(self.server, id)
+        url = '{0}/v1/signature/{1}'.format(self.server, id)
         return self.__delete(url)
 
     def createTemplate(self, name, template, type, description, signature_id):
@@ -103,7 +103,7 @@ class Sms(object):
         "template_id": string
                 }
         """
-        url = '{}/v1/template'.format(self.server)
+        url = '{0}/v1/template'.format(self.server)
         req = {}
         req['name'] = name
         req['template'] = template
@@ -137,11 +137,11 @@ class Sms(object):
             "page_size": int
         }
         """
-        url = '{}/v1/template'.format(self.server)
+        url = '{0}/v1/template'.format(self.server)
         if audit_status:
-            url = '{}?audit_status={}&page={}&page_size={}'.format(url, audit_status, page, page_size)
+            url = '{0}?audit_status={1}&page={2}&page_size={3}'.format(url, audit_status, page, page_size)
         else:
-            url = '{}?page={}&page_size={}'.format(url, page, page_size)
+            url = '{0}?page={1}&page_size={2}'.format(url, page, page_size)
         return self.__get(url)
 
     def updateTemplate(self, id, name, template, description, signature_id):
@@ -154,7 +154,7 @@ class Sms(object):
         :param signature_id: 已经审核通过的签名 string  类型，必填
         :return: 请求成功 HTTP 状态码为 200
         """
-        url = '{}/v1/template/{}'.format(self.server, id)
+        url = '{0}/v1/template/{1}'.format(self.server, id)
         req = {}
         req['name'] = name
         req['template'] = template
@@ -169,7 +169,7 @@ class Sms(object):
         :param id: template_id
         :return: 请求成功 HTTP 状态码为 200
         """
-        url = '{}/v1/template/{}'.format(self.server, id)
+        url = '{0}/v1/template/{1}'.format(self.server, id)
         return self.__delete(url)
 
     def sendMessage(self, template_id, mobiles, parameters):
@@ -182,13 +182,22 @@ class Sms(object):
             "job_id": string
         }
         """
-        url = '{}/v1/message'.format(self.server)
+        url = '{0}/v1/message'.format(self.server)
         req = {}
         req['template_id'] = template_id
         req['mobiles'] = mobiles
         req['parameters'] = parameters
         body = json.dumps(req)
         return self.__post(url, body)
+
+    def get_messages_info(self):
+        """
+        查询发送记录，文档：https://developer.qiniu.com/sms/api/5852/query-send-sms
+        :return:
+            {}
+        """
+        url = "{0}/v1/messages".format(self.server)
+        return self.__get(url)
 
     def __post(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
