@@ -285,5 +285,5 @@ class ResponseInfo(object):
         try:
             reponse.json()
             return True
-        except:
+        except Exception:
             return False
