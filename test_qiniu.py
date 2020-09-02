@@ -10,7 +10,7 @@ import unittest
 import pytest
 
 from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save, Zone
-from qiniu import put_data, put_file, put_stream, append_file
+from qiniu import put_data, put_file, put_stream
 from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, \
     build_batch_delete, DomainManager
 from qiniu import urlsafe_base64_encode, urlsafe_base64_decode
@@ -283,16 +283,6 @@ class UploaderTestCase(unittest.TestCase):
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
-
-    def test_appendfile(self):
-        key = 'append_{0}.txt'.format(int(time.time()))
-        encodekey = urlsafe_base64_encode(key)
-        data = urlsafe_base64_encode('hello bubby!')
-        offset = 0
-        token = self.q.upload_token(bucket_name)
-        ret, info = append_file(token, encodekey, data, offset)
-        print(info)
-        assert ret['nextAppendPosition'] == len(data)
 
     def test_put_crc(self):
         key = ''

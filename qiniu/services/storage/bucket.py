@@ -347,6 +347,29 @@ class BucketManager(object):
         """
         return self.__uc_do('v2/bucketInfo?bucket={}'.format(bucket_name), )
 
+    def bucket_domain(self, bucket_name):
+        """
+        获取存储空间域名列表
+        Args:
+            bucket_name: 存储空间名
+        """
+        options = {
+            'tbl': bucket_name,
+        }
+        url = "{0}/v6/domain/list?tbl={1}".format(config.get_default("default_api_host"), bucket_name)
+        return self.__get(url, options)
+
+    def change_bucket_permission(self, bucket_name, private):
+        """
+        设置 存储空间访问权限
+        https://developer.qiniu.com/kodo/api/3946/set-bucket-private
+        Args:
+            bucket_name: 存储空间名
+            private: 0 公开；1 私有 ,str类型
+        """
+        url = "{0}/private?bucket={1}&private={2}".format(config.get_default("default_uc_host"), bucket_name, private)
+        return self.__post(url)
+
     def __uc_do(self, operation, *args):
         return self.__server_do(config.get_default('default_uc_host'), operation, *args)
 
@@ -386,6 +409,10 @@ def build_batch_move(source_bucket, key_pairs, target_bucket, force='false'):
     return _two_key_batch('move', source_bucket, key_pairs, target_bucket, force)
 
 
+def build_batch_restoreAr(bucket, keys):
+    return _three_key_batch('restoreAr', bucket, keys)
+
+
 def build_batch_delete(bucket, keys):
     return _one_key_batch('delete', bucket, keys)
 
@@ -403,3 +430,8 @@ def _two_key_batch(operation, source_bucket, key_pairs, target_bucket, force='fa
         target_bucket = source_bucket
     return [_build_op(operation, entry(source_bucket, k), entry(target_bucket, v), 'force/{0}'.format(force)) for k, v
             in key_pairs.items()]
+
+
+def _three_key_batch(operation, bucket, keys):
+    return [_build_op(operation, entry(bucket, k), 'freezeAfterDays/{0}'.format(v)) for k, v
+            in keys.items()]
