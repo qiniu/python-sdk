@@ -85,14 +85,16 @@ print(req, info)
 """
 
 """
+# 查询短信发送记录
+req, info = sms.get_messages_info()
+print(req, info)
+"""
+
+"""
 #发送短信
 """
-template_id	= ''
+template_id = ''
 mobiles = []
 parameters = {}
 req, info = sms.sendMessage(template_id, mobiles, parameters)
 print(req, info)
-
-
-
-

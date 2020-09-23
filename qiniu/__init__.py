@@ -18,7 +18,7 @@ from .zone import Zone
 from .region import Region
 
 from .services.storage.bucket import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, \
-    build_batch_stat, build_batch_delete
+    build_batch_stat, build_batch_delete, build_batch_restoreAr
 from .services.storage.uploader import put_data, put_file, put_stream
 from .services.cdn.manager import CdnManager, create_timestamp_anti_leech_url, DomainManager
 from .services.processing.pfop import PersistentFop
