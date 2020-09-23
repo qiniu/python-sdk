@@ -1,4 +1,14 @@
 # Changelog
+
+## 7.3.0 (2020-09-23)
+新增
+* sms[云短信]：新增查询短信发送记录方法：get_messages_info
+* cdn: 新增上线域名 domain_online 方法、下线域名 domain_offline 方法和删除域名 delete_domain 方法
+* 对象存储：新增批量解冻build_batch_restoreAr方法、获取空间列表bucket_domain方法和修改空间访问权限change_bucket_permission方法
+
+修复
+* 修复ResponseInfo对扩展码错误处理问题
+
 ## 7.2.10 （2020-08-21）
 * 修复上传策略中forceSaveKey参数没有签算进上传token，导致上传失败的问题
 ## 7.2.9 (2020-08-07)
