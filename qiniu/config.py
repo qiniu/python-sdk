@@ -38,7 +38,7 @@ def set_default(
     if default_api_host:
         _config['default_api_host'] = default_api_host
     if default_uc_host:
-        _config['default_uc_host'] = default_api_host
+        _config['default_uc_host'] = default_uc_host
     if connection_retries:
         _config['connection_retries'] = connection_retries
     if connection_pool:
