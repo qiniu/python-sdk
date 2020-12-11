@@ -330,7 +330,7 @@ class UploaderTestCase(unittest.TestCase):
     def test_withoutRead_withoutSeek_retry(self):
         key = 'retry'
         data = 'hello retry!'
-        set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
+        set_default(default_zone=Zone('http://a', 'http://upload.qiniup.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
@@ -393,7 +393,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         token = self.q.upload_token(bucket_name, key)
         localfile = create_temp_file(4 * 1024 * 1024 + 1)
         progress_handler = lambda progress, total: progress
-        qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
+        qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniup.com'))
         ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
         print(info)
         assert ret['key'] == key
@@ -402,7 +402,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
     def test_retry(self):
         localfile = __file__
         key = 'test_file_r_retry'
-        qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniu.com'))
+        qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniup.com'))
         token = self.q.upload_token(bucket_name, key)
         ret, info = put_file(token, key, localfile, self.params, self.mime_type)
         print(info)
