@@ -23,7 +23,7 @@ def __return_wrapper(resp):
     if resp.status_code != 200 or resp.headers.get('X-Reqid') is None:
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
-    ret = resp.json(encoding='utf-8') if resp.text != '' else {}
+    ret = resp.json() if resp.text != '' else {}
     if ret is None:  # json null
         ret = {}
     return ret, ResponseInfo(resp)
