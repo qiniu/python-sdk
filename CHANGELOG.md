@@ -1,4 +1,8 @@
 # Changelog
+## 7.3.0 (2020-12-14)
+* 修复python3.9 环境下，json.loads() 处理
+* ci 覆盖增加python 3.8 3.9
+
 ## 7.2.9 (2020-08-07)
 * 支持指定本地ctx缓存文件.qiniu_pythonsdk_hostscache.json 文件路径
 * 更正接口返回描述docstring
