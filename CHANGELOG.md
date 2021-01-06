@@ -1,8 +1,8 @@
 # Changelog
 
 ## 7.3.1 (2021-01-06)
-* 修复ResponseInfo对扩展码错误处理问题
-* 增加python v3.7，v3.8，v3,9 ci测试
+* 修复 ResponseInfo 对扩展码错误处理问题
+* 增加python v3.7，v3.8，v3.9 版本 CI 测试
 
 ## 7.3.0 (2020-09-23)
 新增
