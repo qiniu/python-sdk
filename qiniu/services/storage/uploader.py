@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import hashlib
+import json
 import os
 import time
+
+from requests.api import post
 
 from qiniu import config
 from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter, rfc_from_timestamp
@@ -153,10 +157,11 @@ class _Resume(object):
         upload_progress_recorder:   记录上传进度，用于断点续传
         modify_time:                上传文件修改日期
         hostscache_dir：            host请求 缓存文件保存位置
+        version                     分片上传版本 目前支持v1/v2版本 默认v1
     """
 
     def __init__(self, up_token, key, input_stream, file_name, data_size, hostscache_dir, params, mime_type,
-                 progress_handler, upload_progress_recorder, modify_time, keep_last_modified):
+                 progress_handler, upload_progress_recorder, modify_time, keep_last_modified, version='v1'):
         """初始化断点续上传"""
         self.up_token = up_token
         self.key = key
@@ -170,6 +175,7 @@ class _Resume(object):
         self.upload_progress_recorder = upload_progress_recorder or UploadProgressRecorder()
         self.modify_time = modify_time or time.time()
         self.keep_last_modified = keep_last_modified
+        self.version = version
         # print(self.modify_time)
         # print(modify_time)
 
@@ -177,11 +183,13 @@ class _Resume(object):
         record_data = {
             'size': self.size,
             'offset': offset,
-            'contexts': [block['ctx'] for block in self.blockStatus]
         }
+        if self.version == 'v1':
+            record_data['contexts'] = [block['ctx'] for block in self.blockStatus]
+        elif self.version == 'v2':
+            record_data['contexts'] = self.blockStatus
         if self.modify_time:
             record_data['modify_time'] = self.modify_time
-        # print(record_data)
         self.upload_progress_recorder.set_upload_record(self.file_name, self.key, record_data)
 
     def recovery_from_record(self):
@@ -195,21 +203,39 @@ class _Resume(object):
                 return 0
         except KeyError:
             return 0
-        self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
+        if self.version == 'v1':
+            self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
+        elif self.version == 'v2':
+            self.blockStatus = record['contexts']
         return record['offset']
 
-    def upload(self):
+    def upload(self, bucket_name=None, part_size=None, metadata=None):
         """上传操作"""
         self.blockStatus = []
-        if config.get_default('default_zone').up_host:
-            host = config.get_default('default_zone').up_host
-        else:
-            host = config.get_default('default_zone').get_up_host_by_token(self.up_token, self.hostscache_dir)
+        self.recovery_index = 1
+        encode_object_name = self.key or '~'
+        host = self.get_up_host()
         offset = self.recovery_from_record()
-        for block in _file_iter(self.input_stream, config._BLOCK_SIZE, offset):
+        if self.version == 'v1':
+            part_size_ = config._BLOCK_SIZE
+        elif self.version == 'v2':
+            part_size_ = self.set_part_size(part_size)
+            if offset > 0 and self.blockStatus != []:
+                self.recovery_index = self.blockStatus[-1]['partNumber'] + 1
+            else:
+                self.recovery_index = 1
+            init_url = self.block_url_v2(host, bucket_name, encode_object_name)
+            upload_id, expire = self.init_upload_task(init_url)
+        for index, block in enumerate(_file_iter(self.input_stream, part_size_, offset)):
             length = len(block)
-            crc = crc32(block)
-            ret, info = self.make_block(block, length, host)
+            if self.version == 'v1':
+                crc = crc32(block)
+                ret, info = self.make_block(block, length, host)
+            elif self.version == 'v2':
+                index_ = index + self.recovery_index
+                md = hashlib.md5(block).hexdigest()
+                url = init_url + '/%s/%d' % (upload_id, index_)
+                ret, info = self.make_block_v2(block, url)
             if ret is None and not info.need_retry():
                 return ret, info
             if info.connect_failed():
@@ -217,29 +243,82 @@ class _Resume(object):
                     host = config.get_default('default_zone').up_host_backup
                 else:
                     host = config.get_default('default_zone').get_up_host_backup_by_token(self.up_token,
-                                                                                          self.hostscache_dir)
-            if info.need_retry() or crc != ret['crc32']:
-                ret, info = self.make_block(block, length, host)
-                if ret is None or crc != ret['crc32']:
-                    return ret, info
+                                                                           self.hostscache_dir)
+            if self.version == 'v1':
+                if info.need_retry() or crc != ret['crc32']:
+                    ret, info = self.make_block(block, length, host)
+                    if ret is None or crc != ret['crc32']:
+                        return ret, info
+            elif self.version == 'v2':
+                if info.need_retry() or md != ret['md5']:
+                    url = self.block_url_v2(host, bucket_name, encode_object_name) + '/%s/%d' % (upload_id, index + 1)
+                    ret, info = self.make_block_v2(block, url)
+                    if ret is None or md != ret['md5']:
+                        return ret, info
+                del ret['md5']
+                ret['partNumber'] = index_
             self.blockStatus.append(ret)
             offset += length
             self.record_upload_progress(offset)
             if (callable(self.progress_handler)):
-                self.progress_handler(((len(self.blockStatus) - 1) * config._BLOCK_SIZE) + length, self.size)
-        return self.make_file(host)
+                self.progress_handler(((len(self.blockStatus) - 1) * part_size_) + len(block), self.size)
+        if self.version == 'v1':
+            return self.make_file(host)
+        elif self.version == 'v2':
+            make_file_url = self.block_url_v2(host, bucket_name, encode_object_name) + '/%s' % upload_id
+            return self.make_file_v2(self.blockStatus, make_file_url, self.mime_type, metadata, self.params)
+
+
+    def make_file_v2(self, block_status, url, file_name=None, mime_type=None, metadata=None, customVars=None):
+            """completeMultipartUpload"""
+            parts = self.get_parts(block_status)
+            headers = {
+                'Content-Type': 'application/json',
+            }
+            data = {
+                'parts': parts,
+                'fname': file_name,
+                'mimeType': mime_type,
+                'metadata': metadata,
+                'customVars': customVars
+            }
+            ret, info = self.post_with_headers(url, json.dumps(data), headers=headers)
+            # print("\n\n resp is: %s" % ret)
+            return ret, info
+
+
+    def get_up_host(self):
+        if config.get_default('default_zone').up_host:
+            host = config.get_default('default_zone').up_host
+        else:
+            host = config.get_default('default_zone').get_up_host_by_token(self.up_token, self.hostscache_dir)
+        return host
+
 
     def make_block(self, block, block_size, host):
         """创建块"""
         url = self.block_url(host, block_size)
         return self.post(url, block)
 
+
+    def make_block_v2(self, block, url):
+        headers = {
+            'Content-Type': 'application/octet-stream',
+            'Content-MD5': hashlib.md5(block).hexdigest(),
+        }
+        return self.put(url, block, headers)
+
+
     def block_url(self, host, size):
         return '{0}/mkblk/{1}'.format(host, size)
 
+
+    def block_url_v2(self, host, bucket_name, encode_object_name):
+        return '{0}/buckets/{1}/objects/{2}/uploads'.format(host, bucket_name, urlsafe_base64_encode(encode_object_name))
+
+
     def file_url(self, host):
         url = ['{0}/mkfile/{1}'.format(host, self.size)]
-
         if self.mime_type:
             url.append('mimeType/{0}'.format(urlsafe_base64_encode(self.mime_type)))
 
@@ -262,6 +341,7 @@ class _Resume(object):
         # print url
         return url
 
+
     def make_file(self, host):
         """创建文件"""
         url = self.file_url(host)
@@ -269,5 +349,34 @@ class _Resume(object):
         self.upload_progress_recorder.delete_upload_record(self.file_name, self.key)
         return self.post(url, body)
 
+
+    def init_upload_task(self, url):
+        body, resp = self.post(url, '')
+        if body is not None:
+            return body['uploadId'], body['expireAt']
+        else:
+            return None, None
+
+
     def post(self, url, data):
         return http._post_with_token(url, data, self.up_token)
+        
+
+    def post_with_headers(self, url, data, headers):
+        return http._post_with_auth_and_headers(url=url, data=data, auth=self.up_token, headers=headers)
+
+
+    def put(self, url, data, headers):
+        return http._put_with_auth_and_headers(url, data, self.up_token, headers)
+
+
+    def set_part_size(self, part_size):
+        return part_size if part_size > config._BLOCK_MIN_SIZE \
+                                  and part_size < config._BLOCK_MAX_SIZE \
+                                  else config._BLOCK_SIZE
+
+
+    def get_parts(self, block_status):
+        return sorted(block_status, key=lambda i: i['partNumber'])
+
+

@@ -195,12 +195,16 @@ class RequestsAuth(AuthBase):
         self.auth = auth
 
     def __call__(self, r):
-        if r.body is not None and r.headers['Content-Type'] == 'application/x-www-form-urlencoded':
-            token = self.auth.token_of_request(
-                r.url, r.body, 'application/x-www-form-urlencoded')
+        if isinstance(self.auth, str):
+            r.headers['Authorization'] = 'UpToken {0}'.format(self.auth)
         else:
-            token = self.auth.token_of_request(r.url)
-        r.headers['Authorization'] = 'QBox {0}'.format(token)
+            if r.body is not None and r.headers['Content-Type'] == 'application/x-www-form-urlencoded':
+                token = self.auth.token_of_request(
+                    r.url, r.body, 'application/x-www-form-urlencoded')
+            else:
+                token = self.auth.token_of_request(r.url)
+            r.headers['Authorization'] = 'QBox {0}'.format(token)
+
         return r
 
 

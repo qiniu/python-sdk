@@ -37,9 +37,13 @@ elif is_py3:
     StringIO = io.StringIO
     urlopen = urllib.request.urlopen
 
-access_key = os.getenv('QINIU_ACCESS_KEY')
-secret_key = os.getenv('QINIU_SECRET_KEY')
-bucket_name = os.getenv('QINIU_TEST_BUCKET')
+# access_key = os.getenv('QINIU_ACCESS_KEY')
+# secret_key = os.getenv('QINIU_SECRET_KEY')
+# bucket_name = os.getenv('QINIU_TEST_BUCKET')
+
+access_key = "qhtbC5YmDCO-WiPriuoCG_t4hZ1LboSOtRYSJXo_"
+secret_key = "3sSWVQQ_HvD6pVJSjfEsRQMl9ZRnNRf0-G5iomNV"
+bucket_name = "z0-bucket"
 hostscache_dir = None
 
 dummy_access_key = 'abcdefghklmnopq'
