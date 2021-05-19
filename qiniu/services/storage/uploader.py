@@ -74,7 +74,8 @@ def put_file(up_token, key, file_path, params=None,
             ret, info = put_stream(up_token, key, input_stream, file_name, size, hostscache_dir, params,
                                    mime_type, progress_handler,
                                    upload_progress_recorder=upload_progress_recorder,
-                                   modify_time=modify_time, keep_last_modified=keep_last_modified)
+                                   modify_time=modify_time, keep_last_modified=keep_last_modified,
+                                   part_size=None, version=None, bucket_name=None)
         else:
             crc = file_crc32(file_path)
             ret, info = _form_put(up_token, key, input_stream, params, mime_type,
@@ -199,13 +200,22 @@ class _Resume(object):
     def recovery_from_record(self):
         record = self.upload_progress_recorder.get_upload_record(self.file_name, self.key)
         if not record:
-            return 0
+            if self.version == 'v1':
+                return 0
+            elif self.version == 'v2':
+                return 0, None, None
         try:
             if not record['modify_time'] or record['size'] != self.size or \
                    record['modify_time'] != self.modify_time:
-                return 0
+                if self.version == 'v1':
+                    return 0
+                elif self.version == 'v2':
+                    return 0, None, None
         except KeyError:
-            return 0
+            if self.version == 'v1':
+                return 0
+            elif self.version == 'v2':
+                return 0, None, None
         if self.version == 'v1':
             if not record.__contains__('contexts') or len(record['contexts']) == 0:
                 return 0
