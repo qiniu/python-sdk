@@ -191,6 +191,7 @@ class _Resume(object):
         elif self.version == 'v2':
             record_data['etags'] = self.blockStatus
             record_data['expired_at'] = self.expiredAt
+            record_data['upload_id'] = self.uploadId
         if self.modify_time:
             record_data['modify_time'] = self.modify_time
         self.upload_progress_recorder.set_upload_record(self.file_name, self.key, record_data)
@@ -209,29 +210,35 @@ class _Resume(object):
             if not record.__contains__('contexts') or len(record['contexts']) == 0:
                 return 0
             self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
+            return record['offset']
         elif self.version == 'v2':
             if not record.__contains__('etags') or len(record['etags']) == 0 or \
-               not record.__contains__('expired_at') or float(record['expired_at']) < time.time():
-                return 0
+               not record.__contains__('expired_at') or float(record['expired_at']) < time.time() or \
+               not record.__contains__('upload_id'):
+                return 0, None, None
             self.blockStatus = record['etags']
-        return record['offset']
+            return record['offset'], record['upload_id'], record['expired_at']
+
 
     def upload(self):
         """上传操作"""
         self.blockStatus = []
         self.recovery_index = 1
         self.expiredAt = None
+        self.uploadId = None
         host = self.get_up_host()
-        offset = self.recovery_from_record()
         if self.version == 'v1':
+            offset = self.recovery_from_record()
             self.part_size = config._BLOCK_SIZE
         elif self.version == 'v2':
-            if offset > 0 and self.blockStatus != []:
+            offset, self.uploadId, self.expiredAt = self.recovery_from_record()
+            if offset > 0 and self.blockStatus != [] and self.uploadId is not None \
+               and self.expiredAt is not None:
                 self.recovery_index = self.blockStatus[-1]['partNumber'] + 1
             else:
                 self.recovery_index = 1
-            init_url = self.block_url_v2(host, self.bucket_name)
-            upload_id, self.expiredAt = self.init_upload_task(init_url)
+                init_url = self.block_url_v2(host, self.bucket_name)
+                self.uploadId, self.expiredAt = self.init_upload_task(init_url)
         else:
             raise ValueError("version must choose v1 or v2 !")
         for index, block in enumerate(_file_iter(self.input_stream, self.part_size, offset)):
@@ -241,7 +248,7 @@ class _Resume(object):
                 ret, info = self.make_block(block, length, host)
             elif self.version == 'v2':
                 index_ = index + self.recovery_index
-                url = init_url + '/%s/%d' % (upload_id, index_)
+                url = init_url + '/%s/%d' % (self.uploadId, index_)
                 ret, info = self.make_block_v2(block, url)
             if ret is None and not info.need_retry():
                 return ret, info
@@ -258,7 +265,7 @@ class _Resume(object):
                         return ret, info
             elif self.version == 'v2':
                 if info.need_retry():
-                    url = self.block_url_v2(host, self.bucket_name) + '/%s/%d' % (upload_id, index + 1)
+                    url = self.block_url_v2(host, self.bucket_name) + '/%s/%d' % (self.uploadId, index + 1)
                     ret, info = self.make_block_v2(block, url)
                     if ret is None:
                         return ret, info
@@ -272,7 +279,7 @@ class _Resume(object):
         if self.version == 'v1':
             return self.make_file(host)
         elif self.version == 'v2':
-            make_file_url = self.block_url_v2(host, self.bucket_name) + '/%s' % upload_id
+            make_file_url = self.block_url_v2(host, self.bucket_name) + '/%s' % self.uploadId
             return self.make_file_v2(self.blockStatus, make_file_url, self.file_name,
                                      self.mime_type, self.params)
 
