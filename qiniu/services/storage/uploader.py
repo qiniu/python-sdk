@@ -48,7 +48,7 @@ def put_data(
 def put_file(up_token, key, file_path, params=None,
              mime_type='application/octet-stream', check_crc=False,
              progress_handler=None, upload_progress_recorder=None, keep_last_modified=False, hostscache_dir=None,
-             part_size=None, version=None, bucket_name=None):
+             part_size=config._BLOCK_SIZE, version=None, bucket_name=None):
     """上传文件到七牛
 
     Args:
@@ -61,6 +61,9 @@ def put_file(up_token, key, file_path, params=None,
         progress_handler:         上传进度
         upload_progress_recorder: 记录上传进度，用于断点续传
         hostscache_dir：          host请求 缓存文件保存位置
+        version                   分片上传版本 目前支持v1/v2版本 默认v1
+        part_size                 分片上传v2必传字段 默认大小为4MB 分片大小范围为1 MB - 1 GB
+        bucket_name               分片上传v2字段必传字段 空间名称
 
     Returns:
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
@@ -71,7 +74,7 @@ def put_file(up_token, key, file_path, params=None,
     with open(file_path, 'rb') as input_stream:
         file_name = os.path.basename(file_path)
         modify_time = int(os.path.getmtime(file_path))
-        if size > config._BLOCK_SIZE * 2:
+        if size > config.get_default('default_upload_threshold'):
             ret, info = put_stream(up_token, key, input_stream, file_name, size, hostscache_dir, params,
                                    mime_type, progress_handler,
                                    upload_progress_recorder=upload_progress_recorder,
