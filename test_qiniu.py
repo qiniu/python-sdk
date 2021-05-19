@@ -4,6 +4,8 @@ import os, time
 import string
 import random
 import tempfile
+from imp import reload
+
 import requests
 
 import unittest
@@ -37,14 +39,11 @@ elif is_py3:
     StringIO = io.StringIO
     urlopen = urllib.request.urlopen
 
-# access_key = os.getenv('QINIU_ACCESS_KEY')
-# secret_key = os.getenv('QINIU_SECRET_KEY')
-# bucket_name = os.getenv('QINIU_TEST_BUCKET')
-
-access_key = "qhtbC5YmDCO-WiPriuoCG_t4hZ1LboSOtRYSJXo_"
-secret_key = "3sSWVQQ_HvD6pVJSjfEsRQMl9ZRnNRf0-G5iomNV"
-bucket_name = "z0-bucket"
+access_key = os.getenv('QINIU_ACCESS_KEY')
+secret_key = os.getenv('QINIU_SECRET_KEY')
+bucket_name = os.getenv('QINIU_TEST_BUCKET')
 hostscache_dir = None
+
 
 dummy_access_key = 'abcdefghklmnopq'
 dummy_secret_key = '1234567890'
@@ -384,13 +383,28 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = __file__
         key = 'test_file_r'
         size = os.stat(localfile).st_size
+        set_default(default_zone=Zone('http://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
                                    self.params,
-                                   self.mime_type)
-            print(info)
+                                   self.mime_type, part_size=None, version=None, bucket_name=None)
             assert ret['key'] == key
+
+
+    def test_put_stream_v2(self):
+        localfile = __file__
+        key = 'test_file_r'
+        size = os.stat(localfile).st_size
+        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name, key)
+            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
+                                   self.params,
+                                   self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
+            print("\n\n\n\n\n", info)
+            assert ret['key'] == key
+
 
     def test_big_file(self):
         key = 'big'

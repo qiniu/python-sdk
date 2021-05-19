@@ -133,9 +133,11 @@ def _form_put(up_token, key, data, params, mime_type, crc, hostscache_dir=None, 
 
 def put_stream(up_token, key, input_stream, file_name, data_size, hostscache_dir=None, params=None,
                mime_type=None, progress_handler=None,
-               upload_progress_recorder=None, modify_time=None, keep_last_modified=False):
+               upload_progress_recorder=None, modify_time=None, keep_last_modified=False,
+               part_size=None, version=None, bucket_name=None):
     task = _Resume(up_token, key, input_stream, file_name, data_size, hostscache_dir, params, mime_type,
-                   progress_handler, upload_progress_recorder, modify_time, keep_last_modified)
+                   progress_handler, upload_progress_recorder, modify_time, keep_last_modified,
+                   part_size, version, bucket_name)
     return task.upload()
 
 
@@ -158,11 +160,15 @@ class _Resume(object):
         modify_time:                上传文件修改日期
         hostscache_dir：            host请求 缓存文件保存位置
         version                     分片上传版本 目前支持v1/v2版本 默认v1
+        part_size                   分片上传v2必传字段 分片大小范围为1 MB - 1 GB
+        bucket_name                 分片上传v2字段必传字段 空间名称
     """
 
     def __init__(self, up_token, key, input_stream, file_name, data_size, hostscache_dir, params, mime_type,
-                 progress_handler, upload_progress_recorder, modify_time, keep_last_modified, version='v1'):
+             progress_handler, upload_progress_recorder, modify_time, keep_last_modified, part_size=None,
+                 version='v1', bucket_name=None):
         """初始化断点续上传"""
+        # self.auth = auth_obj
         self.up_token = up_token
         self.key = key
         self.input_stream = input_stream
@@ -175,7 +181,9 @@ class _Resume(object):
         self.upload_progress_recorder = upload_progress_recorder or UploadProgressRecorder()
         self.modify_time = modify_time or time.time()
         self.keep_last_modified = keep_last_modified
-        self.version = version
+        self.version = version or 'v1'
+        self.part_size = part_size
+        self.bucket_name = bucket_name
         # print(self.modify_time)
         # print(modify_time)
 
@@ -187,10 +195,12 @@ class _Resume(object):
         if self.version == 'v1':
             record_data['contexts'] = [block['ctx'] for block in self.blockStatus]
         elif self.version == 'v2':
-            record_data['contexts'] = self.blockStatus
+            if self.expiredAt > time.time():
+                record_data['etags'] = self.blockStatus
         if self.modify_time:
             record_data['modify_time'] = self.modify_time
         self.upload_progress_recorder.set_upload_record(self.file_name, self.key, record_data)
+
 
     def recovery_from_record(self):
         record = self.upload_progress_recorder.get_upload_record(self.file_name, self.key)
@@ -206,34 +216,34 @@ class _Resume(object):
         if self.version == 'v1':
             self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
         elif self.version == 'v2':
-            self.blockStatus = record['contexts']
+            self.blockStatus = record['etags']
         return record['offset']
 
-    def upload(self, bucket_name=None, part_size=None, metadata=None):
+
+    def upload(self, metadata=None):
         """上传操作"""
         self.blockStatus = []
         self.recovery_index = 1
-        encode_object_name = self.key or '~'
+        self.expiredAt = 1
         host = self.get_up_host()
         offset = self.recovery_from_record()
         if self.version == 'v1':
-            part_size_ = config._BLOCK_SIZE
+            self.part_size = config._BLOCK_SIZE
         elif self.version == 'v2':
-            part_size_ = self.set_part_size(part_size)
             if offset > 0 and self.blockStatus != []:
                 self.recovery_index = self.blockStatus[-1]['partNumber'] + 1
             else:
                 self.recovery_index = 1
-            init_url = self.block_url_v2(host, bucket_name, encode_object_name)
-            upload_id, expire = self.init_upload_task(init_url)
-        for index, block in enumerate(_file_iter(self.input_stream, part_size_, offset)):
+            init_url = self.block_url_v2(host, self.bucket_name)
+            upload_id, self.expiredAt = self.init_upload_task(init_url)
+        else:
+            raise ValueError("version must choose v1 or v2 !")
+        for index, block in enumerate(_file_iter(self.input_stream, self.part_size, offset)):
             length = len(block)
             if self.version == 'v1':
-                crc = crc32(block)
                 ret, info = self.make_block(block, length, host)
             elif self.version == 'v2':
                 index_ = index + self.recovery_index
-                md = hashlib.md5(block).hexdigest()
                 url = init_url + '/%s/%d' % (upload_id, index_)
                 ret, info = self.make_block_v2(block, url)
             if ret is None and not info.need_retry():
@@ -245,15 +255,15 @@ class _Resume(object):
                     host = config.get_default('default_zone').get_up_host_backup_by_token(self.up_token,
                                                                            self.hostscache_dir)
             if self.version == 'v1':
-                if info.need_retry() or crc != ret['crc32']:
+                if info.need_retry():
                     ret, info = self.make_block(block, length, host)
-                    if ret is None or crc != ret['crc32']:
+                    if ret is None:
                         return ret, info
             elif self.version == 'v2':
-                if info.need_retry() or md != ret['md5']:
-                    url = self.block_url_v2(host, bucket_name, encode_object_name) + '/%s/%d' % (upload_id, index + 1)
+                if info.need_retry():
+                    url = self.block_url_v2(host, self.bucket_name) + '/%s/%d' % (upload_id, index + 1)
                     ret, info = self.make_block_v2(block, url)
-                    if ret is None or md != ret['md5']:
+                    if ret is None:
                         return ret, info
                 del ret['md5']
                 ret['partNumber'] = index_
@@ -261,12 +271,12 @@ class _Resume(object):
             offset += length
             self.record_upload_progress(offset)
             if (callable(self.progress_handler)):
-                self.progress_handler(((len(self.blockStatus) - 1) * part_size_) + len(block), self.size)
+                self.progress_handler(((len(self.blockStatus) - 1) * self.part_size) + len(block), self.size)
         if self.version == 'v1':
             return self.make_file(host)
         elif self.version == 'v2':
-            make_file_url = self.block_url_v2(host, bucket_name, encode_object_name) + '/%s' % upload_id
-            return self.make_file_v2(self.blockStatus, make_file_url, self.mime_type, metadata, self.params)
+            make_file_url = self.block_url_v2(host, self.bucket_name) + '/%s' % upload_id
+            return self.make_file_v2(self.blockStatus, make_file_url, self.file_name, self.mime_type, metadata, self.params)
 
 
     def make_file_v2(self, block_status, url, file_name=None, mime_type=None, metadata=None, customVars=None):
@@ -283,7 +293,6 @@ class _Resume(object):
                 'customVars': customVars
             }
             ret, info = self.post_with_headers(url, json.dumps(data), headers=headers)
-            # print("\n\n resp is: %s" % ret)
             return ret, info
 
 
@@ -313,8 +322,9 @@ class _Resume(object):
         return '{0}/mkblk/{1}'.format(host, size)
 
 
-    def block_url_v2(self, host, bucket_name, encode_object_name):
-        return '{0}/buckets/{1}/objects/{2}/uploads'.format(host, bucket_name, urlsafe_base64_encode(encode_object_name))
+    def block_url_v2(self, host, bucket_name):
+        encode_object_name = urlsafe_base64_encode(self.key) if self.key is not None else '～'
+        return '{0}/buckets/{1}/objects/{2}/uploads'.format(host, bucket_name, encode_object_name)
 
 
     def file_url(self, host):
@@ -338,7 +348,6 @@ class _Resume(object):
                 "x-qn-meta-!Last-Modified/{0}".format(urlsafe_base64_encode(rfc_from_timestamp(self.modify_time))))
 
         url = '/'.join(url)
-        # print url
         return url
 
 
@@ -363,16 +372,16 @@ class _Resume(object):
         
 
     def post_with_headers(self, url, data, headers):
-        return http._post_with_auth_and_headers(url=url, data=data, auth=self.up_token, headers=headers)
+        return http._post_with_token_and_headers(url, data, self.up_token, headers)
 
 
     def put(self, url, data, headers):
-        return http._put_with_auth_and_headers(url, data, self.up_token, headers)
+        return http._put_with_token_and_headers(url, data, self.up_token, headers)
 
 
-    def set_part_size(self, part_size):
-        return part_size if part_size > config._BLOCK_MIN_SIZE \
-                                  and part_size < config._BLOCK_MAX_SIZE \
+    def set_part_size(self):
+        return self.part_size if self.part_size > config._BLOCK_MIN_SIZE \
+                                  and self.part_size < config._BLOCK_MAX_SIZE \
                                   else config._BLOCK_SIZE
 
 

@@ -103,6 +103,9 @@ class _TokenAuth(AuthBase):
 def _post_with_token(url, data, token):
     return _post(url, data, None, _TokenAuth(token))
 
+def _post_with_token_and_headers(url, data, token, headers):
+    return _post(url, data, None, _TokenAuth(token), headers)
+
 
 def _post_file(url, data, files):
     return _post(url, data, files, None)
@@ -130,6 +133,10 @@ def _post_with_qiniu_mac_and_headers(url, data, auth, headers):
 
 def _put_with_auth(url, data, auth):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth))
+
+
+def _put_with_token_and_headers(url, data, auth, headers):
+    return _put(url, data, None, _TokenAuth(auth), headers)
 
 
 def _put_with_auth_and_headers(url, data, auth, headers):
