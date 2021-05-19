@@ -47,7 +47,8 @@ def put_data(
 
 def put_file(up_token, key, file_path, params=None,
              mime_type='application/octet-stream', check_crc=False,
-             progress_handler=None, upload_progress_recorder=None, keep_last_modified=False, hostscache_dir=None):
+             progress_handler=None, upload_progress_recorder=None, keep_last_modified=False, hostscache_dir=None,
+             part_size=None, version=None, bucket_name=None):
     """上传文件到七牛
 
     Args:
@@ -75,7 +76,7 @@ def put_file(up_token, key, file_path, params=None,
                                    mime_type, progress_handler,
                                    upload_progress_recorder=upload_progress_recorder,
                                    modify_time=modify_time, keep_last_modified=keep_last_modified,
-                                   part_size=None, version=None, bucket_name=None)
+                                   part_size=part_size, version=version, bucket_name=bucket_name)
         else:
             crc = file_crc32(file_path)
             ret, info = _form_put(up_token, key, input_stream, params, mime_type,
