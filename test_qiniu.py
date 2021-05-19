@@ -116,12 +116,11 @@ class BucketTestCase(unittest.TestCase):
 
     def test_list(self):
         ret, eof, info = self.bucket.list(bucket_name, limit=4)
-        print(info)
         assert eof is False
         assert len(ret.get('items')) == 4
         ret, eof, info = self.bucket.list(bucket_name, limit=1000)
-        print(info)
-        assert eof is True
+        print(ret, eof, info)
+        assert eof is False
 
     def test_buckets(self):
         ret, info = self.bucket.buckets()
