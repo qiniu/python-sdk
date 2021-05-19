@@ -195,7 +195,6 @@ class _Resume(object):
             record_data['modify_time'] = self.modify_time
         self.upload_progress_recorder.set_upload_record(self.file_name, self.key, record_data)
 
-
     def recovery_from_record(self):
         record = self.upload_progress_recorder.get_upload_record(self.file_name, self.key)
         if not record:
@@ -211,7 +210,6 @@ class _Resume(object):
         elif self.version == 'v2':
             self.blockStatus = record['etags']
         return record['offset']
-
 
     def upload(self, metadata=None):
         """上传操作"""
@@ -269,8 +267,8 @@ class _Resume(object):
             return self.make_file(host)
         elif self.version == 'v2':
             make_file_url = self.block_url_v2(host, self.bucket_name) + '/%s' % upload_id
-            return self.make_file_v2(self.blockStatus, make_file_url, self.file_name, self.mime_type, metadata, self.params)
-
+            return self.make_file_v2(self.blockStatus, make_file_url, self.file_name,
+                                     self.mime_type, metadata, self.params)
 
     def make_file_v2(self, block_status, url, file_name=None, mime_type=None,
                      metadata=None, customVars=None):
