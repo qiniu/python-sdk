@@ -48,7 +48,7 @@ def put_data(
 def put_file(up_token, key, file_path, params=None,
              mime_type='application/octet-stream', check_crc=False,
              progress_handler=None, upload_progress_recorder=None, keep_last_modified=False, hostscache_dir=None,
-             part_size=config._BLOCK_SIZE, version=None, bucket_name=None):
+             part_size=None, version=None, bucket_name=None):
     """上传文件到七牛
 
     Args:
@@ -183,7 +183,7 @@ class _Resume(object):
         self.modify_time = modify_time or time.time()
         self.keep_last_modified = keep_last_modified
         self.version = version or 'v1'
-        self.part_size = part_size
+        self.part_size = part_size or config._BLOCK_SIZE
         self.bucket_name = bucket_name
 
     def record_upload_progress(self, offset):
