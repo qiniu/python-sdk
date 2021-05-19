@@ -211,7 +211,7 @@ class _Resume(object):
             self.blockStatus = record['etags']
         return record['offset']
 
-    def upload(self, metadata=None):
+    def upload(self):
         """上传操作"""
         self.blockStatus = []
         self.recovery_index = 1
@@ -232,6 +232,7 @@ class _Resume(object):
         for index, block in enumerate(_file_iter(self.input_stream, self.part_size, offset)):
             length = len(block)
             if self.version == 'v1':
+                crc = crc32(block)
                 ret, info = self.make_block(block, length, host)
             elif self.version == 'v2':
                 index_ = index + self.recovery_index
@@ -246,9 +247,9 @@ class _Resume(object):
                     host = config.get_default('default_zone').get_up_host_backup_by_token(self.up_token,
                                                                                           self.hostscache_dir)
             if self.version == 'v1':
-                if info.need_retry():
+                if info.need_retry() or crc != ret['crc32']:
                     ret, info = self.make_block(block, length, host)
-                    if ret is None:
+                    if ret is None or crc != ret['crc32']:
                         return ret, info
             elif self.version == 'v2':
                 if info.need_retry():
@@ -268,10 +269,9 @@ class _Resume(object):
         elif self.version == 'v2':
             make_file_url = self.block_url_v2(host, self.bucket_name) + '/%s' % upload_id
             return self.make_file_v2(self.blockStatus, make_file_url, self.file_name,
-                                     self.mime_type, metadata, self.params)
+                                     self.mime_type, self.params)
 
-    def make_file_v2(self, block_status, url, file_name=None, mime_type=None,
-                     metadata=None, customVars=None):
+    def make_file_v2(self, block_status, url, file_name=None, mime_type=None, customVars=None):
         """completeMultipartUpload"""
         parts = self.get_parts(block_status)
         headers = {
@@ -281,7 +281,6 @@ class _Resume(object):
             'parts': parts,
             'fname': file_name,
             'mimeType': mime_type,
-            'metadata': metadata,
             'customVars': customVars
         }
         ret, info = self.post_with_headers(url, json.dumps(data), headers=headers)
@@ -310,8 +309,8 @@ class _Resume(object):
         return '{0}/mkblk/{1}'.format(host, size)
 
     def block_url_v2(self, host, bucket_name):
-        encode_object_name = urlsafe_base64_encode(self.key) if self.key is not None else '～'
-        return '{0}/buckets/{1}/objects/{2}/uploads'.format(host, bucket_name, encode_object_name)
+        encoded_object_name = urlsafe_base64_encode(self.key) if self.key is not None else '～'
+        return '{0}/buckets/{1}/objects/{2}/uploads'.format(host, bucket_name, encoded_object_name)
 
     def file_url(self, host):
         url = ['{0}/mkfile/{1}'.format(host, self.size)]
