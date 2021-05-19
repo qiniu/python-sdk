@@ -402,7 +402,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
                                    self.params,
                                    self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
-            print("\n\n\n\n\n", info)
             assert ret['key'] == key
 
 

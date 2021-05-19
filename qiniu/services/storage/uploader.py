@@ -5,8 +5,6 @@ import json
 import os
 import time
 
-from requests.api import post
-
 from qiniu import config
 from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter, rfc_from_timestamp
 from qiniu import http
@@ -69,7 +67,6 @@ def put_file(up_token, key, file_path, params=None,
     """
     ret = {}
     size = os.stat(file_path).st_size
-    # fname = os.path.basename(file_path)
     with open(file_path, 'rb') as input_stream:
         file_name = os.path.basename(file_path)
         modify_time = int(os.path.getmtime(file_path))
@@ -165,10 +162,9 @@ class _Resume(object):
     """
 
     def __init__(self, up_token, key, input_stream, file_name, data_size, hostscache_dir, params, mime_type,
-             progress_handler, upload_progress_recorder, modify_time, keep_last_modified, part_size=None,
-                 version='v1', bucket_name=None):
+                 progress_handler, upload_progress_recorder, modify_time, keep_last_modified, part_size=None,
+                 version=None, bucket_name=None):
         """初始化断点续上传"""
-        # self.auth = auth_obj
         self.up_token = up_token
         self.key = key
         self.input_stream = input_stream
@@ -184,8 +180,6 @@ class _Resume(object):
         self.version = version or 'v1'
         self.part_size = part_size
         self.bucket_name = bucket_name
-        # print(self.modify_time)
-        # print(modify_time)
 
     def record_upload_progress(self, offset):
         record_data = {
@@ -206,10 +200,9 @@ class _Resume(object):
         record = self.upload_progress_recorder.get_upload_record(self.file_name, self.key)
         if not record:
             return 0
-
         try:
             if not record['modify_time'] or record['size'] != self.size or \
-                    record['modify_time'] != self.modify_time:
+                   record['modify_time'] != self.modify_time:
                 return 0
         except KeyError:
             return 0
@@ -253,7 +246,7 @@ class _Resume(object):
                     host = config.get_default('default_zone').up_host_backup
                 else:
                     host = config.get_default('default_zone').get_up_host_backup_by_token(self.up_token,
-                                                                           self.hostscache_dir)
+                                                                                          self.hostscache_dir)
             if self.version == 'v1':
                 if info.need_retry():
                     ret, info = self.make_block(block, length, host)
@@ -279,22 +272,22 @@ class _Resume(object):
             return self.make_file_v2(self.blockStatus, make_file_url, self.file_name, self.mime_type, metadata, self.params)
 
 
-    def make_file_v2(self, block_status, url, file_name=None, mime_type=None, metadata=None, customVars=None):
-            """completeMultipartUpload"""
-            parts = self.get_parts(block_status)
-            headers = {
-                'Content-Type': 'application/json',
-            }
-            data = {
-                'parts': parts,
-                'fname': file_name,
-                'mimeType': mime_type,
-                'metadata': metadata,
-                'customVars': customVars
-            }
-            ret, info = self.post_with_headers(url, json.dumps(data), headers=headers)
-            return ret, info
-
+    def make_file_v2(self, block_status, url, file_name=None, mime_type=None,
+                     metadata=None, customVars=None):
+        """completeMultipartUpload"""
+        parts = self.get_parts(block_status)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'parts': parts,
+            'fname': file_name,
+            'mimeType': mime_type,
+            'metadata': metadata,
+            'customVars': customVars
+        }
+        ret, info = self.post_with_headers(url, json.dumps(data), headers=headers)
+        return ret, info
 
     def get_up_host(self):
         if config.get_default('default_zone').up_host:
@@ -303,12 +296,10 @@ class _Resume(object):
             host = config.get_default('default_zone').get_up_host_by_token(self.up_token, self.hostscache_dir)
         return host
 
-
     def make_block(self, block, block_size, host):
         """创建块"""
         url = self.block_url(host, block_size)
         return self.post(url, block)
-
 
     def make_block_v2(self, block, url):
         headers = {
@@ -317,15 +308,12 @@ class _Resume(object):
         }
         return self.put(url, block, headers)
 
-
     def block_url(self, host, size):
         return '{0}/mkblk/{1}'.format(host, size)
-
 
     def block_url_v2(self, host, bucket_name):
         encode_object_name = urlsafe_base64_encode(self.key) if self.key is not None else '～'
         return '{0}/buckets/{1}/objects/{2}/uploads'.format(host, bucket_name, encode_object_name)
-
 
     def file_url(self, host):
         url = ['{0}/mkfile/{1}'.format(host, self.size)]
@@ -350,14 +338,12 @@ class _Resume(object):
         url = '/'.join(url)
         return url
 
-
     def make_file(self, host):
         """创建文件"""
         url = self.file_url(host)
         body = ','.join([status['ctx'] for status in self.blockStatus])
         self.upload_progress_recorder.delete_upload_record(self.file_name, self.key)
         return self.post(url, body)
-
 
     def init_upload_task(self, url):
         body, resp = self.post(url, '')
@@ -366,26 +352,14 @@ class _Resume(object):
         else:
             return None, None
 
-
     def post(self, url, data):
         return http._post_with_token(url, data, self.up_token)
-        
 
     def post_with_headers(self, url, data, headers):
         return http._post_with_token_and_headers(url, data, self.up_token, headers)
 
-
     def put(self, url, data, headers):
         return http._put_with_token_and_headers(url, data, self.up_token, headers)
 
-
-    def set_part_size(self):
-        return self.part_size if self.part_size > config._BLOCK_MIN_SIZE \
-                                  and self.part_size < config._BLOCK_MAX_SIZE \
-                                  else config._BLOCK_SIZE
-
-
     def get_parts(self, block_status):
         return sorted(block_status, key=lambda i: i['partNumber'])
-
-

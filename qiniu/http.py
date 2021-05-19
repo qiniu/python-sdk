@@ -103,6 +103,7 @@ class _TokenAuth(AuthBase):
 def _post_with_token(url, data, token):
     return _post(url, data, None, _TokenAuth(token))
 
+
 def _post_with_token_and_headers(url, data, token, headers):
     return _post(url, data, None, _TokenAuth(token), headers)
 
