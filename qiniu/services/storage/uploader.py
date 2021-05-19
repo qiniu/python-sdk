@@ -219,7 +219,6 @@ class _Resume(object):
             self.blockStatus = record['etags']
             return record['offset'], record['upload_id'], record['expired_at']
 
-
     def upload(self):
         """上传操作"""
         self.blockStatus = []
