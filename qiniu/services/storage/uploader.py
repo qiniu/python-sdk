@@ -261,7 +261,7 @@ class _Resume(object):
                 ret, info = self.make_block(block, length, host)
             elif self.version == 'v2':
                 index_ = index + self.recovery_index
-                url = init_url + '/%s/%d' % (self.uploadId, index_)
+                url = self.block_url_v2(host, self.bucket_name) + '/%s/%d' % (self.uploadId, index_)
                 ret, info = self.make_block_v2(block, url)
             if ret is None and not info.need_retry():
                 return ret, info
