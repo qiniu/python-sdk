@@ -189,8 +189,8 @@ class _Resume(object):
         if self.version == 'v1':
             record_data['contexts'] = [block['ctx'] for block in self.blockStatus]
         elif self.version == 'v2':
-            if self.expiredAt > time.time():
-                record_data['etags'] = self.blockStatus
+            record_data['etags'] = self.blockStatus
+            record_data['expired_at'] = self.expiredAt
         if self.modify_time:
             record_data['modify_time'] = self.modify_time
         self.upload_progress_recorder.set_upload_record(self.file_name, self.key, record_data)
@@ -206,8 +206,13 @@ class _Resume(object):
         except KeyError:
             return 0
         if self.version == 'v1':
+            if not record.__contains__('contexts') or len(record['contexts']) == 0:
+                return 0
             self.blockStatus = [{'ctx': ctx} for ctx in record['contexts']]
         elif self.version == 'v2':
+            if not record.__contains__('etags') or len(record['etags']) == 0 or \
+               not record.__contains__('expired_at') or float(record['expired_at']) < time.time():
+                return 0
             self.blockStatus = record['etags']
         return record['offset']
 
@@ -215,7 +220,7 @@ class _Resume(object):
         """上传操作"""
         self.blockStatus = []
         self.recovery_index = 1
-        self.expiredAt = 1
+        self.expiredAt = None
         host = self.get_up_host()
         offset = self.recovery_from_record()
         if self.version == 'v1':
