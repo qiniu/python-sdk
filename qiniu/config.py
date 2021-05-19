@@ -10,7 +10,6 @@ UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
 _BLOCK_SIZE = 1024 * 1024 * 4  # 断点续上传分块大小，该参数为接口规格，暂不支持修改
 _BLOCK_MIN_SIZE = 1024 * 1024     # v2:断点续传分片最小值
 _BLOCK_MAX_SIZE = 1024 * 1024 * 1024   # v2断点续传分片最大值
-_Upload_Threshold = 1024 * 1024 * 8    # put_file上传方式的临界默认值
 
 _config = {
     'default_zone': zone.Zone(),
@@ -21,6 +20,7 @@ _config = {
     'connection_timeout': 30,  # 链接超时为时间为30s
     'connection_retries': 3,  # 链接重试次数为3次
     'connection_pool': 10,  # 链接池个数为10
+    'default_upload_threshold': 1024 * 1024 * 8  # put_file上传方式的临界默认值
 }
 
 
@@ -50,5 +50,3 @@ def set_default(
         _config['connection_timeout'] = connection_timeout
     if default_upload_threshold:
         _config['default_upload_threshold'] = default_upload_threshold
-    else:
-        _config['default_upload_threshold'] = _Upload_Threshold
