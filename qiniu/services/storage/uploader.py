@@ -394,6 +394,6 @@ class _Resume(object):
         if self.bucket_name is None:
             encoded_policy = self.up_token.split(':')[-1]
             decode_policy = base64.urlsafe_b64decode(encoded_policy)
-            dict_policy = json.loads(decode_policy)
+            dict_policy = json.loads(decode_policy, encoding='utf-8')
             if dict_policy != {}:
                 self.bucket_name = dict_policy['scope'].split(':')[0]
