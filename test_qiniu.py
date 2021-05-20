@@ -405,7 +405,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
             remove_temp_file(localfile)
 
     def test_put_4m_stream_v2(self):
-        localfile = create_temp_file(4 * 1024 * 1024 + 1)
+        localfile = create_temp_file(4 * 1024 * 1024)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
