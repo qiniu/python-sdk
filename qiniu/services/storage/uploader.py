@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import base64
 import hashlib
 import json
 import os
@@ -239,6 +239,7 @@ class _Resume(object):
         self.recovery_index = 1
         self.expiredAt = None
         self.uploadId = None
+        self.get_bucket()
         host = self.get_up_host()
         if self.version == 'v1':
             offset = self.recovery_from_record()
@@ -388,3 +389,11 @@ class _Resume(object):
 
     def get_parts(self, block_status):
         return sorted(block_status, key=lambda i: i['partNumber'])
+
+    def get_bucket(self):
+        if self.bucket_name is None:
+            encoded_policy = self.up_token.split(':')[-1]
+            decode_policy = base64.urlsafe_b64decode(encoded_policy)
+            dict_policy = json.loads(decode_policy)
+            if dict_policy != {}:
+                self.bucket_name = dict_policy['scope'].split(':')[0]
