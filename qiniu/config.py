@@ -7,7 +7,7 @@ RSF_HOST = 'http://rsf.qbox.me'  # 列举操作Host
 API_HOST = 'http://api.qiniu.com'  # 数据处理操作Host
 UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
 
-_BLOCK_SIZE = 1024 * 1024 * 4  # 断点续上传分块大小，该参数为接口规格，暂不支持修改
+_BLOCK_SIZE = 1024 * 1024 * 4  # 断点续传分块大小，该参数为接口规格，暂不支持修改
 _BLOCK_MIN_SIZE = 1024 * 1024     # v2:断点续传分片最小值
 _BLOCK_MAX_SIZE = 1024 * 1024 * 1024   # v2断点续传分片最大值
 
@@ -20,7 +20,7 @@ _config = {
     'connection_timeout': 30,  # 链接超时为时间为30s
     'connection_retries': 3,  # 链接重试次数为3次
     'connection_pool': 10,  # 链接池个数为10
-    'default_upload_threshold': 1024 * 1024 * 8  # put_file上传方式的临界默认值
+    'default_upload_threshold': 2 * _BLOCK_SIZE  # put_file上传方式的临界默认值
 }
 
 
