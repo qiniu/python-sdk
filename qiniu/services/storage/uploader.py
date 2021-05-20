@@ -391,9 +391,10 @@ class _Resume(object):
         return sorted(block_status, key=lambda i: i['partNumber'])
 
     def get_bucket(self):
-        if self.bucket_name is None:
+        if self.bucket_name is None or self.bucket_name == '':
             encoded_policy = self.up_token.split(':')[-1]
             decode_policy = base64.urlsafe_b64decode(encoded_policy)
+            decode_policy = decode_policy.decode('utf-8')
             dict_policy = json.loads(decode_policy, encoding='utf-8')
             if dict_policy != {}:
                 self.bucket_name = dict_policy['scope'].split(':')[0]
