@@ -400,7 +400,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
                                    self.params,
-                                   self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
+                                   self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
             remove_temp_file(localfile)
 
@@ -413,7 +413,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
                                    self.params,
-                                   self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
+                                   self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
             remove_temp_file(localfile)
 
@@ -426,7 +426,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
                                    self.params,
-                                   self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
+                                   self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
             remove_temp_file(localfile)
 
