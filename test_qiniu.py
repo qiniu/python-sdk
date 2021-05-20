@@ -392,8 +392,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
 
 
     def test_put_2m_stream_v2(self):
-        file = CreateTestFile(2)
-        localfile = file.create_file()
+        localfile = create_temp_file(2 * 1024 * 1024 + 1)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
@@ -403,11 +402,10 @@ class ResumableUploaderTestCase(unittest.TestCase):
                                    self.params,
                                    self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
-            os.remove(localfile)
+            remove_temp_file(localfile)
 
     def test_put_4m_stream_v2(self):
-        file = CreateTestFile(4)
-        localfile = file.create_file()
+        localfile = create_temp_file(4 * 1024 * 1024 + 1)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
@@ -417,11 +415,10 @@ class ResumableUploaderTestCase(unittest.TestCase):
                                    self.params,
                                    self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
-            os.remove(localfile)
+            remove_temp_file(localfile)
 
     def test_put_10m_stream_v2(self):
-        file = CreateTestFile(10)
-        localfile = file.create_file()
+        localfile = create_temp_file(10 * 1024 * 1024 + 1)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
@@ -431,7 +428,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
                                    self.params,
                                    self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
-            os.remove(localfile)
+            remove_temp_file(localfile)
 
     def test_big_file(self):
         key = 'big'
@@ -517,19 +514,6 @@ class ReadWithoutSeek(object):
 
     def read(self):
         print(self.str)
-
-
-class CreateTestFile:
-    def __init__(self, size):
-        self.size = size
-
-    def create_file(self):
-        file_path = '%dm.text' % self.size
-        file = open(file_path, 'w')
-        file.seek(1024 * 1024 * self.size)
-        file.write('\x00')
-        file.close()
-        return file_path
 
 
 if __name__ == '__main__':
