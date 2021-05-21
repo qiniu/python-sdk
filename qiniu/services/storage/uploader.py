@@ -393,4 +393,4 @@ class _Resume(object):
         if self.bucket_name is None or self.bucket_name == '':
             pulicy = Auth(None, None).up_token_decode(self.up_token)
             if pulicy != {}:
-               self.bucket_name = pulicy['scope'].split(':')[0]
+                self.bucket_name = pulicy['scope'].split(':')[0]
