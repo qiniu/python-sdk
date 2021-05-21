@@ -5,7 +5,7 @@ import json
 import os
 import time
 
-from qiniu import config
+from qiniu import config, Auth
 from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter, rfc_from_timestamp
 from qiniu import http
 from .upload_progress_recorder import UploadProgressRecorder
@@ -392,9 +392,4 @@ class _Resume(object):
 
     def get_bucket(self):
         if self.bucket_name is None or self.bucket_name == '':
-            encoded_policy = self.up_token.split(':')[-1]
-            decode_policy = base64.urlsafe_b64decode(encoded_policy)
-            decode_policy = decode_policy.decode('utf-8')
-            dict_policy = json.loads(decode_policy)
-            if dict_policy != {}:
-                self.bucket_name = dict_policy['scope'].split(':')[0]
+            self.bucket_name = Auth(None, None).up_token_decode(self.up_token)[-1]

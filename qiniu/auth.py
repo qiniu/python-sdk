@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import base64
 import hmac
 import time
 from hashlib import sha1
@@ -157,6 +157,20 @@ class Auth(object):
             self.__copy_policy(policy, args, strict_policy)
 
         return self.__upload_token(args)
+
+    @staticmethod
+    def up_token_decode(up_token):
+        up_token_list = up_token.split(':')
+        ak = up_token_list[0]
+        sign = base64.urlsafe_b64decode(up_token_list[1])
+        decode_policy = base64.urlsafe_b64decode(up_token_list[2])
+        decode_policy = decode_policy.decode('utf-8')
+        dict_policy = json.loads(decode_policy)
+        if dict_policy != {}:
+            bucket_name = dict_policy['scope'].split(':')[0]
+        else:
+            bucket_name = None
+        return ak, sign, bucket_name
 
     def __upload_token(self, policy):
         data = json.dumps(policy, separators=(',', ':'))
