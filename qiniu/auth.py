@@ -166,11 +166,7 @@ class Auth(object):
         decode_policy = base64.urlsafe_b64decode(up_token_list[2])
         decode_policy = decode_policy.decode('utf-8')
         dict_policy = json.loads(decode_policy)
-        if dict_policy != {}:
-            bucket_name = dict_policy['scope'].split(':')[0]
-        else:
-            bucket_name = None
-        return ak, sign, bucket_name
+        return ak, sign, dict_policy
 
     def __upload_token(self, policy):
         data = json.dumps(policy, separators=(',', ':'))

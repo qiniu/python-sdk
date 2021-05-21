@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import base64
 import hashlib
 import json
 import os
@@ -392,4 +391,6 @@ class _Resume(object):
 
     def get_bucket(self):
         if self.bucket_name is None or self.bucket_name == '':
-            self.bucket_name = Auth(None, None).up_token_decode(self.up_token)[-1]
+            pulicy = Auth(None, None).up_token_decode(self.up_token)
+            if pulicy != {}:
+               self.bucket_name = pulicy['scope'].split(':')[0]
