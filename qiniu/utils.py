@@ -90,6 +90,7 @@ def _file_iter(input_stream, size, offset=0):
     while d:
         yield d
         d = input_stream.read(size)
+    input_stream.seek(0)
 
 
 def _sha1(data):
