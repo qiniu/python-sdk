@@ -390,18 +390,44 @@ class ResumableUploaderTestCase(unittest.TestCase):
                                    self.mime_type, part_size=None, version=None, bucket_name=None)
             assert ret['key'] == key
 
-
-    def test_put_stream_v2(self):
-        localfile = __file__
+    def test_put_2m_stream_v2(self):
+        localfile = create_temp_file(2 * 1024 * 1024 + 1)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
+            ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
                                    self.params,
-                                   self.mime_type, part_size=1024 * 1024 * 10, version='v2', bucket_name=bucket_name)
+                                   self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
+            remove_temp_file(localfile)
+
+    def test_put_4m_stream_v2(self):
+        localfile = create_temp_file(4 * 1024 * 1024)
+        key = 'test_file_r'
+        size = os.stat(localfile).st_size
+        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name, key)
+            ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
+                                   self.params,
+                                   self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
+            assert ret['key'] == key
+            remove_temp_file(localfile)
+
+    def test_put_10m_stream_v2(self):
+        localfile = create_temp_file(10 * 1024 * 1024 + 1)
+        key = 'test_file_r'
+        size = os.stat(localfile).st_size
+        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name, key)
+            ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
+                                   self.params,
+                                   self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
+            assert ret['key'] == key
+            remove_temp_file(localfile)
 
     def test_put_stream_v2_without_bucket_name(self):
         localfile = __file__
