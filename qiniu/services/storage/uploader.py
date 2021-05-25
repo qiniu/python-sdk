@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-
 import hashlib
 import json
 import os
 import time
 
-from qiniu import config
+from qiniu import config, Auth
 from qiniu.utils import urlsafe_base64_encode, crc32, file_crc32, _file_iter, rfc_from_timestamp
 from qiniu import http
 from .upload_progress_recorder import UploadProgressRecorder
@@ -239,6 +238,7 @@ class _Resume(object):
         self.recovery_index = 1
         self.expiredAt = None
         self.uploadId = None
+        self.get_bucket()
         host = self.get_up_host()
         if self.version == 'v1':
             offset = self.recovery_from_record()
@@ -388,3 +388,9 @@ class _Resume(object):
 
     def get_parts(self, block_status):
         return sorted(block_status, key=lambda i: i['partNumber'])
+
+    def get_bucket(self):
+        if self.bucket_name is None or self.bucket_name == '':
+            _, _, policy = Auth.up_token_decode(self.up_token)
+            if policy != {}:
+                self.bucket_name = policy['scope'].split(':')[0]
