@@ -62,7 +62,6 @@ def put_file(up_token, key, file_path, params=None,
         hostscache_dir：          host请求 缓存文件保存位置
         version                   分片上传版本 目前支持v1/v2版本 默认v1
         part_size                 分片上传v2必传字段 默认大小为4MB 分片大小范围为1 MB - 1 GB
-        bucket_name               分片上传v2字段必传字段 空间名称
 
     Returns:
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
@@ -162,7 +161,6 @@ class _Resume(object):
         hostscache_dir：            host请求 缓存文件保存位置
         version                     分片上传版本 目前支持v1/v2版本 默认v1
         part_size                   分片上传v2必传字段 分片大小范围为1 MB - 1 GB
-        bucket_name                 分片上传v2字段必传字段 空间名称
     """
 
     def __init__(self, up_token, key, input_stream, file_name, data_size, hostscache_dir, params, mime_type,
