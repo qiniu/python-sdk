@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-
+import logging
 import os
 import time
+import trace
+
 import requests
 from qiniu import compat
 from qiniu import utils
@@ -127,6 +129,9 @@ class Region(object):
         if (len(self.host_cache) == 0):
             self.host_cache_from_file(home_dir)
 
+        if self.host_cache == {}:
+            return ret
+
         if (not (key in self.host_cache)):
             return ret
 
@@ -147,8 +152,11 @@ class Region(object):
         if not os.path.isfile(path):
             return None
         with open(path, 'r') as f:
-            bucket_hosts = compat.json.load(f)
-            self.host_cache = bucket_hosts
+            try:
+                bucket_hosts = compat.json.load(f)
+                self.host_cache = bucket_hosts
+            except Exception as e:
+                logging.error(e)
         f.close()
         return
 
