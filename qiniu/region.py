@@ -2,8 +2,6 @@
 import logging
 import os
 import time
-import trace
-
 import requests
 from qiniu import compat
 from qiniu import utils
