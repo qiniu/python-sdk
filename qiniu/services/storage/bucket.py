@@ -370,13 +370,13 @@ class BucketManager(object):
             g: 时间粒度，支持 day；当天支持5min、hour、day
         """
         url = "{0}/v6/space".format(config.get_default("default_api_host"))
-        now_time = now = datetime.now()
-        hour_ago = now + timedelta(hours=-1)
+        now_time =  datetime.now()
+        hour_ago = now_time + timedelta(hours=-1)
 
         if begin_time is None:
             begin_time=datetime.strftime(hour_ago, '%Y%m%d%H%M%S')
         if end_time is None:
-            end_time=datetime.strftime(now, '%Y%m%d%H%M%S')
+            end_time=datetime.strftime(now_time, '%Y%m%d%H%M%S')
         if g is None:
             g="hour"
         params = {
@@ -398,13 +398,13 @@ class BucketManager(object):
         """
         url = "{0}/v6/count".format(config.get_default("default_api_host"))
 
-        now_time = now = datetime.now()
-        hour_ago = now + timedelta(hours=-1)
+        now_time = datetime.now()
+        hour_ago = now_time + timedelta(hours=-1)
 
         if begin_time is None:
             begin_time=datetime.strftime(hour_ago, '%Y%m%d%H%M%S')
         if end_time is None:
-            end_time=datetime.strftime(now, '%Y%m%d%H%M%S')
+            end_time=datetime.strftime(now_time, '%Y%m%d%H%M%S')
         if g is None:
             g="hour"
 
