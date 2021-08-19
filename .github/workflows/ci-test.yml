@@ -37,3 +37,4 @@ jobs:
           ocular --data-file .coverage
           coverage run test_qiniu.py
           codecov
+          echo 'test'
