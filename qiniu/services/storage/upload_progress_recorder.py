@@ -37,7 +37,10 @@ class UploadProgressRecorder(object):
         if not os.path.isfile(upload_record_file_path):
             return None
         with open(upload_record_file_path, 'r') as f:
-            json_data = json.load(f)
+            try:
+                json_data = json.load(f)
+            except ValueError:
+                json_data = None
         return json_data
 
     def set_upload_record(self, file_name, key, data):

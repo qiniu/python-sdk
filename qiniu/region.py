@@ -11,9 +11,7 @@ UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
 
 class Region(object):
     """七牛上传区域类
-
     该类主要内容上传区域地址。
-
     """
 
     def __init__(
