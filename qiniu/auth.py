@@ -28,7 +28,7 @@ _policy_fields = set([
     'mimeLimit',  # MimeType限制
     'fsizeLimit',  # 上传文件大小限制
     'fsizeMin',  # 上传文件最少字节数
-    'keylimit',  # 设置允许的key列表，不超过20个，如果设置了这个字段，上传时必须提供key
+    'keylimit',  # 设置允许上传的key列表，字符串数组类型，数组长度不可超过20个，如果设置了这个字段，上传时必须提供key
 
     'persistentOps',  # 持久化处理操作
     'persistentNotifyUrl',  # 持久化处理结果通知URL
