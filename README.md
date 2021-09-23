@@ -44,11 +44,6 @@ import qiniu
 
 ```
 更多参见SDK使用指南： http://developer.qiniu.com/code/v7/sdk/python.html
-
-### 命令行工具
-安装完后附带有命令行工具，可以计算etag
-```bash
-$ qiniupy etag yourfile
 ```
 
 ## 测试
