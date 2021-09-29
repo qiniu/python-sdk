@@ -46,3 +46,4 @@ nosetests.xml
 .pydevproject
 /.idea
 /.venv
+/.qiniu_pythonsdk_hostscache.json
