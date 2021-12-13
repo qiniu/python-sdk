@@ -21,6 +21,8 @@ from qiniu.compat import is_py2, is_py3, b
 
 from qiniu.services.storage.uploader import _form_put
 
+from qiniu.http import __return_wrapper as return_wrapper
+
 import qiniu.config
 
 if is_py2:
@@ -73,6 +75,23 @@ def remove_temp_file(file):
 
 def is_travis():
     return os.environ['QINIU_TEST_ENV'] == 'travis'
+
+
+class HttpTest(unittest.TestCase):
+    def test_json_decode_error(self):
+        def mock_res():
+            r = requests.Response()
+            r.status_code = 200
+            r.headers.__setitem__('X-Reqid', 'mockedReqid')
+
+            def json_func():
+                raise ValueError('%s: line %d column %d (char %d)' % ('Expecting value', 0, 0, 0))
+            r.json = json_func
+
+            return r
+        mocked_res = mock_res()
+        ret, _ = return_wrapper(mocked_res)
+        assert ret == {}
 
 
 class UtilsTest(unittest.TestCase):

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import json
 import logging
 import platform
 
@@ -26,7 +25,7 @@ def __return_wrapper(resp):
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
     try:
-        ret = json.loads(resp.text)
+        ret = resp.json()
     except ValueError:
         logging.debug("response body decode error: %s" % resp.text)
         ret = {}
