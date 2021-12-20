@@ -481,6 +481,23 @@ class ResumableUploaderTestCase(unittest.TestCase):
         assert ret['key'] == key
         assert ret['hash'] == etag(localfile)
 
+    def test_put_stream_with_key_limits(self):
+        localfile = __file__
+        key = 'test_file_r'
+        size = os.stat(localfile).st_size
+        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name, key, policy={'keylimit': ['test_file_d']})
+            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
+                                   self.params,
+                                   self.mime_type)
+            assert info.status_code == 403
+            token = self.q.upload_token(bucket_name, key, policy={'keylimit': ['test_file_d', 'test_file_r']})
+            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
+                                   self.params,
+                                   self.mime_type)
+            assert info.status_code == 200
+
 
 class DownloadTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
