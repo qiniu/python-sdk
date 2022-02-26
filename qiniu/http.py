@@ -20,7 +20,7 @@ _headers = {'User-Agent': USER_AGENT}
 
 
 def __return_wrapper(resp):
-    if resp.status_code != 200 or resp.headers.get('X-Reqid') is None:
+    if (not 200 <= resp.status_code < 300) or resp.headers.get('X-Reqid') is None:
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
     ret = resp.json() if resp.text != '' else {}
