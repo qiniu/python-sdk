@@ -5,7 +5,7 @@ import time
 from hashlib import sha1
 from requests.auth import AuthBase
 from .compat import urlparse, json, b
-from .utils import urlsafe_base64_encode
+from .utils import urlsafe_base64_encode, canonical_mime_header_key
 
 # 上传策略，参数规格详见
 # https://developer.qiniu.com/kodo/manual/1206/put-policy
@@ -265,15 +265,21 @@ class QiniuMacAuth(object):
         path_with_query = path
         if query != '':
             path_with_query = ''.join([path_with_query, '?', query])
-        data = ''.join(["%s %s" %
-                        (method, path_with_query), "\n", "Host: %s" %
-                        host, "\n"])
+        data = ''.join([
+            "%s %s" % (method, path_with_query),
+            "\n",
+            "Host: %s" % host
+        ])
 
         if content_type:
-            data += "Content-Type: %s" % (content_type) + "\n"
+            data += "\n"
+            data += "Content-Type: %s" % content_type
 
-        data += qheaders
-        data += "\n"
+        if qheaders:
+            data += "\n"
+            data += qheaders
+
+        data += "\n\n"
 
         if content_type and content_type != "application/octet-stream" and body:
             if isinstance(body, bytes):
@@ -283,11 +289,13 @@ class QiniuMacAuth(object):
         return '{0}:{1}'.format(self.__access_key, self.__token(data))
 
     def qiniu_headers(self, headers):
-        res = ""
-        for key in headers:
-            if key.startswith(self.qiniu_header_prefix):
-                res += key + ": %s\n" % (headers.get(key))
-        return res
+        qiniu_fields = list(filter(
+            lambda k: k.startswith(self.qiniu_header_prefix) and len(k) > len(self.qiniu_header_prefix),
+            headers,
+        ))
+        return "\n".join([
+            "%s: %s" % (canonical_mime_header_key(key), headers.get(key)) for key in sorted(qiniu_fields)
+        ])
 
     @staticmethod
     def __checkKey(access_key, secret_key):
@@ -300,6 +308,8 @@ class QiniuMacRequestsAuth(AuthBase):
         self.auth = auth
 
     def __call__(self, r):
+        if r.headers.get('Content-Type', None) is None:
+            r.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         token = self.auth.token_of_request(
             r.method, r.headers.get('Host', None),
             r.url, self.auth.qiniu_headers(r.headers),
