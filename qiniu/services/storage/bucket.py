@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from qiniu import config
+from qiniu import config, QiniuMacAuth
 from qiniu import http
 from qiniu.utils import urlsafe_base64_encode, entry
 
@@ -17,6 +17,7 @@ class BucketManager(object):
 
     def __init__(self, auth, zone=None):
         self.auth = auth
+        self.mac_auth = QiniuMacAuth(auth.get_access_key(), auth.get_secret_key())
         if (zone is None):
             self.zone = config.get_default('default_zone')
         else:
@@ -387,10 +388,10 @@ class BucketManager(object):
         return self.__post(url)
 
     def __post(self, url, data=None):
-        return http._post_with_auth(url, data, self.auth)
+        return http._post_with_qiniu_mac(url, data, self.mac_auth)
 
     def __get(self, url, params=None):
-        return http._get_with_auth(url, params, self.auth)
+        return http._get_with_qiniu_mac(url, params, self.mac_auth)
 
 
 def _build_op(*args):

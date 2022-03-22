@@ -79,16 +79,16 @@ def _get(url, params, auth, headers=None):
     if _session is None:
         _init()
     try:
-        post_headers = _headers.copy()
+        get_headers = _headers.copy()
         if headers is not None:
             for k, v in headers.items():
-                post_headers.update({k: v})
+                get_headers.update({k: v})
         r = _session.get(
             url,
             params=params,
             auth=auth,
             timeout=config.get_default('connection_timeout'),
-            headers=post_headers)
+            headers=get_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -153,31 +153,16 @@ def _put_with_qiniu_mac_and_headers(url, data, auth, headers):
 
 def _post_with_qiniu_mac(url, data, auth):
     qn_auth = qiniu.auth.QiniuMacRequestsAuth(
-        auth) if auth is not None else None
-    timeout = config.get_default('connection_timeout')
-    try:
-        r = requests.post(
-            url,
-            json=data,
-            auth=qn_auth,
-            timeout=timeout,
-            headers=_headers)
-    except Exception as e:
-        return None, ResponseInfo(None, e)
-    return __return_wrapper(r)
+        auth
+    ) if auth is not None else None
+    return _post(url, data, None, qn_auth)
 
 
 def _get_with_qiniu_mac(url, params, auth):
-    try:
-        r = requests.get(
-            url,
-            params=params,
-            auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
-            timeout=config.get_default('connection_timeout'),
-            headers=_headers)
-    except Exception as e:
-        return None, ResponseInfo(None, e)
-    return __return_wrapper(r)
+    qn_auth = qiniu.auth.QiniuMacRequestsAuth(
+        auth
+    ) if auth is not None else None
+    return _get(url, params, qn_auth)
 
 
 def _get_with_qiniu_mac_and_headers(url, params, auth, headers):

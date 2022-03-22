@@ -11,11 +11,11 @@ import requests
 import unittest
 import pytest
 
-from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save, Zone
+from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save, Zone, QiniuMacAuth
 from qiniu import put_data, put_file, put_stream
 from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, \
     build_batch_delete, DomainManager
-from qiniu import urlsafe_base64_encode, urlsafe_base64_decode
+from qiniu import urlsafe_base64_encode, urlsafe_base64_decode, canonical_mime_header_key
 
 from qiniu.compat import is_py2, is_py3, b
 
@@ -100,6 +100,37 @@ class UtilsTest(unittest.TestCase):
         u = urlsafe_base64_encode(a)
         assert b(a) == urlsafe_base64_decode(u)
 
+    def test_canonical_mime_header_key(self):
+        field_names = [
+            ":status",
+            ":x-test-1",
+            ":x-Test-2",
+            "content-type",
+            "CONTENT-LENGTH",
+            "oRiGin",
+            "ReFer",
+            "Last-Modified",
+            "acCePt-ChArsEt",
+            "x-test-3",
+            "cache-control",
+        ]
+        expect_canonical_field_names = [
+            ":status",
+            ":x-test-1",
+            ":x-Test-2",
+            "Content-Type",
+            "Content-Length",
+            "Origin",
+            "Refer",
+            "Last-Modified",
+            "Accept-Charset",
+            "X-Test-3",
+            "Cache-Control",
+        ]
+        assert len(field_names) == len(expect_canonical_field_names)
+        for i in range(len(field_names)):
+            assert canonical_mime_header_key(field_names[i]) == expect_canonical_field_names[i]
+
 
 class AuthTestCase(unittest.TestCase):
     def test_token(self):
@@ -121,6 +152,144 @@ class AuthTestCase(unittest.TestCase):
         assert token == 'abcdefghklmnopq:cFyRVoWrE3IugPIMP5YJFTO-O-Y='
         token = dummy_auth.token_of_request('http://www.qiniu.com?go=1', 'test', 'application/x-www-form-urlencoded')
         assert token == 'abcdefghklmnopq:svWRNcacOE-YMsc70nuIYdaa1e4='
+
+    def test_QiniuMacRequestsAuth(self):
+        auth = QiniuMacAuth("ak", "sk")
+        test_cases = [
+            {
+                "method": "GET",
+                "host": None,
+                "url": "",
+                "qheaders": {
+                    "X-Qiniu-": "a",
+                    "X-Qiniu": "b",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                "content_type": "application/x-www-form-urlencoded",
+                "body": "{\"name\": \"test\"}",
+                "except_sign_token": "ak:0i1vKClRDWFyNkcTFzwcE7PzX74=",
+            },
+            {
+                "method": "GET",
+                "host": None,
+                "url": "",
+                "qheaders": {
+                    "Content-Type": "application/json",
+                },
+                "content_type": "application/json",
+                "body": "{\"name\": \"test\"}",
+                "except_sign_token": "ak:K1DI0goT05yhGizDFE5FiPJxAj4=",
+            },
+            {
+                "method": "POST",
+                "host": None,
+                "url": "",
+                "qheaders": {
+                    "Content-Type": "application/json",
+                    "X-Qiniu": "b",
+                },
+                "content_type": "application/json",
+                "body": "{\"name\": \"test\"}",
+                "except_sign_token": "ak:0ujEjW_vLRZxebsveBgqa3JyQ-w=",
+            },
+            {
+                "method": "GET",
+                "host": "upload.qiniup.com",
+                "url": "http://upload.qiniup.com",
+                "qheaders": {
+                    "X-Qiniu-": "a",
+                    "X-Qiniu": "b",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                "content_type": "application/x-www-form-urlencoded",
+                "body": "{\"name\": \"test\"}",
+                "except_sign_token": "ak:GShw5NitGmd5TLoo38nDkGUofRw=",
+            },
+            {
+                "method": "GET",
+                "host": "upload.qiniup.com",
+                "url": "http://upload.qiniup.com",
+                "qheaders": {
+                    "Content-Type": "application/json",
+                    "X-Qiniu-Bbb": "BBB",
+                    "X-Qiniu-Aaa": "DDD",
+                    "X-Qiniu-": "a",
+                    "X-Qiniu": "b",
+                },
+                "content_type": "application/json",
+                "body": "{\"name\": \"test\"}",
+                "except_sign_token": "ak:DhNA1UCaBqSHCsQjMOLRfVn63GQ=",
+            },
+            {
+                "method": "GET",
+                "host": "upload.qiniup.com",
+                "url": "http://upload.qiniup.com",
+                "qheaders": {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Qiniu-Bbb": "BBB",
+                    "X-Qiniu-Aaa": "DDD",
+                    "X-Qiniu-": "a",
+                    "X-Qiniu": "b",
+                },
+                "content_type": "application/x-www-form-urlencoded",
+                "body": "name=test&language=go",
+                "except_sign_token": "ak:KUAhrYh32P9bv0COD8ugZjDCmII=",
+            },
+            {
+                "method": "GET",
+                "host": "upload.qiniup.com",
+                "url": "http://upload.qiniup.com",
+                "qheaders": {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Qiniu-Bbb": "BBB",
+                    "X-Qiniu-Aaa": "DDD",
+                },
+                "content_type": "application/x-www-form-urlencoded",
+                "body": "name=test&language=go",
+                "except_sign_token": "ak:KUAhrYh32P9bv0COD8ugZjDCmII=",
+            },
+            {
+                "method": "GET",
+                "host": "upload.qiniup.com",
+                "url": "http://upload.qiniup.com/mkfile/sdf.jpg",
+                "qheaders": {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Qiniu-Bbb": "BBB",
+                    "X-Qiniu-Aaa": "DDD",
+                    "X-Qiniu-": "a",
+                    "X-Qiniu": "b",
+                },
+                "content_type": "application/x-www-form-urlencoded",
+                "body": "name=test&language=go",
+                "except_sign_token": "ak:fkRck5_LeyfwdkyyLk-hyNwGKac=",
+            },
+            {
+                "method": "GET",
+                "host": "upload.qiniup.com",
+                "url": "http://upload.qiniup.com/mkfile/sdf.jpg?s=er3&df",
+                "qheaders": {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Qiniu-Bbb": "BBB",
+                    "X-Qiniu-Aaa": "DDD",
+                    "X-Qiniu-": "a",
+                    "X-Qiniu": "b",
+                },
+                "content_type": "application/x-www-form-urlencoded",
+                "body": "name=test&language=go",
+                "except_sign_token": "ak:PUFPWsEUIpk_dzUvvxTTmwhp3p4=",
+            },
+        ]
+
+        for test_case in test_cases:
+            sign_token = auth.token_of_request(
+                method=test_case["method"],
+                host=test_case["host"],
+                url=test_case["url"],
+                qheaders=auth.qiniu_headers(test_case["qheaders"]),
+                content_type=test_case["content_type"],
+                body=test_case["body"],
+            )
+            assert sign_token == test_case["except_sign_token"]
 
     def test_verify_callback(self):
         body = 'name=sunflower.jpg&hash=Fn6qeQi4VDLQ347NiRm-RlQx_4O2&location=Shanghai&price=1500.00&uid=123'
