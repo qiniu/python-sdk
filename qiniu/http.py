@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import platform
 
 import requests
@@ -23,8 +24,10 @@ def __return_wrapper(resp):
     if resp.status_code != 200 or resp.headers.get('X-Reqid') is None:
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
-    ret = resp.json() if resp.text != '' else {}
-    if ret is None:  # json null
+    try:
+        ret = resp.json()
+    except ValueError:
+        logging.debug("response body decode error: %s" % resp.text)
         ret = {}
     return ret, ResponseInfo(resp)
 
