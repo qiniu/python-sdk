@@ -4,6 +4,7 @@ import os, time
 import string
 import random
 import tempfile
+import hashlib
 from imp import reload
 
 import requests
@@ -57,14 +58,33 @@ def rand_string(length):
     return ''.join([random.choice(lib) for i in range(0, length)])
 
 
-def create_temp_file(size):
-    t = tempfile.mktemp()
-    f = open(t, 'wb')
-    f.seek(size - 1)
-    f.write(b('0'))
-    f.close()
-    return t
+def create_temp_file(size, rand=True):
+    fd, path = tempfile.mkstemp()
+    with os.fdopen(fd, "wb") as f:
+        if rand:
+            rest = size
+            while rest > 0:
+                to_write = min(rest, 1 << 22)
+                f.write(os.urandom(to_write))
+                rest -= to_write
+        else:
+            f.seek(size - 1)
+            f.write(b('0'))
+        f.close()
+    return path
 
+def hash_of_file(path, hash_factory=hashlib.md5, chunk_num_blocks=128):
+    h = hash_factory()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunk_num_blocks*h.block_size), b''):
+            h.update(chunk)
+    return h.digest()
+
+def hash_of_io(io, hash_factory=hashlib.md5, chunk_num_blocks=128):
+    h = hash_factory()
+    for chunk in iter(lambda: io.read(chunk_num_blocks*h.block_size), b''):
+        h.update(chunk)
+    return h.digest()
 
 def remove_temp_file(file):
     try:
@@ -72,6 +92,9 @@ def remove_temp_file(file):
     except OSError:
         pass
 
+def get_qiniu_file(key):
+    url = "http://" + os.getenv('QINIU_TEST_DOMAIN') + '/' + key + '?t=' + str(random.randint(0, 1 << 63 - 1))
+    return urlopen(url)
 
 def is_travis():
     return os.environ['QINIU_TEST_ENV'] == 'travis'
@@ -464,6 +487,7 @@ class BucketTestCase(unittest.TestCase):
 class UploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
     params = {'x:a': 'a'}
+    policy = { 'returnBody': '{"hash":$(etag),"key":$(key),"fname":$(fname),"a":$(x:a)}' }
     q = Auth(access_key, secret_key)
 
     def test_put(self):
@@ -473,6 +497,7 @@ class UploaderTestCase(unittest.TestCase):
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
+        assert get_qiniu_file(key).getcode() == 200
 
     def test_put_crc(self):
         key = ''
@@ -481,16 +506,22 @@ class UploaderTestCase(unittest.TestCase):
         ret, info = put_data(token, key, data, check_crc=True)
         print(info)
         assert ret['key'] == key
+        assert get_qiniu_file(key).getcode() == 200
 
     def test_putfile(self):
-        localfile = __file__
+        localfile = create_temp_file(1024 * 1024)
         key = 'test_file'
 
-        token = self.q.upload_token(bucket_name, key)
+        token = self.q.upload_token(bucket_name, key, 3600, self.policy)
         ret, info = put_file(token, key, localfile, mime_type=self.mime_type, check_crc=True)
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == etag(localfile)
+        assert ret['fname'] == os.path.basename(localfile)
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert resp.headers['content-type'] == self.mime_type
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_putInvalidCrc(self):
         key = 'test_invalid'
@@ -509,6 +540,7 @@ class UploaderTestCase(unittest.TestCase):
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['hash'] == ret['key']
+        assert get_qiniu_file(ret['key']).getcode() == 200
 
         data = 'hello bubby!'
         token = self.q.upload_token(bucket_name, 'nokey2')
@@ -526,6 +558,7 @@ class UploaderTestCase(unittest.TestCase):
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
+        assert get_qiniu_file(key).getcode() == 200
 
     def test_putData_without_fname(self):
         if is_travis():
@@ -537,6 +570,9 @@ class UploaderTestCase(unittest.TestCase):
             ret, info = put_data(token, key, input_stream)
             print(info)
             assert ret is not None
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_putData_without_fname1(self):
         if is_travis():
@@ -544,10 +580,13 @@ class UploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(30 * 1024 * 1024)
         key = 'test_putData_without_fname1'
         with open(localfile, 'rb') as input_stream:
-            token = self.q.upload_token(bucket_name)
+            token = self.q.upload_token(bucket_name, None, 3600, self.policy)
             ret, info = put_data(token, key, input_stream, self.params, self.mime_type, False, None, "")
             print(info)
-            assert ret is not None
+            assert ret['fname'] == ''
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_putData_without_fname2(self):
         if is_travis():
@@ -559,24 +598,35 @@ class UploaderTestCase(unittest.TestCase):
             ret, info = put_data(token, key, input_stream, self.params, self.mime_type, False, None, "  ")
             print(info)
             assert ret is not None
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
 
 class ResumableUploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
     params = {'x:a': 'a'}
     q = Auth(access_key, secret_key)
+    policy = { 'returnBody': '{"hash":$(etag),"key":$(key),"fname":$(fname),"a":$(x:a)}' }
 
     def test_put_stream(self):
-        localfile = __file__
+        localfile = create_temp_file(1024 * 1024)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
-            token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
+            token = self.q.upload_token(bucket_name, key, 3600, self.policy)
+            file_name = os.path.basename(localfile)
+            ret, info = put_stream(token, key, input_stream, file_name, size, hostscache_dir,
                                    self.params,
                                    self.mime_type, part_size=None, version=None, bucket_name=None)
             assert ret['key'] == key
+            assert ret['a'] == 'a'
+            assert ret['fname'] == file_name
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert resp.headers['content-type'] == self.mime_type
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_put_stream_v2_without_bucket_name(self):
         localfile = __file__
@@ -584,11 +634,18 @@ class ResumableUploaderTestCase(unittest.TestCase):
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
-            token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
+            token = self.q.upload_token(bucket_name, key, 3600, self.policy)
+            file_name = os.path.basename(localfile)
+            ret, info = put_stream(token, key, input_stream, file_name, size, hostscache_dir,
                                    self.params,
                                    self.mime_type, part_size=1024 * 1024 * 10, version='v2')
             assert ret['key'] == key
+            assert ret['a'] == 'a'
+            assert ret['fname'] == file_name
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert resp.headers['content-type'] == self.mime_type
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_put_2m_stream_v2(self):
         localfile = create_temp_file(2 * 1024 * 1024 + 1)
@@ -596,12 +653,18 @@ class ResumableUploaderTestCase(unittest.TestCase):
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
-            token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
+            token = self.q.upload_token(bucket_name, key, 3600, self.policy)
+            file_name = os.path.basename(localfile)
+            ret, info = put_stream(token, key, input_stream, file_name, size, hostscache_dir,
                                    self.params,
                                    self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
-            remove_temp_file(localfile)
+            assert ret['a'] == 'a'
+            assert ret['fname'] == file_name
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert resp.headers['content-type'] == self.mime_type
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_put_4m_stream_v2(self):
         localfile = create_temp_file(4 * 1024 * 1024)
@@ -609,12 +672,18 @@ class ResumableUploaderTestCase(unittest.TestCase):
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
-            token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
+            token = self.q.upload_token(bucket_name, key, 3600, self.policy)
+            file_name = os.path.basename(localfile)
+            ret, info = put_stream(token, key, input_stream, file_name, size, hostscache_dir,
                                    self.params,
                                    self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
-            remove_temp_file(localfile)
+            assert ret['a'] == 'a'
+            assert ret['fname'] == file_name
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert resp.headers['content-type'] == self.mime_type
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_put_10m_stream_v2(self):
         localfile = create_temp_file(10 * 1024 * 1024 + 1)
@@ -622,26 +691,37 @@ class ResumableUploaderTestCase(unittest.TestCase):
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
-            token = self.q.upload_token(bucket_name, key)
-            ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
+            token = self.q.upload_token(bucket_name, key, 3600, self.policy)
+            file_name = os.path.basename(localfile)
+            ret, info = put_stream(token, key, input_stream, file_name, size, hostscache_dir,
                                    self.params,
                                    self.mime_type, part_size=1024 * 1024 * 4, version='v2', bucket_name=bucket_name)
             assert ret['key'] == key
-            remove_temp_file(localfile)
+            assert ret['a'] == 'a'
+            assert ret['fname'] == file_name
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert resp.headers['content-type'] == self.mime_type
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_big_file(self):
         key = 'big'
-        token = self.q.upload_token(bucket_name, key)
+        token = self.q.upload_token(bucket_name, key, 3600, self.policy)
         localfile = create_temp_file(4 * 1024 * 1024 + 1)
         progress_handler = lambda progress, total: progress
         qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniup.com'))
         ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
         print(info)
         assert ret['key'] == key
-        remove_temp_file(localfile)
+        assert ret['a'] == 'a'
+        assert ret['fname'] == os.path.basename(localfile)
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert resp.headers['content-type'] == self.mime_type
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_retry(self):
-        localfile = __file__
+        localfile = create_temp_file(1024 * 1024 - 1)
         key = 'test_file_r_retry'
         qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniup.com'))
         token = self.q.upload_token(bucket_name, key)
@@ -649,9 +729,13 @@ class ResumableUploaderTestCase(unittest.TestCase):
         print(info)
         assert ret['key'] == key
         assert ret['hash'] == etag(localfile)
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert resp.headers['content-type'] == self.mime_type
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
     def test_put_stream_with_key_limits(self):
-        localfile = __file__
+        localfile = create_temp_file(1024 * 1024 - 2)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
         set_default(default_zone=Zone('http://upload.qiniup.com'))
@@ -666,6 +750,9 @@ class ResumableUploaderTestCase(unittest.TestCase):
                                    self.params,
                                    self.mime_type)
             assert info.status_code == 200
+        resp = get_qiniu_file(key)
+        assert resp.getcode() == 200
+        assert hash_of_file(localfile) == hash_of_io(resp)
 
 
 class DownloadTestCase(unittest.TestCase):
@@ -701,13 +788,13 @@ class EtagTestCase(unittest.TestCase):
         remove_temp_file("x")
 
     def test_small_size(self):
-        localfile = create_temp_file(1024 * 1024)
+        localfile = create_temp_file(1024 * 1024, rand=False)
         hash = etag(localfile)
         assert hash == 'FnlAdmDasGTQOIgrU1QIZaGDv_1D'
         remove_temp_file(localfile)
 
     def test_large_size(self):
-        localfile = create_temp_file(4 * 1024 * 1024 + 1)
+        localfile = create_temp_file(4 * 1024 * 1024 + 1, rand=False)
         hash = etag(localfile)
         assert hash == 'ljF323utglY3GI6AvLgawSJ4_dgk'
         remove_temp_file(localfile)
