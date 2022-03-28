@@ -94,6 +94,18 @@ def _get(url, params, auth, headers=None):
     return __return_wrapper(r)
 
 
+def _session_get(url, params, auth):
+    if _session is None:
+        _init()
+    try:
+        r = _session.get(
+            url, params=params, auth=qiniu.auth.RequestsAuth(auth) if auth is not None else None,
+            timeout=config.get_default('connection_timeout'))
+    except Exception as e:
+        return None, ResponseInfo(None, e)
+    return __return_wrapper(r)
+
+
 class _TokenAuth(AuthBase):
     def __init__(self, token):
         self.token = token
