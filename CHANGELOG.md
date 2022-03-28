@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.6.0 (2022-03-28)
+*  优化了错误处理机制
+*  支持 [Qiniu](https://developer.qiniu.com/kodo/1201/access-token) 签名算法
+
 ## 7.5.0 (2021-09-23)
 * 上传策略新增对部分字段支持
 
