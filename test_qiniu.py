@@ -460,6 +460,40 @@ class BucketTestCase(unittest.TestCase):
         ret, info = self.bucket.delete_after_days(bucket_name, key, days)
         assert info.status_code == 200
 
+    def test_set_object_lifecycle(self):
+        key = 'test_set_object_lifecycle' + rand_string(8)
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
+        assert info.status_code == 200
+        ret, info = self.bucket.set_object_lifecycle(
+            bucket=bucket_name,
+            key=key,
+            to_line_after_days=10,
+            to_archive_after_days=20,
+            to_deep_archive_after_days=30,
+            delete_after_days=40
+        )
+        assert info.status_code == 200
+
+    def test_set_object_lifecycle_with_cond(self):
+        key = 'test_set_object_lifecycle_cond' + rand_string(8)
+        ret, info = self.bucket.copy(bucket_name, 'copyfrom', bucket_name, key)
+        assert info.status_code == 200
+        ret, info = self.bucket.stat(bucket_name, key)
+        assert info.status_code == 200
+        key_hash = ret['hash']
+        ret, info = self.bucket.set_object_lifecycle(
+            bucket=bucket_name,
+            key=key,
+            to_line_after_days=10,
+            to_archive_after_days=20,
+            to_deep_archive_after_days=30,
+            delete_after_days=40,
+            cond={
+                'hash': key_hash
+            }
+        )
+        assert info.status_code == 200
+
 
 class UploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"

@@ -219,21 +219,21 @@ class BucketManager(object):
     def change_type(self, bucket, key, storage_type):
         """修改文件的存储类型
 
-        修改文件的存储类型为普通存储或者是低频存储，参考文档：
+        修改文件的存储类型，参考文档：
         https://developer.qiniu.com/kodo/api/3710/modify-the-file-type
 
         Args:
             bucket:         待操作资源所在空间
             key:            待操作资源文件名
-            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储，2 为归档存储
+            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储，2 为归档存储，3 为深度归档
         """
         resource = entry(bucket, key)
         return self.__rs_do('chtype', resource, 'type/{0}'.format(storage_type))
 
     def restoreAr(self, bucket, key, freezeAfter_days):
-        """解冻归档存储文件
+        """解冻归档存储、深度归档存储文件
 
-        修改文件的存储类型为普通存储或者是低频存储，参考文档：
+        对归档存储、深度归档存储文件，进行解冻操作参考文档：
         https://developer.qiniu.com/kodo/api/6380/restore-archive
 
         Args:
@@ -262,6 +262,45 @@ class BucketManager(object):
             condstr = urlsafe_base64_encode(condstr[:-1])
             return self.__rs_do('chstatus', resource, 'status/{0}'.format(status), 'cond', condstr)
         return self.__rs_do('chstatus', resource, 'status/{0}'.format(status))
+
+    def set_object_lifecycle(
+        self,
+        bucket,
+        key,
+        to_line_after_days=0,
+        to_archive_after_days=0,
+        to_deep_archive_after_days=0,
+        delete_after_days=0,
+        cond=None
+    ):
+        """
+
+        设置对象的生命周期
+
+        Args:
+            bucket: 目标空间
+            key: 目标资源
+            to_line_after_days: 多少天后将文件转为低频存储，设置为 -1 表示取消已设置的转低频存储的生命周期规则， 0 表示不修改转低频生命周期规则。
+            to_archive_after_days: 多少天后将文件转为归档存储，设置为 -1 表示取消已设置的转归档存储的生命周期规则， 0 表示不修改转归档生命周期规则。
+            to_deep_archive_after_days: 多少天后将文件转为深度归档存储，设置为 -1 表示取消已设置的转深度归档存储的生命周期规则， 0 表示不修改转深度归档生命周期规则
+            delete_after_days: 多少天后将文件删除，设置为 -1 表示取消已设置的删除存储的生命周期规则， 0 表示不修改删除存储的生命周期规则。
+            cond: 匹配条件，只有条件匹配才会设置成功，当前支持设置 hash、mime、fsize、putTime。
+
+        Returns:
+            resBody, respInfo
+
+        """
+        options = [
+            'toIAAfterDays', str(to_line_after_days),
+            'toArchiveAfterDays', str(to_archive_after_days),
+            'toDeepArchiveAfterDays', str(to_deep_archive_after_days),
+            'deleteAfterDays', str(delete_after_days)
+        ]
+        if cond and isinstance(cond, dict):
+            cond_str = '&'.join(["{0}={1}".format(k, v) for k, v in cond.items()])
+            options += ['cond', urlsafe_base64_encode(cond_str)]
+        resource = entry(bucket, key)
+        return self.__rs_do('lifecycle', resource, *options)
 
     def batch(self, operations):
         """批量操作:
