@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.7.0 (2022-04-29)
+* 对象存储，新增 set_object_lifecycle （设置 Object 生命周期） API
+
 ## 7.6.0 (2022-03-28)
 *  优化了错误处理机制
 *  支持 [Qiniu](https://developer.qiniu.com/kodo/1201/access-token) 签名算法
