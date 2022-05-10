@@ -148,9 +148,9 @@ class AuthTestCase(unittest.TestCase):
             Auth('', '').token('nokey')
 
     def test_token_of_request(self):
-        token = dummy_auth.token_of_request('http://www.qiniu.com?go=1', 'test', '')
+        token = dummy_auth.token_of_request('https://www.qiniu.com?go=1', 'test', '')
         assert token == 'abcdefghklmnopq:cFyRVoWrE3IugPIMP5YJFTO-O-Y='
-        token = dummy_auth.token_of_request('http://www.qiniu.com?go=1', 'test', 'application/x-www-form-urlencoded')
+        token = dummy_auth.token_of_request('https://www.qiniu.com?go=1', 'test', 'application/x-www-form-urlencoded')
         assert token == 'abcdefghklmnopq:svWRNcacOE-YMsc70nuIYdaa1e4='
 
     def test_QiniuMacRequestsAuth(self):
@@ -554,7 +554,7 @@ class UploaderTestCase(unittest.TestCase):
     def test_withoutRead_withoutSeek_retry(self):
         key = 'retry'
         data = 'hello retry!'
-        set_default(default_zone=Zone('http://a', 'http://upload.qiniup.com'))
+        set_default(default_zone=Zone('http://a', 'https://upload.qiniup.com'))
         token = self.q.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
@@ -604,7 +604,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = __file__
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
@@ -616,7 +616,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = __file__
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
@@ -628,7 +628,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(2 * 1024 * 1024 + 1)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -641,7 +641,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(4 * 1024 * 1024)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -654,7 +654,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(10 * 1024 * 1024 + 1)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -668,7 +668,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(part_size + 1)
         key = None
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -682,7 +682,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         token = self.q.upload_token(bucket_name, key)
         localfile = create_temp_file(4 * 1024 * 1024 + 1)
         progress_handler = lambda progress, total: progress
-        qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniup.com'))
+        qiniu.set_default(default_zone=Zone('http://a', 'https://upload.qiniup.com'))
         ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
         print(info)
         assert ret['key'] == key
@@ -691,7 +691,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
     def test_retry(self):
         localfile = __file__
         key = 'test_file_r_retry'
-        qiniu.set_default(default_zone=Zone('http://a', 'http://upload.qiniup.com'))
+        qiniu.set_default(default_zone=Zone('http://a', 'https://upload.qiniup.com'))
         token = self.q.upload_token(bucket_name, key)
         ret, info = put_file(token, key, localfile, self.params, self.mime_type)
         print(info)
@@ -702,7 +702,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = __file__
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('http://upload.qiniup.com'))
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key, policy={'keylimit': ['test_file_d']})
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
