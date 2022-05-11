@@ -337,7 +337,7 @@ class _Resume(object):
         return '{0}/mkblk/{1}'.format(host, size)
 
     def block_url_v2(self, host, bucket_name):
-        encoded_object_name = urlsafe_base64_encode(self.key) if self.key is not None else '～'
+        encoded_object_name = urlsafe_base64_encode(self.key) if self.key is not None else '~'
         return '{0}/buckets/{1}/objects/{2}/uploads'.format(host, bucket_name, encoded_object_name)
 
     def file_url(self, host):
