@@ -742,6 +742,21 @@ class ResumableUploaderTestCase(unittest.TestCase):
             assert ret['key'] == ret['hash']
             remove_temp_file(localfile)
 
+    def test_put_stream_v2_with_empty_return_body(self):
+        part_size = 1024 * 1024 * 4
+        localfile = create_temp_file(part_size + 1)
+        key = 'test_file_empty_return_body'
+        size = os.stat(localfile).st_size
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name, key, policy={'returnBody': ' '})
+            ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
+                                   self.params,
+                                   self.mime_type, part_size=part_size, version='v2', bucket_name=bucket_name)
+            assert info.status_code == 200
+            assert ret == {}
+            remove_temp_file(localfile)
+
     def test_big_file(self):
         key = 'big'
         token = self.q.upload_token(bucket_name, key)
