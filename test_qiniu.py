@@ -10,6 +10,7 @@ import requests
 
 import unittest
 import pytest
+from freezegun import freeze_time
 
 from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save, Zone, QiniuMacAuth
 from qiniu import put_data, put_file, put_stream
@@ -493,6 +494,36 @@ class BucketTestCase(unittest.TestCase):
             }
         )
         assert info.status_code == 200
+
+    @freeze_time("1970-01-01")
+    def test_invalid_x_qiniu_date(self):
+        ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
+        assert ret is None
+        assert info.status_code == 403
+
+    @freeze_time("1970-01-01")
+    def test_invalid_x_qiniu_date_with_disable_date_sign(self):
+        q = Auth(access_key, secret_key, disable_qiniu_timestamp_signature=True)
+        bucket = BucketManager(q)
+        ret, info = bucket.stat(bucket_name, 'python-sdk.html')
+        assert 'hash' in ret
+
+    @freeze_time("1970-01-01")
+    def test_invalid_x_qiniu_date_env(self):
+        os.environ['DISABLE_QINIU_TIMESTAMP_SIGNATURE'] = 'True'
+        ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
+        os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        assert 'hash' in ret
+
+    @freeze_time("1970-01-01")
+    def test_invalid_x_qiniu_date_env_be_ignored(self):
+        os.environ['DISABLE_QINIU_TIMESTAMP_SIGNATURE'] = 'True'
+        q = Auth(access_key, secret_key, disable_qiniu_timestamp_signature=False)
+        bucket = BucketManager(q)
+        ret, info = bucket.stat(bucket_name, 'python-sdk.html')
+        os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        assert ret is None
+        assert info.status_code == 403
 
 
 class UploaderTestCase(unittest.TestCase):

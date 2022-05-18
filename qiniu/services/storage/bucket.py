@@ -17,7 +17,10 @@ class BucketManager(object):
 
     def __init__(self, auth, zone=None):
         self.auth = auth
-        self.mac_auth = QiniuMacAuth(auth.get_access_key(), auth.get_secret_key())
+        self.mac_auth = QiniuMacAuth(
+            auth.get_access_key(),
+            auth.get_secret_key(),
+            auth.disable_qiniu_timestamp_signature)
         if (zone is None):
             self.zone = config.get_default('default_zone')
         else:
