@@ -12,7 +12,7 @@ from .upload_progress_recorder import UploadProgressRecorder
 
 def put_data(
         up_token, key, data, params=None, mime_type='application/octet-stream', check_crc=False, progress_handler=None,
-        fname=None, hostscache_dir=None):
+        fname=None, hostscache_dir=None, metadata=None):
     """上传二进制流到七牛
 
     Args:
@@ -23,7 +23,8 @@ def put_data(
         mime_type:        上传数据的mimeType
         check_crc:        是否校验crc32
         progress_handler: 上传进度
-        hostscache_dir：  host请求 缓存文件保存位置
+        hostscache_dir:   host请求 缓存文件保存位置
+        metadata:         元数据
 
     Returns:
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
@@ -41,13 +42,14 @@ def put_data(
         final_data = data
 
     crc = crc32(final_data)
-    return _form_put(up_token, key, final_data, params, mime_type, crc, hostscache_dir, progress_handler, fname)
+    return _form_put(up_token, key, final_data, params, mime_type,
+                     crc, hostscache_dir, progress_handler, fname, metadata=metadata)
 
 
 def put_file(up_token, key, file_path, params=None,
              mime_type='application/octet-stream', check_crc=False,
              progress_handler=None, upload_progress_recorder=None, keep_last_modified=False, hostscache_dir=None,
-             part_size=None, version=None, bucket_name=None):
+             part_size=None, version=None, bucket_name=None, metadata=None):
     """上传文件到七牛
 
     Args:
@@ -59,10 +61,11 @@ def put_file(up_token, key, file_path, params=None,
         check_crc:                是否校验crc32
         progress_handler:         上传进度
         upload_progress_recorder: 记录上传进度，用于断点续传
-        hostscache_dir：          host请求 缓存文件保存位置
-        version                   分片上传版本 目前支持v1/v2版本 默认v1
-        part_size                 分片上传v2必传字段 默认大小为4MB 分片大小范围为1 MB - 1 GB
-        bucket_name               分片上传v2字段 空间名称
+        hostscache_dir:           host请求 缓存文件保存位置
+        version:                  分片上传版本 目前支持v1/v2版本 默认v1
+        part_size:                分片上传v2必传字段 默认大小为4MB 分片大小范围为1 MB - 1 GB
+        bucket_name:              分片上传v2字段 空间名称
+        metadata:                 元数据信息
 
     Returns:
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
@@ -78,18 +81,17 @@ def put_file(up_token, key, file_path, params=None,
                                    mime_type, progress_handler,
                                    upload_progress_recorder=upload_progress_recorder,
                                    modify_time=modify_time, keep_last_modified=keep_last_modified,
-                                   part_size=part_size, version=version, bucket_name=bucket_name)
+                                   part_size=part_size, version=version, bucket_name=bucket_name, metadata=metadata)
         else:
             crc = file_crc32(file_path)
             ret, info = _form_put(up_token, key, input_stream, params, mime_type,
                                   crc, hostscache_dir, progress_handler, file_name,
-                                  modify_time=modify_time, keep_last_modified=keep_last_modified)
+                                  modify_time=modify_time, keep_last_modified=keep_last_modified, metadata=metadata)
     return ret, info
 
 
 def _form_put(up_token, key, data, params, mime_type, crc, hostscache_dir=None, progress_handler=None, file_name=None,
-              modify_time=None,
-              keep_last_modified=False):
+              modify_time=None, keep_last_modified=False, metadata=None):
     fields = {}
     if params:
         for k, v in params.items():
@@ -114,6 +116,11 @@ def _form_put(up_token, key, data, params, mime_type, crc, hostscache_dir=None, 
     if modify_time and keep_last_modified:
         fields['x-qn-meta-!Last-Modified'] = rfc_from_timestamp(modify_time)
 
+    if metadata:
+        for k, v in metadata.items():
+            if k.startswith('x-qn-meta-'):
+                fields[k] = str(v)
+
     r, info = http._post_file(url, data=fields, files={'file': (fname, data, mime_type)})
     if r is None and info.need_retry():
         if info.connect_failed:
@@ -135,10 +142,10 @@ def _form_put(up_token, key, data, params, mime_type, crc, hostscache_dir=None, 
 def put_stream(up_token, key, input_stream, file_name, data_size, hostscache_dir=None, params=None,
                mime_type=None, progress_handler=None,
                upload_progress_recorder=None, modify_time=None, keep_last_modified=False,
-               part_size=None, version=None, bucket_name=None):
+               part_size=None, version=None, bucket_name=None, metadata=None):
     task = _Resume(up_token, key, input_stream, file_name, data_size, hostscache_dir, params, mime_type,
                    progress_handler, upload_progress_recorder, modify_time, keep_last_modified,
-                   part_size, version, bucket_name)
+                   part_size, version, bucket_name, metadata)
     return task.upload()
 
 
@@ -167,7 +174,7 @@ class _Resume(object):
 
     def __init__(self, up_token, key, input_stream, file_name, data_size, hostscache_dir, params, mime_type,
                  progress_handler, upload_progress_recorder, modify_time, keep_last_modified, part_size=None,
-                 version=None, bucket_name=None):
+                 version=None, bucket_name=None, metadata=None):
         """初始化断点续上传"""
         self.up_token = up_token
         self.key = key
@@ -184,6 +191,7 @@ class _Resume(object):
         self.version = version or 'v1'
         self.part_size = part_size or config._BLOCK_SIZE
         self.bucket_name = bucket_name
+        self.metadata = metadata
 
     def record_upload_progress(self, offset):
         record_data = {
@@ -294,9 +302,9 @@ class _Resume(object):
         elif self.version == 'v2':
             make_file_url = self.block_url_v2(host, self.bucket_name) + '/%s' % self.uploadId
             return self.make_file_v2(self.blockStatus, make_file_url, self.file_name,
-                                     self.mime_type, self.params)
+                                     self.mime_type, self.params, self.metadata)
 
-    def make_file_v2(self, block_status, url, file_name=None, mime_type=None, customVars=None):
+    def make_file_v2(self, block_status, url, file_name=None, mime_type=None, customVars=None, metadata=None):
         """completeMultipartUpload"""
         parts = self.get_parts(block_status)
         headers = {
@@ -306,7 +314,8 @@ class _Resume(object):
             'parts': parts,
             'fname': file_name,
             'mimeType': mime_type,
-            'customVars': customVars
+            'customVars': customVars,
+            'metadata': metadata
         }
         ret, info = self.post_with_headers(url, json.dumps(data), headers=headers)
         if ret is not None and ret != {}:
@@ -354,11 +363,16 @@ class _Resume(object):
         if self.params:
             for k, v in self.params.items():
                 url.append('{0}/{1}'.format(k, urlsafe_base64_encode(v)))
-            pass
 
         if self.modify_time and self.keep_last_modified:
             url.append(
                 "x-qn-meta-!Last-Modified/{0}".format(urlsafe_base64_encode(rfc_from_timestamp(self.modify_time))))
+
+        if self.metadata:
+            for k, v in self.metadata.items():
+                if k.startswith('x-qn-meta-'):
+                    url.append(
+                        "{0}/{1}".format(k, urlsafe_base64_encode(v)))
 
         url = '/'.join(url)
         return url
