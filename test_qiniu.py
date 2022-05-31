@@ -495,6 +495,12 @@ class BucketTestCase(unittest.TestCase):
         )
         assert info.status_code == 200
 
+    def test_list_domains(self):
+        ret, info = self.bucket.list_domains(bucket_name)
+        print(info)
+        assert info.status_code == 200
+        assert isinstance(ret, list)
+
     @freeze_time("1970-01-01")
     def test_invalid_x_qiniu_date(self):
         ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
