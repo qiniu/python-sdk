@@ -498,7 +498,12 @@ class BucketTestCase(unittest.TestCase):
 class UploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
     params = {'x:a': 'a'}
+    metadata = {
+        'x-qn-meta-name': 'qiniu',
+        'x-qn-meta-age': '18'
+    }
     q = Auth(access_key, secret_key)
+    bucket = BucketManager(q)
 
     def test_put(self):
         key = 'a\\b\\c"hello'
@@ -594,11 +599,40 @@ class UploaderTestCase(unittest.TestCase):
             print(info)
             assert ret is not None
 
+    def test_put_file_with_metadata(self):
+        localfile = __file__
+        key = 'test_file_with_metadata'
+
+        token = self.q.upload_token(bucket_name, key)
+        ret, info = put_file(token, key, localfile, metadata=self.metadata)
+        assert ret['key'] == key
+        assert ret['hash'] == etag(localfile)
+        ret, info = self.bucket.stat(bucket_name, key)
+        assert 'x-qn-meta' in ret
+        assert ret['x-qn-meta']['name'] == 'qiniu'
+        assert ret['x-qn-meta']['age'] == '18'
+
+    def test_put_data_with_metadata(self):
+        key = 'put_data_with_metadata'
+        data = 'hello metadata!'
+        token = self.q.upload_token(bucket_name, key)
+        ret, info = put_data(token, key, data, metadata=self.metadata)
+        assert ret['key'] == key
+        ret, info = self.bucket.stat(bucket_name, key)
+        assert 'x-qn-meta' in ret
+        assert ret['x-qn-meta']['name'] == 'qiniu'
+        assert ret['x-qn-meta']['age'] == '18'
+
 
 class ResumableUploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
     params = {'x:a': 'a'}
+    metadata = {
+        'x-qn-meta-name': 'qiniu',
+        'x-qn-meta-age': '18'
+    }
     q = Auth(access_key, secret_key)
+    bucket = BucketManager(q)
 
     def test_put_stream(self):
         localfile = __file__
@@ -714,6 +748,40 @@ class ResumableUploaderTestCase(unittest.TestCase):
                                    self.params,
                                    self.mime_type)
             assert info.status_code == 200
+
+    def test_put_stream_with_metadata(self):
+        localfile = __file__
+        key = 'test_put_stream_with_metadata'
+        size = os.stat(localfile).st_size
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name, key)
+            ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
+                                   self.params, self.mime_type,
+                                   part_size=None, version=None, bucket_name=None, metadata=self.metadata)
+            assert ret['key'] == key
+        ret, info = self.bucket.stat(bucket_name, key)
+        assert 'x-qn-meta' in ret
+        assert ret['x-qn-meta']['name'] == 'qiniu'
+        assert ret['x-qn-meta']['age'] == '18'
+
+    def test_put_stream_v2_with_metadata(self):
+        part_size = 1024 * 1024 * 4
+        localfile = create_temp_file(part_size + 1)
+        key = 'test_put_stream_v2_with_metadata'
+        size = os.stat(localfile).st_size
+        set_default(default_zone=Zone('https://upload.qiniup.com'))
+        with open(localfile, 'rb') as input_stream:
+            token = self.q.upload_token(bucket_name, key)
+            ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
+                                   self.params, self.mime_type,
+                                   part_size=part_size, version='v2', bucket_name=bucket_name, metadata=self.metadata)
+            assert ret['key'] == key
+            remove_temp_file(localfile)
+        ret, info = self.bucket.stat(bucket_name, key)
+        assert 'x-qn-meta' in ret
+        assert ret['x-qn-meta']['name'] == 'qiniu'
+        assert ret['x-qn-meta']['age'] == '18'
 
 
 class DownloadTestCase(unittest.TestCase):
