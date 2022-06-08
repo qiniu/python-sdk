@@ -49,11 +49,12 @@ class Auth(object):
         __secret_key: 账号密钥对重的secretKey，详见 https://portal.qiniu.com/user/key
     """
 
-    def __init__(self, access_key, secret_key):
+    def __init__(self, access_key, secret_key, disable_qiniu_timestamp_signature=None):
         """初始化Auth类"""
         self.__checkKey(access_key, secret_key)
         self.__access_key = access_key
         self.__secret_key = b(secret_key)
+        self.disable_qiniu_timestamp_signature = disable_qiniu_timestamp_signature
 
     def get_access_key(self):
         return self.__access_key
@@ -229,11 +230,12 @@ class QiniuMacAuth(object):
     http://kirk-docs.qiniu.com/apidocs/#TOC_325b437b89e8465e62e958cccc25c63f
     """
 
-    def __init__(self, access_key, secret_key):
+    def __init__(self, access_key, secret_key, disable_qiniu_timestamp_signature=None):
         self.qiniu_header_prefix = "X-Qiniu-"
         self.__checkKey(access_key, secret_key)
         self.__access_key = access_key
         self.__secret_key = b(secret_key)
+        self.disable_qiniu_timestamp_signature = disable_qiniu_timestamp_signature
 
     def __token(self, data):
         data = b(data)

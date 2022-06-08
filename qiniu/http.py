@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 import platform
+from datetime import datetime
 
 import requests
 from requests.auth import AuthBase
@@ -18,6 +20,19 @@ USER_AGENT = 'QiniuPython/{0} ({1}; ) Python/{2}'.format(
 
 _session = None
 _headers = {'User-Agent': USER_AGENT}
+
+
+def __add_auth_headers(headers, auth):
+    x_qiniu_date = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+    if auth.disable_qiniu_timestamp_signature is not None:
+        if not auth.disable_qiniu_timestamp_signature:
+            headers['X-Qiniu-Date'] = x_qiniu_date
+    elif os.getenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE'):
+        if os.getenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE').lower() != 'true':
+            headers['X-Qiniu-Date'] = x_qiniu_date
+    else:
+        headers['X-Qiniu-Date'] = x_qiniu_date
+    return headers
 
 
 def __return_wrapper(resp):
@@ -155,14 +170,18 @@ def _post_with_qiniu_mac(url, data, auth):
     qn_auth = qiniu.auth.QiniuMacRequestsAuth(
         auth
     ) if auth is not None else None
-    return _post(url, data, None, qn_auth)
+    headers = __add_auth_headers({}, auth)
+
+    return _post(url, data, None, qn_auth, headers=headers)
 
 
 def _get_with_qiniu_mac(url, params, auth):
     qn_auth = qiniu.auth.QiniuMacRequestsAuth(
         auth
     ) if auth is not None else None
-    return _get(url, params, qn_auth)
+    headers = __add_auth_headers({}, auth)
+
+    return _get(url, params, qn_auth, headers=headers)
 
 
 def _get_with_qiniu_mac_and_headers(url, params, auth, headers):
