@@ -1,5 +1,9 @@
 # Changelog
 
+
+## 7.8.0（2022-06-08）
+* 对象存储，管理类 API 发送请求时增加 [X-Qiniu-Date](https://developer.qiniu.com/kodo/3924/common-request-headers) （生成请求的时间） header
+
 ## 7.7.1 (2022-05-11)
 * 对象存储，修复上传不制定 key 部分情况下会上传失败问题。
 
