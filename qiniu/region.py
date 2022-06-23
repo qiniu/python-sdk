@@ -21,9 +21,16 @@ class Region(object):
             io_host=None,
             host_cache={},
             home_dir=None,
-            scheme="http"):
+            scheme="http",
+            rs_host=None,
+            rsf_host=None):
         """初始化Zone类"""
-        self.up_host, self.up_host_backup, self.io_host, self.home_dir = up_host, up_host_backup, io_host, home_dir
+        self.up_host = up_host
+        self.up_host_backup = up_host_backup
+        self.io_host = io_host
+        self.rs_host = rs_host
+        self.rsf_host = rsf_host
+        self.home_dir = home_dir
         self.host_cache = host_cache
         self.scheme = scheme
 
@@ -39,23 +46,49 @@ class Region(object):
         if home_dir is None:
             home_dir = os.getcwd()
         up_hosts = self.get_up_host(ak, bucket, home_dir)
-        if (len(up_hosts) <= 1):
+        if len(up_hosts) <= 1:
             up_host = up_hosts[0]
         else:
             up_host = up_hosts[1]
         return up_host
 
-    def get_io_host(self, ak, bucket, home_dir):
+    def get_io_host(self, ak, bucket, home_dir=None):
         if self.io_host:
             return self.io_host
         if home_dir is None:
             home_dir = os.getcwd()
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
+        if 'ioHosts' not in bucket_hosts:
+            bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir, force=True)
         io_hosts = bucket_hosts['ioHosts']
         return io_hosts[0]
 
+    def get_rs_host(self, ak, bucket, home_dir=None):
+        if self.rs_host:
+            return self.rs_host
+        if home_dir is None:
+            home_dir = os.getcwd()
+        bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
+        if 'rsHosts' not in bucket_hosts:
+            bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir, force=True)
+        rs_hosts = bucket_hosts['rsHosts']
+        return rs_hosts[0]
+
+    def get_rsf_host(self, ak, bucket, home_dir=None):
+        if self.rsf_host:
+            return self.rsf_host
+        if home_dir is None:
+            home_dir = os.getcwd()
+        bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
+        if 'rsfHosts' not in bucket_hosts:
+            bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir, force=True)
+        rsf_hosts = bucket_hosts['rsfHosts']
+        return rsf_hosts[0]
+
     def get_up_host(self, ak, bucket, home_dir):
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
+        if 'upHosts' not in bucket_hosts:
+            bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir, force=True)
         up_hosts = bucket_hosts['upHosts']
         return up_hosts
 
@@ -77,11 +110,11 @@ class Region(object):
 
         return ak, bucket
 
-    def get_bucket_hosts(self, ak, bucket, home_dir):
+    def get_bucket_hosts(self, ak, bucket, home_dir, force=False):
         key = self.scheme + ":" + ak + ":" + bucket
 
         bucket_hosts = self.get_bucket_hosts_to_cache(key, home_dir)
-        if (len(bucket_hosts) > 0):
+        if not force and len(bucket_hosts) > 0:
             return bucket_hosts
 
         hosts = {}
@@ -114,6 +147,8 @@ class Region(object):
         bucket_hosts = {
             'upHosts': scheme_hosts['up'],
             'ioHosts': scheme_hosts['io'],
+            'rsHosts': scheme_hosts['rs'],
+            'rsfHosts': scheme_hosts['rsf'],
             'deadline': int(time.time()) + hosts['ttl']
         }
         home_dir = ""
@@ -121,17 +156,17 @@ class Region(object):
         return bucket_hosts
 
     def get_bucket_hosts_to_cache(self, key, home_dir):
-        ret = []
-        if (len(self.host_cache) == 0):
+        ret = {}
+        if len(self.host_cache) == 0:
             self.host_cache_from_file(home_dir)
 
         if self.host_cache == {}:
             return ret
 
-        if (not (key in self.host_cache)):
+        if key not in self.host_cache:
             return ret
 
-        if (self.host_cache[key]['deadline'] > time.time()):
+        if self.host_cache[key]['deadline'] > time.time():
             ret = self.host_cache[key]
 
         return ret

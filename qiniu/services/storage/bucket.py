@@ -59,7 +59,9 @@ class BucketManager(object):
         if delimiter is not None:
             options['delimiter'] = delimiter
 
-        url = '{0}/list'.format(config.get_default('default_rsf_host'))
+        ak = self.auth.get_access_key()
+        rs_host = self.zone.get_rsf_host(ak, bucket)
+        url = '{0}/list'.format(rs_host)
         ret, info = self.__get(url, options)
 
         eof = False
@@ -90,7 +92,7 @@ class BucketManager(object):
             一个ResponseInfo对象
         """
         resource = entry(bucket, key)
-        return self.__rs_do('stat', resource)
+        return self.__rs_do(bucket, 'stat', resource)
 
     def delete(self, bucket, key):
         """删除文件:
@@ -107,7 +109,7 @@ class BucketManager(object):
             一个ResponseInfo对象
         """
         resource = entry(bucket, key)
-        return self.__rs_do('delete', resource)
+        return self.__rs_do(bucket, 'delete', resource)
 
     def rename(self, bucket, key, key_to, force='false'):
         """重命名文件:
@@ -143,7 +145,7 @@ class BucketManager(object):
         """
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
-        return self.__rs_do('move', resource, to, 'force/{0}'.format(force))
+        return self.__rs_do(bucket, 'move', resource, to, 'force/{0}'.format(force))
 
     def copy(self, bucket, key, bucket_to, key_to, force='false'):
         """复制文件:
@@ -163,7 +165,7 @@ class BucketManager(object):
         """
         resource = entry(bucket, key)
         to = entry(bucket_to, key_to)
-        return self.__rs_do('copy', resource, to, 'force/{0}'.format(force))
+        return self.__rs_do(bucket, 'copy', resource, to, 'force/{0}'.format(force))
 
     def fetch(self, url, bucket, key=None, hostscache_dir=None):
         """抓取文件:
@@ -217,7 +219,7 @@ class BucketManager(object):
         """
         resource = entry(bucket, key)
         encode_mime = urlsafe_base64_encode(mime)
-        return self.__rs_do('chgm', resource, 'mime/{0}'.format(encode_mime))
+        return self.__rs_do(bucket, 'chgm', resource, 'mime/{0}'.format(encode_mime))
 
     def change_type(self, bucket, key, storage_type):
         """修改文件的存储类型
@@ -231,7 +233,7 @@ class BucketManager(object):
             storage_type:   待操作资源存储类型，0为普通存储，1为低频存储，2 为归档存储，3 为深度归档
         """
         resource = entry(bucket, key)
-        return self.__rs_do('chtype', resource, 'type/{0}'.format(storage_type))
+        return self.__rs_do(bucket, 'chtype', resource, 'type/{0}'.format(storage_type))
 
     def restoreAr(self, bucket, key, freezeAfter_days):
         """解冻归档存储、深度归档存储文件
@@ -245,7 +247,7 @@ class BucketManager(object):
             freezeAfter_days:   解冻有效时长，取值范围 1～7
         """
         resource = entry(bucket, key)
-        return self.__rs_do('restoreAr', resource, 'freezeAfterDays/{0}'.format(freezeAfter_days))
+        return self.__rs_do(bucket, 'restoreAr', resource, 'freezeAfterDays/{0}'.format(freezeAfter_days))
 
     def change_status(self, bucket, key, status, cond):
         """修改文件的状态
@@ -263,8 +265,8 @@ class BucketManager(object):
             for k, v in cond.items():
                 condstr += "{0}={1}&".format(k, v)
             condstr = urlsafe_base64_encode(condstr[:-1])
-            return self.__rs_do('chstatus', resource, 'status/{0}'.format(status), 'cond', condstr)
-        return self.__rs_do('chstatus', resource, 'status/{0}'.format(status))
+            return self.__rs_do(bucket, 'chstatus', resource, 'status/{0}'.format(status), 'cond', condstr)
+        return self.__rs_do(bucket, 'chstatus', resource, 'status/{0}'.format(status))
 
     def set_object_lifecycle(
         self,
@@ -303,7 +305,7 @@ class BucketManager(object):
             cond_str = '&'.join(["{0}={1}".format(k, v) for k, v in cond.items()])
             options += ['cond', urlsafe_base64_encode(cond_str)]
         resource = entry(bucket, key)
-        return self.__rs_do('lifecycle', resource, *options)
+        return self.__rs_do(bucket, 'lifecycle', resource, *options)
 
     def batch(self, operations):
         """批量操作:
@@ -339,7 +341,7 @@ class BucketManager(object):
                 [ <Bucket1>, <Bucket2>, ... ]
             一个ResponseInfo对象
         """
-        return self.__rs_do('buckets')
+        return self.__uc_do('buckets')
 
     def delete_after_days(self, bucket, key, days):
         """更新文件生命周期
@@ -361,7 +363,7 @@ class BucketManager(object):
             days:   指定天数
         """
         resource = entry(bucket, key)
-        return self.__rs_do('deleteAfterDays', resource, days)
+        return self.__rs_do(bucket, 'deleteAfterDays', resource, days)
 
     def mkbucketv3(self, bucket_name, region):
         """
@@ -371,7 +373,7 @@ class BucketManager(object):
             bucket_name: 存储空间名
             region: 存储区域
         """
-        return self.__rs_do('mkbucketv3', bucket_name, 'region', region)
+        return self.__uc_do('mkbucketv3', bucket_name, 'region', region)
 
     def list_bucket(self, region):
         """
@@ -416,8 +418,10 @@ class BucketManager(object):
     def __uc_do(self, operation, *args):
         return self.__server_do(config.get_default('default_uc_host'), operation, *args)
 
-    def __rs_do(self, operation, *args):
-        return self.__server_do(config.get_default('default_rs_host'), operation, *args)
+    def __rs_do(self, bucket, operation, *args):
+        ak = self.auth.get_access_key()
+        rs_host = self.zone.get_rs_host(ak, bucket)
+        return self.__server_do(rs_host, operation, *args)
 
     def __io_do(self, bucket, operation, home_dir, *args):
         ak = self.auth.get_access_key()
