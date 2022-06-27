@@ -260,6 +260,27 @@ class DomainManager(object):
         url = '{0}/sslcert'.format(self.server)
         return self.__post(url, body)
 
+    def sslcert_iter(self):
+        marker = None
+        while 1:
+            r = self.sslcert_list(200, marker)
+            li = r['certs']
+            if li:
+                for i in li:
+                    yield i
+                marker = r['marker']
+            else:
+                break
+
+    def sslcert_delete(self, certid):
+        return self.__delete("sslcert/"+certid)
+
+    def sslcert_list(self, limit=10, marker=None):
+        p = dict(limit=limit)
+        if marker:
+            p['marker']=marker
+        return self.__get("sslcert", p)[0]
+
     def domain_iter(self):
         """
         遍历所有域名
@@ -280,12 +301,17 @@ class DomainManager(object):
         p = dict(limit=limit)
         if marker:
             p['marker']=marker
-        return self.__get("domain", p)[0]
+        url = 'domain'
+        return self.__get(url, p)[0]
 
 
     def __post(self, url, data=None):
         headers = {'Content-Type': 'application/json'}
         return http._post_with_auth_and_headers(url, data, self.auth, headers)
+    
+    def __delete(self, url, data=None):
+        headers = {'Content-Type': 'application/json'}
+        return http._delete_with_auth_and_headers(url, data, self.auth, headers)
 
     def __put(self, url, data=None):
         headers = {'Content-Type': 'application/json'}

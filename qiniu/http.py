@@ -21,9 +21,10 @@ _headers = {'User-Agent': USER_AGENT}
 
 def __return_wrapper(resp):
     if resp.status_code != 200 or resp.headers.get('X-Reqid') is None:
+        print(resp.text)
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
-    ret = resp.json(encoding='utf-8') if resp.text != '' else {}
+    ret = resp.json() if resp.text != '' else {}
     return ret, ResponseInfo(resp)
 
 
@@ -36,6 +37,21 @@ def _init():
     session.mount('http://', adapter)
     global _session
     _session = session
+
+def _delete(url, data, files, auth, headers=None):
+    if _session is None:
+        _init()
+    try:
+        post_headers = _headers.copy()
+        if headers is not None:
+            for k, v in headers.items():
+                post_headers.update({k: v})
+        r = _session.delete(
+            url, data=data, files=files, auth=auth, headers=post_headers,
+            timeout=config.get_default('connection_timeout'))
+    except Exception as e:
+        return None, ResponseInfo(None, e)
+    return __return_wrapper(r)
 
 
 def _post(url, data, files, auth, headers=None):
@@ -106,6 +122,9 @@ def _post_with_auth(url, data, auth):
 
 def _post_with_auth_and_headers(url, data, auth, headers):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
+
+def _delete_with_auth_and_headers(url, data, auth, headers):
+    return _delete(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
 
 
 def _put_with_auth(url, data, auth):
