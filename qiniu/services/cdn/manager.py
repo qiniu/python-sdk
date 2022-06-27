@@ -273,7 +273,8 @@ class DomainManager(object):
                 break
 
     def sslcert_delete(self, certid):
-        return self.__delete("sslcert/"+certid)
+        url = '{0}/sslcert/{1}'.format(self.server, certid)
+        return self.__delete(url)
 
     def sslcert_list(self, limit=10, marker=None):
         p = dict(limit=limit)
