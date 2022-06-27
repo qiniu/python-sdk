@@ -105,6 +105,7 @@ def _get(url, params, auth, headers=None):
             timeout=config.get_default('connection_timeout'),
             headers=get_headers)
     except Exception as e:
+        print(e)
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
 

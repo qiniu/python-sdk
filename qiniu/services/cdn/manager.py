@@ -320,7 +320,7 @@ class DomainManager(object):
         p = dict(limit=limit)
         if marker:
             p['marker']=marker
-        return self.__get("domain", p)[0]
+        return self.__get(f"{self.server}/domain", p)[0]
 
 
     def __post(self, url, data=None):
