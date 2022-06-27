@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from qiniu import config
+from qiniu import config, QiniuMacAuth
 from qiniu import http
 from qiniu.utils import urlsafe_base64_encode, entry
 
@@ -17,6 +17,10 @@ class BucketManager(object):
 
     def __init__(self, auth, zone=None):
         self.auth = auth
+        self.mac_auth = QiniuMacAuth(
+            auth.get_access_key(),
+            auth.get_secret_key(),
+            auth.disable_qiniu_timestamp_signature)
         if (zone is None):
             self.zone = config.get_default('default_zone')
         else:
@@ -161,25 +165,28 @@ class BucketManager(object):
         to = entry(bucket_to, key_to)
         return self.__rs_do('copy', resource, to, 'force/{0}'.format(force))
 
-    def fetch(self, url, bucket, key=None):
+    def fetch(self, url, bucket, key=None, hostscache_dir=None):
         """抓取文件:
         从指定URL抓取资源，并将该资源存储到指定空间中，具体规格参考：
         http://developer.qiniu.com/docs/v6/api/reference/rs/fetch.html
 
         Args:
-            url:    指定的URL
-            bucket: 目标资源空间
-            key:    目标资源文件名
+            url:      指定的URL
+            bucket:   目标资源空间
+            key:      目标资源文件名
+            hostscache_dir： host请求 缓存文件保存位置
 
         Returns:
-            一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
+            一个dict变量：
+                成功 返回{'fsize': <fsize int>, 'hash': <hash string>, 'key': <key string>, 'mimeType': <mimeType string>}
+                失败 返回 None
             一个ResponseInfo对象
         """
         resource = urlsafe_base64_encode(url)
         to = entry(bucket, key)
-        return self.__io_do(bucket, 'fetch', resource, 'to/{0}'.format(to))
+        return self.__io_do(bucket, 'fetch', hostscache_dir, resource, 'to/{0}'.format(to))
 
-    def prefetch(self, bucket, key):
+    def prefetch(self, bucket, key, hostscache_dir=None):
         """镜像回源预取文件:
 
         从镜像源站抓取资源到空间中，如果空间中已经存在，则覆盖该资源，具体规格参考
@@ -188,13 +195,14 @@ class BucketManager(object):
         Args:
             bucket: 待获取资源所在的空间
             key:    代获取资源文件名
+            hostscache_dir： host请求 缓存文件保存位置
 
         Returns:
             一个dict变量，成功返回NULL，失败返回{"error": "<errMsg string>"}
             一个ResponseInfo对象
         """
         resource = entry(bucket, key)
-        return self.__io_do(bucket, 'prefetch', resource)
+        return self.__io_do(bucket, 'prefetch', hostscache_dir, resource)
 
     def change_mime(self, bucket, key, mime):
         """修改文件mimeType:
@@ -214,16 +222,88 @@ class BucketManager(object):
     def change_type(self, bucket, key, storage_type):
         """修改文件的存储类型
 
-        修改文件的存储类型为普通存储或者是低频存储，参考文档：
+        修改文件的存储类型，参考文档：
         https://developer.qiniu.com/kodo/api/3710/modify-the-file-type
 
         Args:
             bucket:         待操作资源所在空间
             key:            待操作资源文件名
-            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储
+            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储，2 为归档存储，3 为深度归档
         """
         resource = entry(bucket, key)
         return self.__rs_do('chtype', resource, 'type/{0}'.format(storage_type))
+
+    def restoreAr(self, bucket, key, freezeAfter_days):
+        """解冻归档存储、深度归档存储文件
+
+        对归档存储、深度归档存储文件，进行解冻操作参考文档：
+        https://developer.qiniu.com/kodo/api/6380/restore-archive
+
+        Args:
+            bucket:         待操作资源所在空间
+            key:            待操作资源文件名
+            freezeAfter_days:   解冻有效时长，取值范围 1～7
+        """
+        resource = entry(bucket, key)
+        return self.__rs_do('restoreAr', resource, 'freezeAfterDays/{0}'.format(freezeAfter_days))
+
+    def change_status(self, bucket, key, status, cond):
+        """修改文件的状态
+
+        修改文件的存储类型为可用或禁用：
+
+        Args:
+            bucket:         待操作资源所在空间
+            key:            待操作资源文件名
+            storage_type:   待操作资源存储类型，0为启用，1为禁用
+        """
+        resource = entry(bucket, key)
+        if cond and isinstance(cond, dict):
+            condstr = ""
+            for k, v in cond.items():
+                condstr += "{0}={1}&".format(k, v)
+            condstr = urlsafe_base64_encode(condstr[:-1])
+            return self.__rs_do('chstatus', resource, 'status/{0}'.format(status), 'cond', condstr)
+        return self.__rs_do('chstatus', resource, 'status/{0}'.format(status))
+
+    def set_object_lifecycle(
+        self,
+        bucket,
+        key,
+        to_line_after_days=0,
+        to_archive_after_days=0,
+        to_deep_archive_after_days=0,
+        delete_after_days=0,
+        cond=None
+    ):
+        """
+
+        设置对象的生命周期
+
+        Args:
+            bucket: 目标空间
+            key: 目标资源
+            to_line_after_days: 多少天后将文件转为低频存储，设置为 -1 表示取消已设置的转低频存储的生命周期规则， 0 表示不修改转低频生命周期规则。
+            to_archive_after_days: 多少天后将文件转为归档存储，设置为 -1 表示取消已设置的转归档存储的生命周期规则， 0 表示不修改转归档生命周期规则。
+            to_deep_archive_after_days: 多少天后将文件转为深度归档存储，设置为 -1 表示取消已设置的转深度归档存储的生命周期规则， 0 表示不修改转深度归档生命周期规则
+            delete_after_days: 多少天后将文件删除，设置为 -1 表示取消已设置的删除存储的生命周期规则， 0 表示不修改删除存储的生命周期规则。
+            cond: 匹配条件，只有条件匹配才会设置成功，当前支持设置 hash、mime、fsize、putTime。
+
+        Returns:
+            resBody, respInfo
+
+        """
+        options = [
+            'toIAAfterDays', str(to_line_after_days),
+            'toArchiveAfterDays', str(to_archive_after_days),
+            'toDeepArchiveAfterDays', str(to_deep_archive_after_days),
+            'deleteAfterDays', str(delete_after_days)
+        ]
+        if cond and isinstance(cond, dict):
+            cond_str = '&'.join(["{0}={1}".format(k, v) for k, v in cond.items()])
+            options += ['cond', urlsafe_base64_encode(cond_str)]
+        resource = entry(bucket, key)
+        return self.__rs_do('lifecycle', resource, *options)
 
     def batch(self, operations):
         """批量操作:
@@ -283,24 +363,65 @@ class BucketManager(object):
         resource = entry(bucket, key)
         return self.__rs_do('deleteAfterDays', resource, days)
 
-    def mkbucketv2(self, bucket_name, region):
+    def mkbucketv3(self, bucket_name, region):
         """
-        创建存储空间
-        https://developer.qiniu.com/kodo/api/1382/mkbucketv2
+        创建存储空间，全局唯一，其他账号有同名空间就无法创建
 
         Args:
             bucket_name: 存储空间名
             region: 存储区域
         """
-        bucket_name = urlsafe_base64_encode(bucket_name)
-        return self.__rs_do('mkbucketv2', bucket_name, 'region', region)
+        return self.__rs_do('mkbucketv3', bucket_name, 'region', region)
+
+    def list_bucket(self, region):
+        """
+        列举存储空间列表
+
+        Args:
+        """
+        return self.__uc_do('v3/buckets?region={0}'.format(region))
+
+    def bucket_info(self, bucket_name):
+        """
+        获取存储空间信息
+
+        Args:
+            bucket_name: 存储空间名
+        """
+        return self.__uc_do('v2/bucketInfo?bucket={}'.format(bucket_name), )
+
+    def bucket_domain(self, bucket_name):
+        """
+        获取存储空间域名列表
+        Args:
+            bucket_name: 存储空间名
+        """
+        options = {
+            'tbl': bucket_name,
+        }
+        url = "{0}/v6/domain/list?tbl={1}".format(config.get_default("default_api_host"), bucket_name)
+        return self.__get(url, options)
+
+    def change_bucket_permission(self, bucket_name, private):
+        """
+        设置 存储空间访问权限
+        https://developer.qiniu.com/kodo/api/3946/set-bucket-private
+        Args:
+            bucket_name: 存储空间名
+            private: 0 公开；1 私有 ,str类型
+        """
+        url = "{0}/private?bucket={1}&private={2}".format(config.get_default("default_uc_host"), bucket_name, private)
+        return self.__post(url)
+
+    def __uc_do(self, operation, *args):
+        return self.__server_do(config.get_default('default_uc_host'), operation, *args)
 
     def __rs_do(self, operation, *args):
         return self.__server_do(config.get_default('default_rs_host'), operation, *args)
 
-    def __io_do(self, bucket, operation, *args):
+    def __io_do(self, bucket, operation, home_dir, *args):
         ak = self.auth.get_access_key()
-        io_host = self.zone.get_io_host(ak, bucket)
+        io_host = self.zone.get_io_host(ak, bucket, home_dir)
         return self.__server_do(io_host, operation, *args)
 
     def __server_do(self, host, operation, *args):
@@ -309,10 +430,10 @@ class BucketManager(object):
         return self.__post(url)
 
     def __post(self, url, data=None):
-        return http._post_with_auth(url, data, self.auth)
+        return http._post_with_qiniu_mac(url, data, self.mac_auth)
 
     def __get(self, url, params=None):
-        return http._get(url, params, self.auth)
+        return http._get_with_qiniu_mac(url, params, self.mac_auth)
 
 
 def _build_op(*args):
@@ -329,6 +450,10 @@ def build_batch_rename(bucket, key_pairs, force='false'):
 
 def build_batch_move(source_bucket, key_pairs, target_bucket, force='false'):
     return _two_key_batch('move', source_bucket, key_pairs, target_bucket, force)
+
+
+def build_batch_restoreAr(bucket, keys):
+    return _three_key_batch('restoreAr', bucket, keys)
 
 
 def build_batch_delete(bucket, keys):
@@ -348,3 +473,8 @@ def _two_key_batch(operation, source_bucket, key_pairs, target_bucket, force='fa
         target_bucket = source_bucket
     return [_build_op(operation, entry(source_bucket, k), entry(target_bucket, v), 'force/{0}'.format(force)) for k, v
             in key_pairs.items()]
+
+
+def _three_key_batch(operation, bucket, keys):
+    return [_build_op(operation, entry(bucket, k), 'freezeAfterDays/{0}'.format(v)) for k, v
+            in keys.items()]

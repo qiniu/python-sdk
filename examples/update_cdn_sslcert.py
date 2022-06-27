@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# flake8: noqa
+
 """
 更新cdn证书(可配合let's encrypt 等完成自动证书更新)
 """

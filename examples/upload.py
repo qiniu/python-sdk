@@ -13,7 +13,7 @@ secret_key = '...'
 q = Auth(access_key, secret_key)
 
 # 要上传的空间
-bucket_name = 'if-bc'
+bucket_name = ''
 
 # 上传到七牛后保存的文件名
 key = 'my-python-七牛.png'

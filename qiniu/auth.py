@@ -1,42 +1,41 @@
 # -*- coding: utf-8 -*-
-
+import base64
 import hmac
 import time
 from hashlib import sha1
-
 from requests.auth import AuthBase
-
 from .compat import urlparse, json, b
-from .utils import urlsafe_base64_encode
-
+from .utils import urlsafe_base64_encode, canonical_mime_header_key
 
 # 上传策略，参数规格详见
 # https://developer.qiniu.com/kodo/manual/1206/put-policy
 _policy_fields = set([
-    'callbackUrl',       # 回调URL
-    'callbackBody',      # 回调Body
-    'callbackHost',      # 回调URL指定的Host
+    'callbackUrl',  # 回调URL
+    'callbackBody',  # 回调Body
+    'callbackHost',  # 回调URL指定的Host
     'callbackBodyType',  # 回调Body的Content-Type
     'callbackFetchKey',  # 回调FetchKey模式开关
 
-    'returnUrl',         # 上传端的303跳转URL
-    'returnBody',        # 上传端简单反馈获取的Body
+    'returnUrl',  # 上传端的303跳转URL
+    'returnBody',  # 上传端简单反馈获取的Body
 
-    'endUser',           # 回调时上传端标识
-    'saveKey',           # 自定义资源名
-    'insertOnly',        # 插入模式开关
+    'endUser',  # 回调时上传端标识
+    'saveKey',  # 自定义资源名
+    'forceSaveKey',  # saveKey的优先级设置。为 true 时，saveKey不能为空，会忽略客户端指定的key，强制使用saveKey进行文件命名。参数不设置时，默认值为false
+    'insertOnly',  # 插入模式开关
 
-    'detectMime',        # MimeType侦测开关
-    'mimeLimit',         # MimeType限制
-    'fsizeLimit',        # 上传文件大小限制
-    'fsizeMin',          # 上传文件最少字节数
+    'detectMime',  # MimeType侦测开关
+    'mimeLimit',  # MimeType限制
+    'fsizeLimit',  # 上传文件大小限制
+    'fsizeMin',  # 上传文件最少字节数
+    'keylimit',  # 设置允许上传的key列表，字符串数组类型，数组长度不可超过20个，如果设置了这个字段，上传时必须提供key
 
-    'persistentOps',        # 持久化处理操作
+    'persistentOps',  # 持久化处理操作
     'persistentNotifyUrl',  # 持久化处理结果通知URL
-    'persistentPipeline',   # 持久化处理独享队列
-    'deleteAfterDays',      # 文件多少天后自动删除
-    'fileType',             # 文件的存储类型，0为普通存储，1为低频存储
-    'isPrefixalScope'       # 指定上传文件必须使用的前缀
+    'persistentPipeline',  # 持久化处理独享队列
+    'deleteAfterDays',  # 文件多少天后自动删除
+    'fileType',  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储
+    'isPrefixalScope'  # 指定上传文件必须使用的前缀
 ])
 
 
@@ -50,14 +49,18 @@ class Auth(object):
         __secret_key: 账号密钥对重的secretKey，详见 https://portal.qiniu.com/user/key
     """
 
-    def __init__(self, access_key, secret_key):
+    def __init__(self, access_key, secret_key, disable_qiniu_timestamp_signature=None):
         """初始化Auth类"""
         self.__checkKey(access_key, secret_key)
         self.__access_key = access_key
         self.__secret_key = b(secret_key)
+        self.disable_qiniu_timestamp_signature = disable_qiniu_timestamp_signature
 
     def get_access_key(self):
         return self.__access_key
+
+    def get_secret_key(self):
+        return self.__secret_key
 
     def __token(self, data):
         data = b(data)
@@ -160,6 +163,16 @@ class Auth(object):
 
         return self.__upload_token(args)
 
+    @staticmethod
+    def up_token_decode(up_token):
+        up_token_list = up_token.split(':')
+        ak = up_token_list[0]
+        sign = base64.urlsafe_b64decode(up_token_list[1])
+        decode_policy = base64.urlsafe_b64decode(up_token_list[2])
+        decode_policy = decode_policy.decode('utf-8')
+        dict_policy = json.loads(decode_policy)
+        return ak, sign, dict_policy
+
     def __upload_token(self, policy):
         data = json.dumps(policy, separators=(',', ':'))
         return self.token_with_data(data)
@@ -217,11 +230,12 @@ class QiniuMacAuth(object):
     http://kirk-docs.qiniu.com/apidocs/#TOC_325b437b89e8465e62e958cccc25c63f
     """
 
-    def __init__(self, access_key, secret_key):
+    def __init__(self, access_key, secret_key, disable_qiniu_timestamp_signature=None):
         self.qiniu_header_prefix = "X-Qiniu-"
         self.__checkKey(access_key, secret_key)
         self.__access_key = access_key
         self.__secret_key = b(secret_key)
+        self.disable_qiniu_timestamp_signature = disable_qiniu_timestamp_signature
 
     def __token(self, data):
         data = b(data)
@@ -256,27 +270,37 @@ class QiniuMacAuth(object):
         path_with_query = path
         if query != '':
             path_with_query = ''.join([path_with_query, '?', query])
-        data = ''.join(["%s %s" %
-                        (method, path_with_query), "\n", "Host: %s" %
-                        host, "\n"])
+        data = ''.join([
+            "%s %s" % (method, path_with_query),
+            "\n",
+            "Host: %s" % host
+        ])
 
         if content_type:
-            data += "Content-Type: %s" % (content_type) + "\n"
+            data += "\n"
+            data += "Content-Type: %s" % content_type
 
-        data += qheaders
-        data += "\n"
+        if qheaders:
+            data += "\n"
+            data += qheaders
+
+        data += "\n\n"
 
         if content_type and content_type != "application/octet-stream" and body:
-            data += body.decode(encoding='UTF-8')
-
+            if isinstance(body, bytes):
+                data += body.decode(encoding='UTF-8')
+            else:
+                data += body
         return '{0}:{1}'.format(self.__access_key, self.__token(data))
 
     def qiniu_headers(self, headers):
-        res = ""
-        for key in headers:
-            if key.startswith(self.qiniu_header_prefix):
-                res += key + ": %s\n" % (headers.get(key))
-        return res
+        qiniu_fields = list(filter(
+            lambda k: k.startswith(self.qiniu_header_prefix) and len(k) > len(self.qiniu_header_prefix),
+            headers,
+        ))
+        return "\n".join([
+            "%s: %s" % (canonical_mime_header_key(key), headers.get(key)) for key in sorted(qiniu_fields)
+        ])
 
     @staticmethod
     def __checkKey(access_key, secret_key):
@@ -289,6 +313,8 @@ class QiniuMacRequestsAuth(AuthBase):
         self.auth = auth
 
     def __call__(self, r):
+        if r.headers.get('Content-Type', None) is None:
+            r.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         token = self.auth.token_of_request(
             r.method, r.headers.get('Host', None),
             r.url, self.auth.qiniu_headers(r.headers),

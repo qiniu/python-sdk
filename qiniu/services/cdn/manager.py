@@ -200,6 +200,46 @@ class DomainManager(object):
         url = '{0}/domain/{1}'.format(self.server, name)
         return self.__post(url, body)
 
+    def domain_online(self, name):
+        """
+        上线域名，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#6
+
+        Args:
+            name:     域名, 如果是泛域名，必须以点号 . 开头
+            bosy:     创建域名参数
+        Returns:
+            {}
+        """
+        url = '{0}/domain/{1}/online'.format(self.server, name)
+        return http._post_with_qiniu_mac(url, None, self.auth)
+
+    def domain_offline(self, name):
+        """
+        下线域名，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#5
+
+        Args:
+            name:     域名, 如果是泛域名，必须以点号 . 开头
+            bosy:     创建域名参数
+        Returns:
+            {}
+        """
+        url = '{0}/domain/{1}/offline'.format(self.server, name)
+        return http._post_with_qiniu_mac(url, None, self.auth)
+
+    def delete_domain(self, name):
+        """
+        删除域名，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#8
+
+        Args:
+            name:     域名, 如果是泛域名，必须以点号 . 开头
+        Returns:
+            返回一个tuple对象，其格式为(<result>, <ResponseInfo>)
+            - result          成功返回dict{}，失败返回{"error": "<errMsg string>"}
+            - ResponseInfo    请求的Response信息
+        """
+        url = '{0}/domain/{1}'.format(self.server, name)
+        return self.__get(url)
+
     def get_domain(self, name):
         """
         获取域名信息，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name
@@ -212,7 +252,7 @@ class DomainManager(object):
             - ResponseInfo    请求的Response信息
         """
         url = '{0}/domain/{1}'.format(self.server, name)
-        return self.__post(url)
+        return self.__get(url)
 
     def put_httpsconf(self, name, certid, forceHttps):
         """
@@ -291,8 +331,9 @@ class DomainManager(object):
         headers = {'Content-Type': 'application/json'}
         return http._put_with_auth_and_headers(url, data, self.auth, headers)
 
-    def __get(self, url, params=None):
-        return http._get(self.server+"/"+url, params, self.auth)
+    def __get(self, url, data=None):
+        headers = {'Content-Type': 'application/json'}
+        return http._get_with_auth_and_headers(url, data, self.auth, headers)
 
 
 def create_timestamp_anti_leech_url(host, file_name, query_string, encrypt_key, deadline):

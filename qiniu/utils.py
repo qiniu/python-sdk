@@ -90,6 +90,7 @@ def _file_iter(input_stream, size, offset=0):
     while d:
         yield d
         d = input_stream.read(size)
+    input_stream.seek(0)
 
 
 def _sha1(data):
@@ -171,3 +172,35 @@ def rfc_from_timestamp(timestamp):
     last_modified_str = last_modified_date.strftime(
         '%a, %d %b %Y %H:%M:%S GMT')
     return last_modified_str
+
+
+def _valid_header_key_char(ch):
+    is_token_table = [
+        "!", "#", "$", "%", "&", "\\", "*", "+", "-", ".",
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+        "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+        "U", "W", "V", "X", "Y", "Z",
+        "^", "_", "`",
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+        "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+        "u", "v", "w", "x", "y", "z",
+        "|", "~"]
+    return 0 <= ord(ch) < 128 and ch in is_token_table
+
+
+def canonical_mime_header_key(field_name):
+    for ch in field_name:
+        if not _valid_header_key_char(ch):
+            return field_name
+    result = ""
+    upper = True
+    for ch in field_name:
+        if upper and "a" <= ch <= "z":
+            result += ch.upper()
+        elif not upper and "A" <= ch <= "Z":
+            result += ch.lower()
+        else:
+            result += ch
+        upper = ch == "-"
+    return result

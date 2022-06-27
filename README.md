@@ -2,11 +2,13 @@
 
 [![@qiniu on weibo](http://img.shields.io/badge/weibo-%40qiniutek-blue.svg)](http://weibo.com/qiniutek)
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
-[![Build Status](https://travis-ci.org/qiniu/python-sdk.svg)](https://travis-ci.org/qiniu/python-sdk)
+[![Build Status](https://github.com/qiniu/python-sdk/actions/workflows/ci-test.yml/badge.svg)](https://travis-ci.org/qiniu/python-sdk)
+[![GitHub release](https://img.shields.io/github/v/tag/qiniu/python-sdk.svg?label=release)](https://github.com/qiniu/python-sdk/releases)
 [![Latest Stable Version](https://img.shields.io/pypi/v/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
 [![Download Times](https://img.shields.io/pypi/dm/qiniu.svg)](https://pypi.python.org/pypi/qiniu)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/qiniu/python-sdk/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/qiniu/python-sdk/?branch=master)
-[![Code Coverage](https://scrutinizer-ci.com/g/qiniu/python-sdk/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/qiniu/python-sdk/?branch=master)
+[![Coverage Status](https://codecov.io/gh/qiniu/python-sdk/branch/master/graph/badge.svg)](https://codecov.io/gh/qiniu/python-sdk)
+
 ## 安装
 
 通过pip
@@ -17,10 +19,10 @@ $ pip install qiniu
 
 ## 运行环境
 
-| Qiniu SDK版本 | Python 版本 |
-|:--------------------:|:---------------------------:|
-|          7.x         |          2.6, 2.7, 3.3, 3.4, 3.5|
-|          6.x         |          2.6, 2.7 |
+| Qiniu SDK版本 |              Python 版本               |
+| :-----------: | :------------------------------------: |
+|      7.x      | 2.7, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 |
+|      6.x      |                  2.7                   |
 
 ## 使用方法
 
@@ -42,11 +44,6 @@ import qiniu
 
 ```
 更多参见SDK使用指南： http://developer.qiniu.com/code/v7/sdk/python.html
-
-### 命令行工具
-安装完后附带有命令行工具，可以计算etag
-```bash
-$ qiniupy etag yourfile
 ```
 
 ## 测试
@@ -58,7 +55,7 @@ $ py.test
 ## 常见问题
 
 - 第二个参数info保留了请求响应的信息，失败情况下ret 为none, 将info可以打印出来，提交给我们。
-- API 的使用 demo 可以参考 [单元测试](https://github.com/qiniu/python-sdk/blob/master/test_qiniu.py)。
+- API 的使用 demo 可以参考 [examples示例](https://github.com/qiniu/python-sdk/tree/master/examples)。
 - 如果碰到`ImportError: No module named requests.auth` 请安装 `requests` 。
 
 ## 代码贡献

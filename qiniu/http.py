@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import logging
+import os
 import platform
+from datetime import datetime
 
 import requests
 from requests.auth import AuthBase
@@ -19,11 +22,28 @@ _session = None
 _headers = {'User-Agent': USER_AGENT}
 
 
+def __add_auth_headers(headers, auth):
+    x_qiniu_date = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+    if auth.disable_qiniu_timestamp_signature is not None:
+        if not auth.disable_qiniu_timestamp_signature:
+            headers['X-Qiniu-Date'] = x_qiniu_date
+    elif os.getenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE'):
+        if os.getenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE').lower() != 'true':
+            headers['X-Qiniu-Date'] = x_qiniu_date
+    else:
+        headers['X-Qiniu-Date'] = x_qiniu_date
+    return headers
+
+
 def __return_wrapper(resp):
     if resp.status_code != 200 or resp.headers.get('X-Reqid') is None:
         return None, ResponseInfo(resp)
     resp.encoding = 'utf-8'
-    ret = resp.json(encoding='utf-8') if resp.text != '' else {}
+    try:
+        ret = resp.json()
+    except ValueError:
+        logging.debug("response body decode error: %s" % resp.text)
+        ret = {}
     return ret, ResponseInfo(resp)
 
 
@@ -70,14 +90,20 @@ def _put(url, data, files, auth, headers=None):
     return __return_wrapper(r)
 
 
-def _get(url, params, auth):
+def _get(url, params, auth, headers=None):
+    if _session is None:
+        _init()
     try:
-        r = requests.get(
+        get_headers = _headers.copy()
+        if headers is not None:
+            for k, v in headers.items():
+                get_headers.update({k: v})
+        r = _session.get(
             url,
             params=params,
-            auth=qiniu.auth.RequestsAuth(auth) if auth is not None else None,
+            auth=auth,
             timeout=config.get_default('connection_timeout'),
-            headers=_headers)
+            headers=get_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -96,6 +122,10 @@ def _post_with_token(url, data, token):
     return _post(url, data, None, _TokenAuth(token))
 
 
+def _post_with_token_and_headers(url, data, token, headers):
+    return _post(url, data, None, _TokenAuth(token), headers)
+
+
 def _post_file(url, data, files):
     return _post(url, data, files, None)
 
@@ -104,43 +134,68 @@ def _post_with_auth(url, data, auth):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth))
 
 
+def _get_with_auth(url, data, auth):
+    return _get(url, data, qiniu.auth.RequestsAuth(auth))
+
+
 def _post_with_auth_and_headers(url, data, auth, headers):
     return _post(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
+
+
+def _get_with_auth_and_headers(url, data, auth, headers):
+    return _get(url, data, qiniu.auth.RequestsAuth(auth), headers)
+
+
+def _post_with_qiniu_mac_and_headers(url, data, auth, headers):
+    return _post(url, data, None, qiniu.auth.QiniuMacRequestsAuth(auth), headers)
 
 
 def _put_with_auth(url, data, auth):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth))
 
 
+def _put_with_token_and_headers(url, data, auth, headers):
+    return _put(url, data, None, _TokenAuth(auth), headers)
+
+
 def _put_with_auth_and_headers(url, data, auth, headers):
     return _put(url, data, None, qiniu.auth.RequestsAuth(auth), headers)
 
 
+def _put_with_qiniu_mac_and_headers(url, data, auth, headers):
+    return _put(url, data, None, qiniu.auth.QiniuMacRequestsAuth(auth), headers)
+
+
 def _post_with_qiniu_mac(url, data, auth):
     qn_auth = qiniu.auth.QiniuMacRequestsAuth(
-        auth) if auth is not None else None
-    timeout = config.get_default('connection_timeout')
+        auth
+    ) if auth is not None else None
+    headers = __add_auth_headers({}, auth)
 
-    try:
-        r = requests.post(
-            url,
-            json=data,
-            auth=qn_auth,
-            timeout=timeout,
-            headers=_headers)
-    except Exception as e:
-        return None, ResponseInfo(None, e)
-    return __return_wrapper(r)
+    return _post(url, data, None, qn_auth, headers=headers)
 
 
 def _get_with_qiniu_mac(url, params, auth):
+    qn_auth = qiniu.auth.QiniuMacRequestsAuth(
+        auth
+    ) if auth is not None else None
+    headers = __add_auth_headers({}, auth)
+
+    return _get(url, params, qn_auth, headers=headers)
+
+
+def _get_with_qiniu_mac_and_headers(url, params, auth, headers):
     try:
+        post_headers = _headers.copy()
+        if headers is not None:
+            for k, v in headers.items():
+                post_headers.update({k: v})
         r = requests.get(
             url,
             params=params,
             auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
             timeout=config.get_default('connection_timeout'),
-            headers=_headers)
+            headers=post_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -154,6 +209,23 @@ def _delete_with_qiniu_mac(url, params, auth):
             auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
             timeout=config.get_default('connection_timeout'),
             headers=_headers)
+    except Exception as e:
+        return None, ResponseInfo(None, e)
+    return __return_wrapper(r)
+
+
+def _delete_with_qiniu_mac_and_headers(url, params, auth, headers):
+    try:
+        post_headers = _headers.copy()
+        if headers is not None:
+            for k, v in headers.items():
+                post_headers.update({k: v})
+        r = requests.delete(
+            url,
+            params=params,
+            auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
+            timeout=config.get_default('connection_timeout'),
+            headers=post_headers)
     except Exception as e:
         return None, ResponseInfo(None, e)
     return __return_wrapper(r)
@@ -188,11 +260,14 @@ class ResponseInfo(object):
             self.req_id = response.headers.get('X-Reqid')
             self.x_log = response.headers.get('X-Log')
             if self.status_code >= 400:
-                ret = response.json() if response.text != '' else None
-                if ret is None or ret['error'] is None:
-                    self.error = 'unknown'
+                if self.__check_json(response):
+                    ret = response.json() if response.text != '' else None
+                    if ret is None:
+                        self.error = 'unknown'
+                    else:
+                        self.error = response.text
                 else:
-                    self.error = ret['error']
+                    self.error = response.text
             if self.req_id is None and self.status_code == 200:
                 self.error = 'server is not qiniu'
 
@@ -220,3 +295,10 @@ class ResponseInfo(object):
 
     def __repr__(self):
         return self.__str__()
+
+    def __check_json(self, reponse):
+        try:
+            reponse.json()
+            return True
+        except Exception:
+            return False
