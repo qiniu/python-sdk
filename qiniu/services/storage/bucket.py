@@ -70,6 +70,19 @@ class BucketManager(object):
 
         return ret, eof, info
 
+    def list_domains(self, bucket):
+        """获取 Bucket 空间域名
+        https://developer.qiniu.com/kodo/3949/get-the-bucket-space-domain
+
+        Args:
+            bucket: 空间名
+
+        Returns:
+            resBody, respInfo
+            resBody 为绑定的域名列表，格式：["example.com"]
+        """
+        return self.__uc_do('v2/domains?tbl={0}'.format(bucket))
+
     def stat(self, bucket, key):
         """获取文件信息:
 
