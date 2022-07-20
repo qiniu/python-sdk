@@ -318,9 +318,8 @@ class _Resume(object):
             'metadata': metadata
         }
         ret, info = self.post_with_headers(url, json.dumps(data), headers=headers)
-        if ret is not None and ret != {}:
-            if ret['hash'] and ret['key']:
-                self.upload_progress_recorder.delete_upload_record(self.file_name, self.key)
+        if info.status_code == 200:
+            self.upload_progress_recorder.delete_upload_record(self.file_name, self.key)
         return ret, info
 
     def get_up_host(self):
