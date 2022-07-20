@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.9.0（2022-07-20）
+* 对象存储，支持使用时不配置区域信息，SDK 自动获取；
+* 对象存储，新增 list_domains API 用于查询空间绑定的域名
+* 对象存储，上传 API 新增支持设置自定义元数据，详情见 put_data, put_file, put_stream API 
+* 解决部分已知问题
 
 ## 7.8.0（2022-06-08）
 * 对象存储，管理类 API 发送请求时增加 [X-Qiniu-Date](https://developer.qiniu.com/kodo/3924/common-request-headers) （生成请求的时间） header
