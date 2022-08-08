@@ -43,7 +43,7 @@ import qiniu
 ...
 
 ```
-更多参见SDK使用指南： http://developer.qiniu.com/code/v7/sdk/python.html
+更多参见SDK使用指南： https://developer.qiniu.com/kodo/sdk/python
 ```
 
 ## 测试
