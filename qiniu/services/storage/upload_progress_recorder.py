@@ -66,4 +66,7 @@ class UploadProgressRecorder(object):
             record_file_name = hashlib.md5(record_key.encode('utf-8')).hexdigest()
 
         upload_record_file_path = os.path.join(self.record_folder, record_file_name)
-        os.remove(upload_record_file_path)
+        try:
+            os.remove(upload_record_file_path)
+        except OSError:
+            pass
