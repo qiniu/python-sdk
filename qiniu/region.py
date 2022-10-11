@@ -202,6 +202,6 @@ class Region(object):
 
     def bucket_hosts(self, ak, bucket):
         url = "{0}/v1/query?ak={1}&bucket={2}".format(UC_HOST, ak, bucket)
-        ret = requests.get(url)
+        ret = requests.get(url, verify=False)
         data = compat.json.dumps(ret.json(), separators=(',', ':'))
         return data
