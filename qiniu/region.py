@@ -5,6 +5,7 @@ import time
 import requests
 from qiniu import compat
 from qiniu import utils
+from qiniu import http
 
 UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
 
@@ -201,7 +202,9 @@ class Region(object):
         f.close()
 
     def bucket_hosts(self, ak, bucket):
+        if http._session is None:
+            http._init()
         url = "{0}/v1/query?ak={1}&bucket={2}".format(UC_HOST, ak, bucket)
-        ret = requests.get(url)
+        ret = http._session.get(url)
         data = compat.json.dumps(ret.json(), separators=(',', ':'))
         return data

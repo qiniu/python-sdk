@@ -185,12 +185,14 @@ def _get_with_qiniu_mac(url, params, auth):
 
 
 def _get_with_qiniu_mac_and_headers(url, params, auth, headers):
+    if _session is None:
+        _init()
     try:
         post_headers = _headers.copy()
         if headers is not None:
             for k, v in headers.items():
                 post_headers.update({k: v})
-        r = requests.get(
+        r = _session.get(
             url,
             params=params,
             auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
@@ -202,8 +204,10 @@ def _get_with_qiniu_mac_and_headers(url, params, auth, headers):
 
 
 def _delete_with_qiniu_mac(url, params, auth):
+    if _session is None:
+        _init()
     try:
-        r = requests.delete(
+        r = _session.delete(
             url,
             params=params,
             auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
@@ -215,12 +219,14 @@ def _delete_with_qiniu_mac(url, params, auth):
 
 
 def _delete_with_qiniu_mac_and_headers(url, params, auth, headers):
+    if _session is None:
+        _init()
     try:
         post_headers = _headers.copy()
         if headers is not None:
             for k, v in headers.items():
                 post_headers.update({k: v})
-        r = requests.delete(
+        r = _session.delete(
             url,
             params=params,
             auth=qiniu.auth.QiniuMacRequestsAuth(auth) if auth is not None else None,
