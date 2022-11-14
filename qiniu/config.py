@@ -21,6 +21,22 @@ _config = {
     'default_upload_threshold': 2 * _BLOCK_SIZE  # put_file上传方式的临界默认值
 }
 
+_is_customized_default = {
+    'default_zone': False,
+    'default_rs_host': False,
+    'default_rsf_host': False,
+    'default_api_host': False,
+    'default_uc_host': False,
+    'connection_timeout': False,
+    'connection_retries': False,
+    'connection_pool': False,
+    'default_upload_threshold': False
+}
+
+
+def is_customized_default(key):
+    return _is_customized_default[key]
+
 
 def get_default(key):
     return _config[key]
@@ -32,19 +48,28 @@ def set_default(
         default_rsf_host=None, default_api_host=None, default_upload_threshold=None):
     if default_zone:
         _config['default_zone'] = default_zone
+        _is_customized_default['default_zone'] = True
     if default_rs_host:
         _config['default_rs_host'] = default_rs_host
+        _is_customized_default['default_rs_host'] = True
     if default_rsf_host:
         _config['default_rsf_host'] = default_rsf_host
+        _is_customized_default['default_rsf_host'] = True
     if default_api_host:
         _config['default_api_host'] = default_api_host
+        _is_customized_default['default_api_host'] = True
     if default_uc_host:
         _config['default_uc_host'] = default_uc_host
+        _is_customized_default['default_uc_host'] = True
     if connection_retries:
         _config['connection_retries'] = connection_retries
+        _is_customized_default['connection_retries'] = True
     if connection_pool:
         _config['connection_pool'] = connection_pool
+        _is_customized_default['connection_pool'] = True
     if connection_timeout:
         _config['connection_timeout'] = connection_timeout
+        _is_customized_default['connection_timeout'] = True
     if default_upload_threshold:
         _config['default_upload_threshold'] = default_upload_threshold
+        _is_customized_default['default_upload_threshold'] = True

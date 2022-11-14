@@ -891,6 +891,24 @@ class CdnTestCase(unittest.TestCase):
         assert info.status_code == 200
 
 
+class RegionTestCase(unittest.TestCase):
+    test_rs_host = 'test.region.compatible.config.rs'
+    test_rsf_host = 'test.region.compatible.config.rsf'
+
+    def test_config_compatible(self):
+        try:
+            set_default(default_rs_host=self.test_rs_host)
+            set_default(default_rsf_host=self.test_rsf_host)
+            zone = Zone()
+            assert zone.get_rs_host("mock_ak", "mock_bucket") == self.test_rs_host
+            assert zone.get_rsf_host("mock_ak", "mock_bucket") == self.test_rsf_host
+        finally:
+            set_default(default_rs_host=qiniu.config.RS_HOST)
+            set_default(default_rsf_host=qiniu.config.RSF_HOST)
+            qiniu.config._is_customized_default['default_rs_host'] = False
+            qiniu.config._is_customized_default['default_rsf_host'] = False
+
+
 class ReadWithoutSeek(object):
     def __init__(self, str):
         self.str = str

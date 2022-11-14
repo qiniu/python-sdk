@@ -64,8 +64,11 @@ class Region(object):
         return io_hosts[0]
 
     def get_rs_host(self, ak, bucket, home_dir=None):
+        from .config import get_default, is_customized_default
         if self.rs_host:
             return self.rs_host
+        if is_customized_default('default_rs_host'):
+            return get_default('default_rs_host')
         if home_dir is None:
             home_dir = os.getcwd()
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
@@ -75,8 +78,11 @@ class Region(object):
         return rs_hosts[0]
 
     def get_rsf_host(self, ak, bucket, home_dir=None):
+        from .config import get_default, is_customized_default
         if self.rsf_host:
             return self.rsf_host
+        if is_customized_default('default_rsf_host'):
+            return get_default('default_rsf_host')
         if home_dir is None:
             home_dir = os.getcwd()
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
@@ -201,7 +207,11 @@ class Region(object):
         f.close()
 
     def bucket_hosts(self, ak, bucket):
-        url = "{0}/v1/query?ak={1}&bucket={2}".format(UC_HOST, ak, bucket)
+        from .config import get_default, is_customized_default
+        uc_host = UC_HOST
+        if is_customized_default('default_uc_host'):
+            uc_host = get_default('default_uc_host')
+        url = "{0}/v1/query?ak={1}&bucket={2}".format(uc_host, ak, bucket)
         ret = requests.get(url)
         data = compat.json.dumps(ret.json(), separators=(',', ':'))
         return data
