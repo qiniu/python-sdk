@@ -322,14 +322,14 @@ class BucketTestCase(unittest.TestCase):
         assert ret['key'] == 'python-sdk.html'
 
     def test_fetch(self):
-        ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name,
+        ret, info = self.bucket.fetch('https://developer.qiniu.com/kodo/sdk/python', bucket_name,
                                       'fetch.html', hostscache_dir=hostscache_dir)
         print(info)
         assert ret['key'] == 'fetch.html'
         assert 'hash' in ret
 
     def test_fetch_without_key(self):
-        ret, info = self.bucket.fetch('http://developer.qiniu.com/docs/v6/sdk/python-sdk.html', bucket_name,
+        ret, info = self.bucket.fetch('https://developer.qiniu.com/kodo/sdk/python', bucket_name,
                                       hostscache_dir=hostscache_dir)
         print(info)
         assert ret['key'] == ret['hash']

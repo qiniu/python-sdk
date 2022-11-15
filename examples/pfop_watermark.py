@@ -14,7 +14,7 @@ key = '1.mp4'
 # 转码是使用的队列名称。
 pipeline = 'pipeline_name'
 
-# 需要添加水印的图片UrlSafeBase64,可以参考http://developer.qiniu.com/code/v6/api/dora-api/av/video-watermark.html
+# 需要添加水印的图片UrlSafeBase64,可以参考 https://developer.qiniu.com/dora/api/video-watermarking
 base64URL = urlsafe_base64_encode(
     'http://developer.qiniu.com/resource/logo-2.jpg')
 

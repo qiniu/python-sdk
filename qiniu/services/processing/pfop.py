@@ -8,12 +8,12 @@ class PersistentFop(object):
     """持久化处理类
 
     该类用于主动触发异步持久化操作，具体规格参考：
-    http://developer.qiniu.com/docs/v6/api/reference/fop/pfop/pfop.html
+    https://developer.qiniu.com/dora/api/persistent-data-processing-pfop
 
     Attributes:
         auth:       账号管理密钥对，Auth对象
         bucket:     操作资源所在空间
-        pipeline:   多媒体处理队列，详见 https://portal.qiniu.com/mps/pipeline
+        pipeline:   多媒体处理队列，详见 https://developer.qiniu.com/dora/6499/tasks-and-workflows
         notify_url: 持久化处理结果通知URL
     """
 

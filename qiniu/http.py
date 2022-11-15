@@ -239,8 +239,8 @@ class ResponseInfo(object):
     Attributes:
         status_code: 整数变量，响应状态码
         text_body:   字符串变量，响应的body
-        req_id:      字符串变量，七牛HTTP扩展字段，参考 http://developer.qiniu.com/docs/v6/api/reference/extended-headers.html
-        x_log:       字符串变量，七牛HTTP扩展字段，参考 http://developer.qiniu.com/docs/v6/api/reference/extended-headers.html
+        req_id:      字符串变量，七牛HTTP扩展字段，参考 https://developer.qiniu.com/kodo/3924/common-request-headers
+        x_log:       字符串变量，七牛HTTP扩展字段，参考 https://developer.qiniu.com/kodo/3924/common-request-headers
         error:       字符串变量，响应的错误内容
     """
 

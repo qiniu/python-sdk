@@ -25,7 +25,7 @@ class CdnManager(object):
 
     def refresh_urls(self, urls):
         """
-        刷新文件列表，文档 http://developer.qiniu.com/article/fusion/api/refresh.html
+        刷新文件列表，文档 https://developer.qiniu.com/fusion/api/cache-refresh
 
         Args:
             urls: 待刷新的文件外链列表
@@ -38,7 +38,7 @@ class CdnManager(object):
 
     def refresh_dirs(self, dirs):
         """
-        刷新目录，文档 http://developer.qiniu.com/article/fusion/api/refresh.html
+        刷新目录，文档 https://developer.qiniu.com/fusion/api/cache-refresh
 
         Args:
             urls: 待刷新的目录列表
@@ -51,7 +51,7 @@ class CdnManager(object):
 
     def refresh_urls_and_dirs(self, urls, dirs):
         """
-        刷新文件目录，文档 http://developer.qiniu.com/article/fusion/api/refresh.html
+        刷新文件目录，文档 https://developer.qiniu.com/fusion/api/cache-refresh
 
         Args:
            urls: 待刷新的目录列表
@@ -73,7 +73,7 @@ class CdnManager(object):
 
     def prefetch_urls(self, urls):
         """
-        预取文件列表，文档 http://developer.qiniu.com/article/fusion/api/prefetch.html
+        预取文件列表，文档 https://developer.qiniu.com/fusion/api/file-prefetching
 
         Args:
            urls: 待预取的文件外链列表
@@ -91,7 +91,7 @@ class CdnManager(object):
 
     def get_bandwidth_data(self, domains, start_date, end_date, granularity):
         """
-        查询带宽数据，文档 http://developer.qiniu.com/article/fusion/api/traffic-bandwidth.html
+        查询带宽数据，文档 https://developer.qiniu.com/fusion/api/traffic-bandwidth
 
         Args:
            domains:     域名列表
@@ -115,7 +115,7 @@ class CdnManager(object):
 
     def get_flux_data(self, domains, start_date, end_date, granularity):
         """
-        查询流量数据，文档 http://developer.qiniu.com/article/fusion/api/traffic-bandwidth.html
+        查询流量数据，文档 https://developer.qiniu.com/fusion/api/traffic-bandwidth
 
         Args:
            domains:     域名列表
@@ -139,7 +139,7 @@ class CdnManager(object):
 
     def get_log_list_data(self, domains, log_date):
         """
-        获取日志下载链接，文档 http://developer.qiniu.com/article/fusion/api/log.html
+        获取日志下载链接，文档 https://developer.qiniu.com/fusion/api/download-the-log
 
         Args:
            domains:     域名列表
@@ -159,7 +159,7 @@ class CdnManager(object):
 
     def put_httpsconf(self, name, certid, forceHttps=False):
         """
-        修改证书，文档 https://developer.qiniu.com/fusion/api/4246/the-domain-name#11
+        修改证书，文档 https://developer.qiniu.com/fusion/4246/the-domain-name#11
 
         Args:
            domains:     域名name
