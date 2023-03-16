@@ -23,13 +23,15 @@ class Region(object):
             home_dir=None,
             scheme="http",
             rs_host=None,
-            rsf_host=None):
+            rsf_host=None,
+            api_host=None):
         """初始化Zone类"""
         self.up_host = up_host
         self.up_host_backup = up_host_backup
         self.io_host = io_host
         self.rs_host = rs_host
         self.rsf_host = rsf_host
+        self.api_host = api_host
         self.home_dir = home_dir
         self.host_cache = host_cache
         self.scheme = scheme
@@ -91,6 +93,20 @@ class Region(object):
         rsf_hosts = bucket_hosts['rsfHosts']
         return rsf_hosts[0]
 
+    def get_api_host(self, ak, bucket, home_dir=None):
+        from .config import get_default, is_customized_default
+        if self.api_host:
+            return self.api_host
+        if is_customized_default('default_api_host'):
+            return get_default('default_api_host')
+        if home_dir is None:
+            home_dir = os.getcwd()
+        bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
+        if 'apiHosts' not in bucket_hosts:
+            bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir, force=True)
+        api_hosts = bucket_hosts['apiHosts']
+        return api_hosts[0]
+
     def get_up_host(self, ak, bucket, home_dir):
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
         if 'upHosts' not in bucket_hosts:
@@ -123,27 +139,10 @@ class Region(object):
         if not force and len(bucket_hosts) > 0:
             return bucket_hosts
 
-        hosts = {}
-        hosts.update({self.scheme: {}})
+        hosts = compat.json.loads(self.bucket_hosts(ak, bucket))
+        default_ttl = 24 * 3600  # 1 day
+        hosts['ttl'] = hosts['ttl'] if 'ttl' in hosts else default_ttl
 
-        hosts[self.scheme].update({'up': []})
-        hosts[self.scheme].update({'io': []})
-
-        if self.up_host is not None:
-            hosts[self.scheme]['up'].append(self.scheme + "://" + self.up_host)
-
-        if self.up_host_backup is not None:
-            hosts[self.scheme]['up'].append(
-                self.scheme + "://" + self.up_host_backup)
-
-        if self.io_host is not None:
-            hosts[self.scheme]['io'].append(self.scheme + "://" + self.io_host)
-
-        if len(hosts[self.scheme]) == 0 or self.io_host is None:
-            hosts = compat.json.loads(self.bucket_hosts(ak, bucket))
-        else:
-            # 1 year
-            hosts['ttl'] = int(time.time()) + 31536000
         try:
             scheme_hosts = hosts[self.scheme]
         except KeyError:
@@ -155,6 +154,7 @@ class Region(object):
             'ioHosts': scheme_hosts['io'],
             'rsHosts': scheme_hosts['rs'],
             'rsfHosts': scheme_hosts['rsf'],
+            'apiHosts': scheme_hosts['api'],
             'deadline': int(time.time()) + hosts['ttl']
         }
         home_dir = ""
@@ -165,9 +165,6 @@ class Region(object):
         ret = {}
         if len(self.host_cache) == 0:
             self.host_cache_from_file(home_dir)
-
-        if self.host_cache == {}:
-            return ret
 
         if key not in self.host_cache:
             return ret

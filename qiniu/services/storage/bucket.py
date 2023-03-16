@@ -411,11 +411,8 @@ class BucketManager(object):
         Args:
             bucket_name: 存储空间名
         """
-        options = {
-            'tbl': bucket_name,
-        }
-        url = "{0}/v6/domain/list?tbl={1}".format(config.get_default("default_api_host"), bucket_name)
-        return self.__get(url, options)
+        data = 'tbl={0}'.format(bucket_name)
+        return self.__api_do(bucket_name, 'v6/domain/list', data)
 
     def change_bucket_permission(self, bucket_name, private):
         """
@@ -427,6 +424,12 @@ class BucketManager(object):
         """
         url = "{0}/private?bucket={1}&private={2}".format(config.get_default("default_uc_host"), bucket_name, private)
         return self.__post(url)
+
+    def __api_do(self, bucket, operation, data=None):
+        ak = self.auth.get_access_key()
+        api_host = self.zone.get_api_host(ak, bucket)
+        url = '{0}/{1}'.format(api_host, operation)
+        return self.__post(url, data)
 
     def __uc_do(self, operation, *args):
         return self.__server_do(config.get_default('default_uc_host'), operation, *args)
