@@ -411,8 +411,7 @@ class BucketManager(object):
         Args:
             bucket_name: 存储空间名
         """
-        data = 'tbl={0}'.format(bucket_name)
-        return self.__api_do(bucket_name, 'v6/domain/list', data)
+        return self.list_domains(bucket_name)
 
     def change_bucket_permission(self, bucket_name, private):
         """
