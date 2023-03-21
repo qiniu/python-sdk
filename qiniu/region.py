@@ -139,23 +139,38 @@ class Region(object):
         if not force and len(bucket_hosts) > 0:
             return bucket_hosts
 
-        hosts = compat.json.loads(self.bucket_hosts(ak, bucket))
-        default_ttl = 24 * 3600  # 1 day
-        hosts['ttl'] = hosts['ttl'] if 'ttl' in hosts else default_ttl
+        hosts = compat.json.loads(self.bucket_hosts(ak, bucket)).get('hosts', [])
 
-        try:
-            scheme_hosts = hosts[self.scheme]
-        except KeyError:
-            raise KeyError(
-                "Please check your BUCKET_NAME! The UpHosts is %s" %
-                hosts)
+        if type(hosts) is not list or len(hosts) == 0:
+            raise KeyError("Please check your BUCKET_NAME! Server hosts not correct! The hosts is %s" % hosts)
+
+        region = hosts[0]
+
+        default_ttl = 24 * 3600  # 1 day
+        region['ttl'] = region.get('ttl', default_ttl)
+
         bucket_hosts = {
-            'upHosts': scheme_hosts['up'],
-            'ioHosts': scheme_hosts['io'],
-            'rsHosts': scheme_hosts['rs'],
-            'rsfHosts': scheme_hosts['rsf'],
-            'apiHosts': scheme_hosts['api'],
-            'deadline': int(time.time()) + hosts['ttl']
+            'upHosts': [
+                '{0}://{1}'.format(self.scheme, domain)
+                for domain in region.get('up', {}).get('domains', [])
+            ],
+            'ioHosts': [
+                '{0}://{1}'.format(self.scheme, domain)
+                for domain in region.get('io', {}).get('domains', [])
+            ],
+            'rsHosts': [
+                '{0}://{1}'.format(self.scheme, domain)
+                for domain in region.get('rs', {}).get('domains', [])
+            ],
+            'rsfHosts': [
+                '{0}://{1}'.format(self.scheme, domain)
+                for domain in region.get('rsf', {}).get('domains', [])
+            ],
+            'apiHosts': [
+                '{0}://{1}'.format(self.scheme, domain)
+                for domain in region.get('api', {}).get('domains', [])
+            ],
+            'deadline': int(time.time()) + region['ttl']
         }
         home_dir = ""
         self.set_bucket_hosts_to_cache(key, bucket_hosts, home_dir)
@@ -208,7 +223,7 @@ class Region(object):
         uc_host = UC_HOST
         if is_customized_default('default_uc_host'):
             uc_host = get_default('default_uc_host')
-        url = "{0}/v1/query?ak={1}&bucket={2}".format(uc_host, ak, bucket)
+        url = "{0}/v4/query?ak={1}&bucket={2}".format(uc_host, ak, bucket)
         ret = requests.get(url)
         data = compat.json.dumps(ret.json(), separators=(',', ':'))
         return data
