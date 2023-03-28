@@ -1,5 +1,12 @@
 # Changelog
 
+## Next Version
+* 对象存储，更新 api 默认域名
+* 对象存储，新增 api 域名的配置与获取
+* 对象存储，修复获取区域域名后无法按照预期进行过期处理
+* 对象存储，更新获取区域域名的接口
+* 对象存储，bucket_domains 修改为 list_domains 的别名
+
 ## 7.10.0（2022-11-15）
 * 对象存储，修复通过 set_default 设置 rs, rsf 不生效，而 SDK 自动获取的问题（v7.9.0）
 * 对象存储，支持直接从 qiniu 导入 UploadProgressRecorder
