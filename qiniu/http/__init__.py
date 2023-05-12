@@ -7,10 +7,9 @@ from datetime import datetime
 import requests
 from requests.auth import AuthBase
 
+from qiniu import config, __version__
 from qiniu.compat import is_py2, is_py3
-from qiniu import config
 import qiniu.auth
-from . import __version__
 
 _sys_info = '{0}; {1}'.format(platform.system(), platform.machine())
 _python_ver = platform.python_version()
