@@ -48,7 +48,7 @@ def _init():
     if _session is None:
         _session = qn_http_client.session
 
-    adapter = requests.adapters.HTTPAdapter(
+    adapter = HTTPAdapter(
         pool_connections=config.get_default('connection_pool'),
         pool_maxsize=config.get_default('connection_pool'),
         max_retries=config.get_default('connection_retries'))

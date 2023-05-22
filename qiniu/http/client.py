@@ -4,7 +4,7 @@ import logging
 import requests
 
 from .response import ResponseInfo
-from .middleware import Middleware, compose_middleware
+from .middleware import compose_middleware
 
 
 class HTTPClient:
@@ -20,7 +20,7 @@ class HTTPClient:
             request (requests.Request):
                 requests.Request 对象
 
-            middlewares (list[Middleware] or (list[Middleware]) -> list[Middleware]):
+            middlewares (list[qiniu.http.middleware.Middleware] or (list[qiniu.http.middleware.Middleware]) -> list[qiniu.http.middleware.Middleware]):
                 仅对本次请求生效的中间件。
 
                 如果传入的是列表，那么会作为追加的中间件拼接到 Client 中间件的后面。
@@ -159,7 +159,7 @@ class HTTPClient:
         auth=None,
         headers=None,
         middlewares=None,
-        **kwargs,
+        **kwargs
     ):
         req = requests.Request(
             method='delete',
