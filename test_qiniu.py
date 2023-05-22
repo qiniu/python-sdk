@@ -4,7 +4,6 @@ import os
 import string
 import random
 import tempfile
-from imp import reload
 
 import requests
 
@@ -31,6 +30,7 @@ if is_py2:
     import sys
     import StringIO
     import urllib
+    from imp import reload
 
     reload(sys)
     sys.setdefaultencoding('utf-8')
