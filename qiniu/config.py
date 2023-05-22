@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-
-from qiniu import zone
+from qiniu import region
 
 RS_HOST = 'http://rs.qiniu.com'  # 管理操作Host
 RSF_HOST = 'http://rsf.qbox.me'  # 列举操作Host
 API_HOST = 'http://api.qiniuapi.com'  # 数据处理操作Host
-UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
+UC_HOST = region.UC_HOST  # 获取空间信息Host
 
 _BLOCK_SIZE = 1024 * 1024 * 4  # 断点续传分块大小，该参数为接口规格，暂不支持修改
 
 _config = {
-    'default_zone': zone.Zone(),
+    'default_zone': region.Region(),
     'default_rs_host': RS_HOST,
     'default_rsf_host': RSF_HOST,
     'default_api_host': API_HOST,
