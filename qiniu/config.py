@@ -15,6 +15,11 @@ _config = {
     'default_rsf_host': RSF_HOST,
     'default_api_host': API_HOST,
     'default_uc_host': UC_HOST,
+    'default_uc_backup_hosts': [
+        'kodo-config.qiniuapi.com',
+        'api.qiniu.com'
+    ],
+    'default_uc_backup_retry_times': 2,
     'connection_timeout': 30,  # 链接超时为时间为30s
     'connection_retries': 3,  # 链接重试次数为3次
     'connection_pool': 10,  # 链接池个数为10
@@ -27,6 +32,8 @@ _is_customized_default = {
     'default_rsf_host': False,
     'default_api_host': False,
     'default_uc_host': False,
+    'default_uc_backup_hosts': False,
+    'default_uc_backup_retry_times': False,
     'connection_timeout': False,
     'connection_retries': False,
     'connection_pool': False,
@@ -45,7 +52,8 @@ def get_default(key):
 def set_default(
         default_zone=None, connection_retries=None, connection_pool=None,
         connection_timeout=None, default_rs_host=None, default_uc_host=None,
-        default_rsf_host=None, default_api_host=None, default_upload_threshold=None):
+        default_rsf_host=None, default_api_host=None, default_upload_threshold=None,
+        default_uc_backup_hosts=None, default_uc_backup_retry_times=None):
     if default_zone:
         _config['default_zone'] = default_zone
         _is_customized_default['default_zone'] = True
@@ -61,6 +69,14 @@ def set_default(
     if default_uc_host:
         _config['default_uc_host'] = default_uc_host
         _is_customized_default['default_uc_host'] = True
+        _config['default_uc_backup_hosts'] = []
+        _is_customized_default['default_uc_backup_hosts'] = True
+    if default_uc_backup_hosts:
+        _config['default_uc_backup_hosts'] = default_uc_backup_hosts
+        _is_customized_default['default_uc_backup_hosts'] = True
+    if default_uc_backup_retry_times:
+        _config['default_uc_backup_retry_times'] = default_uc_backup_retry_times
+        _is_customized_default['default_uc_backup_retry_times'] = True
     if connection_retries:
         _config['connection_retries'] = connection_retries
         _is_customized_default['connection_retries'] = True

@@ -967,6 +967,27 @@ class RegionTestCase(unittest.TestCase):
             qiniu.config._is_customized_default['default_rs_host'] = False
             qiniu.config._is_customized_default['default_rsf_host'] = False
 
+    def test_query_region_with_backup_domains(self):
+        try:
+            set_default(
+                default_uc_host='https://fake-uc.phpsdk.qiniu.com',
+                default_uc_backup_hosts=[
+                    'unavailable-uc.phpsdk.qiniu.com',
+                    'uc.qbox.me'
+                ]
+            )
+            zone = Zone()
+            data = zone.bucket_hosts(access_key, bucket_name)
+            assert data != "null"
+        finally:
+            set_default(
+                default_uc_host=qiniu.config.UC_HOST,
+                default_uc_backup_hosts=[
+                    'kodo-config.qiniuapi.com',
+                    'api.qiniu.com'
+                ]
+            )
+
 
 class ReadWithoutSeek(object):
     def __init__(self, str):
