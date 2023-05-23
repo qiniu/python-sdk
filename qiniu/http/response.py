@@ -43,7 +43,7 @@ class ResponseInfo(object):
                 self.error = 'server is not qiniu'
 
     def ok(self):
-        return self.status_code == 200 and self.req_id is not None
+        return self.status_code // 100 == 2
 
     def need_retry(self):
         if self.__response is None or self.req_id is None:
