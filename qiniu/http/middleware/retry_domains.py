@@ -4,14 +4,16 @@ from .base import Middleware
 
 
 class RetryDomainsMiddleware(Middleware):
-    def __init__(self, backup_domains, max_retry_times=2):
+    def __init__(self, backup_domains, max_retry_times=2, retry_condition=None):
         """
         Args:
             backup_domains (list[str]):
             max_retry_times (int):
+            retry_condition ((requests.Response or None, requests.Request)->bool):
         """
         self.backup_domains = backup_domains
         self.max_retry_times = max_retry_times
+        self.retry_condition = retry_condition
 
         self.retried_times = 0
 
@@ -48,6 +50,12 @@ class RetryDomainsMiddleware(Middleware):
             err = e
         return resp, err
 
+    def _should_retry(self, resp, req):
+        if callable(self.retry_condition):
+            return self.retry_condition(resp, req)
+
+        return resp is None or not resp.ok
+
     def __call__(self, request, nxt):
         resp, err = None, None
         url_parse_result = urlparse(request.url)
@@ -56,10 +64,12 @@ class RetryDomainsMiddleware(Middleware):
             request.url = RetryDomainsMiddleware._get_changed_url(request.url, backup_domain)
             self.retried_times = 0
 
-            while (resp is None or not resp.ok) and self.retried_times < self.max_retry_times:
+            while self.retried_times < self.max_retry_times:
                 resp, err = RetryDomainsMiddleware._try_nxt(request, nxt)
                 self.retried_times += 1
-                if err is None and (resp is not None and resp.ok):
+                if not self._should_retry(resp, request):
+                    if err is not None:
+                        raise err
                     return resp
 
         if err is not None:

@@ -230,12 +230,23 @@ class Region(object):
         uc_backup_hosts = get_default('default_uc_backup_hosts')
         uc_backup_retry_times = get_default('default_uc_backup_retry_times')
         url = "{0}/v4/query?ak={1}&bucket={2}".format(uc_host, ak, bucket)
+
+        def retry_condition(resp, _):
+            if resp is None:
+                return True
+            if resp.status_code in [612, 631]:
+                # 612 is app / accesskey is not found
+                # 631 is no such bucket
+                return False
+            return not resp.ok
+
         ret, _resp = qn_http_client.get(
             url,
             middlewares=[
                 RetryDomainsMiddleware(
                     backup_domains=uc_backup_hosts,
-                    max_retry_times=uc_backup_retry_times
+                    max_retry_times=uc_backup_retry_times,
+                    retry_condition=retry_condition
                 )
             ]
         )

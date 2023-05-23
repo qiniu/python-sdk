@@ -126,7 +126,7 @@ class HttpTest(unittest.TestCase):
                 mw_rec
             ]
         )
-        # ['bef_rec0', 'bef_rec1', 'bef_rec2'] are first request
+        # ['bef_rec0', 'bef_rec1', 'bef_rec2'] are 'fake.pysdk.qiniu.com' with retried 3 times
         # ['bef_rec3', 'bef_rec4', 'bef_rec5'] are 'unavailable.pysdk.qiniu.com' with retried 3 times
         # ['bef_rec6', 'aft_rec7'] are 'qiniu.com' and it's success
         assert rec_ls == [
@@ -136,6 +136,28 @@ class HttpTest(unittest.TestCase):
         ]
         assert ret == {}
         assert resp.status_code == 200
+
+    def test_retry_domains_fail_fast(self):
+        rec_ls = []
+        mw_rec = MiddlewareRecorder(rec_ls, 'rec')
+        ret, resp = qn_http_client.get(
+            'https://fake.pysdk.qiniu.com/index.html',
+            middlewares=[
+                RetryDomainsMiddleware(
+                    backup_domains=[
+                        'unavailable.pysdk.qiniu.com',
+                        'qiniu.com'
+                    ],
+                    retry_condition=lambda _resp, _req: False
+                ),
+                mw_rec
+            ]
+        )
+        # ['bef_rec0'] are 'fake.pysdk.qiniu.com' with fail fast
+        assert rec_ls == ['bef_rec0']
+        assert ret is None
+        assert resp.status_code == -1
+
 
 
     def test_json_decode_error(self):
@@ -978,7 +1000,7 @@ class RegionTestCase(unittest.TestCase):
             )
             zone = Zone()
             data = zone.bucket_hosts(access_key, bucket_name)
-            assert data != "null"
+            assert data != 'null'
         finally:
             set_default(
                 default_uc_host=qiniu.config.UC_HOST,
