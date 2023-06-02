@@ -96,12 +96,36 @@ class MiddlewareRecorder(Middleware):
 
 
 class HttpTest(unittest.TestCase):
+    def test_response_need_retry(self):
+        _ret, resp_info = qn_http_client.get('https://qiniu.com/index.html')
+
+        resp_info.req_id = 'mocked-req-id'
+        resp_info.error = None
+
+        def gen_case(code):
+            if 0 < code < 500:
+                return code, False
+            if code in [
+                501, 509, 573, 579, 608, 612, 614, 616, 618, 630, 631, 632, 640, 701
+            ]:
+                return code, False
+            return code, True
+
+        cases = [
+            gen_case(i) for i in range(-1, 800)
+        ]
+
+        for test_code, should_retry in cases:
+            resp_info.status_code = test_code
+            assert_msg = '{0} should{1} retry'.format(test_code, '' if should_retry else ' NOT')
+            assert resp_info.need_retry() == should_retry, assert_msg
+
     def test_middlewares(self):
         rec_ls = []
         mw_a = MiddlewareRecorder(rec_ls, 'A')
         mw_b = MiddlewareRecorder(rec_ls, 'B')
         qn_http_client.get(
-            "https://qiniu.com/index.html",
+            'https://qiniu.com/index.html',
             middlewares=[
                 mw_a,
                 mw_b

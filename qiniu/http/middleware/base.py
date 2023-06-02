@@ -6,10 +6,10 @@ def compose_middleware(middlewares, handle):
     """
     Args:
         middlewares (list[Middleware]): Middlewares
-        handle ((requests.Request) -> requests.Response): The send request handle
+        handle ((requests.Request) -> qiniu.http.response.ResponseInfo): The send request handle
 
     Returns:
-        (requests.Request) -> requests.Response: Composed handle
+        (requests.Request) -> qiniu.http.response.ResponseInfo: Composed handle
 
     """
     middlewares.reverse()
@@ -27,7 +27,7 @@ class Middleware:
         """
         Args:
             request (requests.Request):
-            nxt ((requests.Request) -> requests.Response):
+            nxt ((requests.Request) -> qiniu.http.response.ResponseInfo):
 
         Returns:
             requests.Response:

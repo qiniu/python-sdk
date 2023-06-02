@@ -46,15 +46,24 @@ class ResponseInfo(object):
         return self.status_code // 100 == 2
 
     def need_retry(self):
-        if self.__response is None or self.req_id is None:
-            return True
-        code = self.status_code
-        if (code // 100 == 5 and code != 579) or code == 996:
-            return True
-        return False
+        if 0 < self.status_code < 500:
+            return False
+        # https://developer.qiniu.com/fusion/kb/1352/the-http-request-return-a-status-code
+        if self.status_code in [
+            501, 509, 573, 579, 608, 612, 614, 616, 618, 630, 631, 632, 640, 701
+        ]:
+            return False
+        return True
 
     def connect_failed(self):
         return self.__response is None or self.req_id is None
+
+    def json(self):
+        try:
+            self.__response.encoding = "utf-8"
+            return self.__response.json()
+        except Exception:
+            return {}
 
     def __str__(self):
         if is_py2:

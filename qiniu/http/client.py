@@ -13,6 +13,10 @@ class HTTPClient:
         self.middlewares = [] if middlewares is None else middlewares
         self.send_opts = {} if send_opts is None else send_opts
 
+    def _wrap_send(self, req, **kwargs):
+        resp = self.session.send(req.prepare(), **kwargs)
+        return ResponseInfo(resp, None)
+
     def send_request(self, request, middlewares=None, **kwargs):
         """
 
@@ -55,23 +59,20 @@ class HTTPClient:
         try:
             handle = compose_middleware(
                 mw_ls,
-                lambda req: self.session.send(req.prepare(), **kwargs)
+                lambda req: self._wrap_send(req, **kwargs)
             )
-            resp = handle(request)
+            resp_info = handle(request)
         except Exception as e:
             return None, ResponseInfo(None, e)
 
-        # wrap resp
-        resp_info = ResponseInfo(resp)
+        # if ok try dump response info to dict from json
         if not resp_info.ok:
             return None, resp_info
 
-        # try dump response info to dict from json
-        resp.encoding = "utf-8"
         try:
-            ret = resp.json()
+            ret = resp_info.json()
         except ValueError:
-            logging.debug("response body decode error: %s" % resp.text)
+            logging.debug("response body decode error: %s" % resp_info.text_body)
             ret = {}
         return ret, resp_info
 

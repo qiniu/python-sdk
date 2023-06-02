@@ -34,6 +34,9 @@ class RetryDomainsMiddleware(Middleware):
         backup_netloc += domain
         if url_parse_result.port is not None:
             backup_netloc += ':' + str(url_parse_result.port)
+
+        # the _replace is a public method. start with `_` just to prevent conflicts with field names
+        # see namedtuple docs
         url_parse_result = url_parse_result._replace(
             netloc=backup_netloc
         )
@@ -54,10 +57,10 @@ class RetryDomainsMiddleware(Middleware):
         if callable(self.retry_condition):
             return self.retry_condition(resp, req)
 
-        return resp is None or not resp.ok
+        return resp is None or resp.need_retry()
 
     def __call__(self, request, nxt):
-        resp, err = None, None
+        resp_info, err = None, None
         url_parse_result = urlparse(request.url)
 
         for backup_domain in [str(url_parse_result.hostname)] + self.backup_domains:
@@ -65,14 +68,14 @@ class RetryDomainsMiddleware(Middleware):
             self.retried_times = 0
 
             while self.retried_times < self.max_retry_times:
-                resp, err = RetryDomainsMiddleware._try_nxt(request, nxt)
+                resp_info, err = RetryDomainsMiddleware._try_nxt(request, nxt)
                 self.retried_times += 1
-                if not self._should_retry(resp, request):
+                if not self._should_retry(resp_info, request):
                     if err is not None:
                         raise err
-                    return resp
+                    return resp_info
 
         if err is not None:
             raise err
 
-        return resp
+        return resp_info
