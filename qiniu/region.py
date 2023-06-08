@@ -2,7 +2,7 @@
 import logging
 import os
 import time
-import requests
+
 from qiniu import compat
 from qiniu import utils
 
@@ -19,13 +19,15 @@ class Region(object):
             up_host=None,
             up_host_backup=None,
             io_host=None,
-            host_cache={},
+            host_cache=None,
             home_dir=None,
             scheme="http",
             rs_host=None,
             rsf_host=None,
             api_host=None):
         """初始化Zone类"""
+        if host_cache is None:
+            host_cache = {}
         self.up_host = up_host
         self.up_host_backup = up_host_backup
         self.io_host = io_host
@@ -220,10 +222,23 @@ class Region(object):
 
     def bucket_hosts(self, ak, bucket):
         from .config import get_default, is_customized_default
+        from .http import qn_http_client
+        from .http.middleware import RetryDomainsMiddleware
         uc_host = UC_HOST
         if is_customized_default('default_uc_host'):
             uc_host = get_default('default_uc_host')
+        uc_backup_hosts = get_default('default_uc_backup_hosts')
+        uc_backup_retry_times = get_default('default_uc_backup_retry_times')
         url = "{0}/v4/query?ak={1}&bucket={2}".format(uc_host, ak, bucket)
-        ret = requests.get(url)
-        data = compat.json.dumps(ret.json(), separators=(',', ':'))
+
+        ret, _resp = qn_http_client.get(
+            url,
+            middlewares=[
+                RetryDomainsMiddleware(
+                    backup_domains=uc_backup_hosts,
+                    max_retry_times=uc_backup_retry_times,
+                )
+            ]
+        )
+        data = compat.json.dumps(ret, separators=(',', ':'))
         return data

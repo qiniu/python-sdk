@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import base64
+from datetime import datetime
 import hmac
+import os
 import time
 from hashlib import sha1
 from requests.auth import AuthBase
@@ -242,6 +244,14 @@ class QiniuMacAuth(object):
         hashed = hmac.new(self.__secret_key, data, sha1)
         return urlsafe_base64_encode(hashed.digest())
 
+    @property
+    def should_sign_with_timestamp(self):
+        if self.disable_qiniu_timestamp_signature is not None:
+            return not self.disable_qiniu_timestamp_signature
+        if os.getenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE', '').lower() == 'true':
+            return False
+        return True
+
     def token_of_request(
             self,
             method,
@@ -294,12 +304,12 @@ class QiniuMacAuth(object):
         return '{0}:{1}'.format(self.__access_key, self.__token(data))
 
     def qiniu_headers(self, headers):
-        qiniu_fields = list(filter(
-            lambda k: k.startswith(self.qiniu_header_prefix) and len(k) > len(self.qiniu_header_prefix),
-            headers,
-        ))
-        return "\n".join([
-            "%s: %s" % (canonical_mime_header_key(key), headers.get(key)) for key in sorted(qiniu_fields)
+        qiniu_fields = [
+            key for key in headers
+            if key.startswith(self.qiniu_header_prefix) and len(key) > len(self.qiniu_header_prefix)
+        ]
+        return '\n'.join([
+            '%s: %s' % (canonical_mime_header_key(key), headers.get(key)) for key in sorted(qiniu_fields)
         ])
 
     @staticmethod
@@ -309,15 +319,30 @@ class QiniuMacAuth(object):
 
 
 class QiniuMacRequestsAuth(AuthBase):
+    """
+    Attributes:
+        auth (QiniuMacAuth):
+    """
     def __init__(self, auth):
+        """
+        Args:
+            auth (QiniuMacAuth):
+        """
         self.auth = auth
 
     def __call__(self, r):
         if r.headers.get('Content-Type', None) is None:
             r.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+
+        if self.auth.should_sign_with_timestamp:
+            x_qiniu_date = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+            r.headers['X-Qiniu-Date'] = x_qiniu_date
+
         token = self.auth.token_of_request(
-            r.method, r.headers.get('Host', None),
-            r.url, self.auth.qiniu_headers(r.headers),
+            r.method,
+            r.headers.get('Host', None),
+            r.url,
+            self.auth.qiniu_headers(r.headers),
             r.headers.get('Content-Type', None),
             r.body
         )

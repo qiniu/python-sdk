@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
-import os, time
+import os
 import string
 import random
 import tempfile
-from imp import reload
 
 import requests
 
@@ -22,7 +21,8 @@ from qiniu.compat import is_py2, is_py3, b
 
 from qiniu.services.storage.uploader import _form_put
 
-from qiniu.http import __return_wrapper as return_wrapper
+from qiniu.http import __return_wrapper as return_wrapper, qn_http_client
+from qiniu.http.middleware import Middleware, RetryDomainsMiddleware
 
 import qiniu.config
 
@@ -30,6 +30,7 @@ if is_py2:
     import sys
     import StringIO
     import urllib
+    from imp import reload
 
     reload(sys)
     sys.setdefaultencoding('utf-8')
@@ -78,7 +79,111 @@ def is_travis():
     return os.environ['QINIU_TEST_ENV'] == 'travis'
 
 
+class MiddlewareRecorder(Middleware):
+    def __init__(self, rec, label):
+        self.rec = rec
+        self.label = label
+
+    def __call__(self, request, nxt):
+        self.rec.append(
+            'bef_{0}{1}'.format(self.label, len(self.rec))
+        )
+        resp = nxt(request)
+        self.rec.append(
+            'aft_{0}{1}'.format(self.label, len(self.rec))
+        )
+        return resp
+
+
 class HttpTest(unittest.TestCase):
+    def test_response_need_retry(self):
+        _ret, resp_info = qn_http_client.get('https://qiniu.com/index.html')
+
+        resp_info.req_id = 'mocked-req-id'
+        resp_info.error = None
+
+        def gen_case(code):
+            if 0 < code < 500:
+                return code, False
+            if code in [
+                501, 509, 573, 579, 608, 612, 614, 616, 618, 630, 631, 632, 640, 701
+            ]:
+                return code, False
+            return code, True
+
+        cases = [
+            gen_case(i) for i in range(-1, 800)
+        ]
+
+        for test_code, should_retry in cases:
+            resp_info.status_code = test_code
+            assert_msg = '{0} should{1} retry'.format(test_code, '' if should_retry else ' NOT')
+            assert resp_info.need_retry() == should_retry, assert_msg
+
+    def test_middlewares(self):
+        rec_ls = []
+        mw_a = MiddlewareRecorder(rec_ls, 'A')
+        mw_b = MiddlewareRecorder(rec_ls, 'B')
+        qn_http_client.get(
+            'https://qiniu.com/index.html',
+            middlewares=[
+                mw_a,
+                mw_b
+            ]
+        )
+        assert rec_ls == ['bef_A0', 'bef_B1', 'aft_B2', 'aft_A3']
+
+
+    def test_retry_domains(self):
+        rec_ls = []
+        mw_rec = MiddlewareRecorder(rec_ls, 'rec')
+        ret, resp = qn_http_client.get(
+            'https://fake.pysdk.qiniu.com/index.html',
+            middlewares=[
+                RetryDomainsMiddleware(
+                    backup_domains=[
+                        'unavailable.pysdk.qiniu.com',
+                        'qiniu.com'
+                    ],
+                    max_retry_times=3
+                ),
+                mw_rec
+            ]
+        )
+        # ['bef_rec0', 'bef_rec1', 'bef_rec2'] are 'fake.pysdk.qiniu.com' with retried 3 times
+        # ['bef_rec3', 'bef_rec4', 'bef_rec5'] are 'unavailable.pysdk.qiniu.com' with retried 3 times
+        # ['bef_rec6', 'aft_rec7'] are 'qiniu.com' and it's success
+        assert rec_ls == [
+            'bef_rec0', 'bef_rec1', 'bef_rec2',
+            'bef_rec3', 'bef_rec4', 'bef_rec5',
+            'bef_rec6', 'aft_rec7'
+        ]
+        assert ret == {}
+        assert resp.status_code == 200
+
+    def test_retry_domains_fail_fast(self):
+        rec_ls = []
+        mw_rec = MiddlewareRecorder(rec_ls, 'rec')
+        ret, resp = qn_http_client.get(
+            'https://fake.pysdk.qiniu.com/index.html',
+            middlewares=[
+                RetryDomainsMiddleware(
+                    backup_domains=[
+                        'unavailable.pysdk.qiniu.com',
+                        'qiniu.com'
+                    ],
+                    retry_condition=lambda _resp, _req: False
+                ),
+                mw_rec
+            ]
+        )
+        # ['bef_rec0'] are 'fake.pysdk.qiniu.com' with fail fast
+        assert rec_ls == ['bef_rec0']
+        assert ret is None
+        assert resp.status_code == -1
+
+
+
     def test_json_decode_error(self):
         def mock_res():
             r = requests.Response()
@@ -907,6 +1012,27 @@ class RegionTestCase(unittest.TestCase):
             set_default(default_rsf_host=qiniu.config.RSF_HOST)
             qiniu.config._is_customized_default['default_rs_host'] = False
             qiniu.config._is_customized_default['default_rsf_host'] = False
+
+    def test_query_region_with_backup_domains(self):
+        try:
+            set_default(
+                default_uc_host='https://fake-uc.phpsdk.qiniu.com',
+                default_uc_backup_hosts=[
+                    'unavailable-uc.phpsdk.qiniu.com',
+                    'uc.qbox.me'
+                ]
+            )
+            zone = Zone()
+            data = zone.bucket_hosts(access_key, bucket_name)
+            assert data != 'null'
+        finally:
+            set_default(
+                default_uc_host=qiniu.config.UC_HOST,
+                default_uc_backup_hosts=[
+                    'kodo-config.qiniuapi.com',
+                    'api.qiniu.com'
+                ]
+            )
 
 
 class ReadWithoutSeek(object):

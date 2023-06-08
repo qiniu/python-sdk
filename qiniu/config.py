@@ -1,20 +1,24 @@
 # -*- coding: utf-8 -*-
-
-from qiniu import zone
+from qiniu import region
 
 RS_HOST = 'http://rs.qiniu.com'  # 管理操作Host
 RSF_HOST = 'http://rsf.qbox.me'  # 列举操作Host
 API_HOST = 'http://api.qiniuapi.com'  # 数据处理操作Host
-UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
+UC_HOST = region.UC_HOST  # 获取空间信息Host
 
 _BLOCK_SIZE = 1024 * 1024 * 4  # 断点续传分块大小，该参数为接口规格，暂不支持修改
 
 _config = {
-    'default_zone': zone.Zone(),
+    'default_zone': region.Region(),
     'default_rs_host': RS_HOST,
     'default_rsf_host': RSF_HOST,
     'default_api_host': API_HOST,
     'default_uc_host': UC_HOST,
+    'default_uc_backup_hosts': [
+        'kodo-config.qiniuapi.com',
+        'api.qiniu.com'
+    ],
+    'default_uc_backup_retry_times': 2,
     'connection_timeout': 30,  # 链接超时为时间为30s
     'connection_retries': 3,  # 链接重试次数为3次
     'connection_pool': 10,  # 链接池个数为10
@@ -27,6 +31,8 @@ _is_customized_default = {
     'default_rsf_host': False,
     'default_api_host': False,
     'default_uc_host': False,
+    'default_uc_backup_hosts': False,
+    'default_uc_backup_retry_times': False,
     'connection_timeout': False,
     'connection_retries': False,
     'connection_pool': False,
@@ -45,7 +51,8 @@ def get_default(key):
 def set_default(
         default_zone=None, connection_retries=None, connection_pool=None,
         connection_timeout=None, default_rs_host=None, default_uc_host=None,
-        default_rsf_host=None, default_api_host=None, default_upload_threshold=None):
+        default_rsf_host=None, default_api_host=None, default_upload_threshold=None,
+        default_uc_backup_hosts=None, default_uc_backup_retry_times=None):
     if default_zone:
         _config['default_zone'] = default_zone
         _is_customized_default['default_zone'] = True
@@ -61,6 +68,14 @@ def set_default(
     if default_uc_host:
         _config['default_uc_host'] = default_uc_host
         _is_customized_default['default_uc_host'] = True
+        _config['default_uc_backup_hosts'] = []
+        _is_customized_default['default_uc_backup_hosts'] = True
+    if default_uc_backup_hosts:
+        _config['default_uc_backup_hosts'] = default_uc_backup_hosts
+        _is_customized_default['default_uc_backup_hosts'] = True
+    if default_uc_backup_retry_times:
+        _config['default_uc_backup_retry_times'] = default_uc_backup_retry_times
+        _is_customized_default['default_uc_backup_retry_times'] = True
     if connection_retries:
         _config['connection_retries'] = connection_retries
         _is_customized_default['connection_retries'] = True
