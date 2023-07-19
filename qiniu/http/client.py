@@ -104,8 +104,8 @@ class HTTPClient:
     def post(
         self,
         url,
-        data,
-        files,
+        data=None,
+        files=None,
         auth=None,
         headers=None,
         middlewares=None,

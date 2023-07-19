@@ -6,7 +6,7 @@ import time
 from qiniu import compat
 from qiniu import utils
 
-UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
+UC_HOST = 'https://kodo-config.qiniuapi.com'  # 获取空间信息Host
 
 
 class Region(object):
@@ -228,6 +228,7 @@ class Region(object):
         if is_customized_default('default_uc_host'):
             uc_host = get_default('default_uc_host')
         uc_backup_hosts = get_default('default_uc_backup_hosts')
+        query_region_backup_hosts = get_default('default_query_region_backup_hosts')
         uc_backup_retry_times = get_default('default_uc_backup_retry_times')
         url = "{0}/v4/query?ak={1}&bucket={2}".format(uc_host, ak, bucket)
 
@@ -235,7 +236,7 @@ class Region(object):
             url,
             middlewares=[
                 RetryDomainsMiddleware(
-                    backup_domains=uc_backup_hosts,
+                    backup_domains=uc_backup_hosts + query_region_backup_hosts,
                     max_retry_times=uc_backup_retry_times,
                 )
             ]

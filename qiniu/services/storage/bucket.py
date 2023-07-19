@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from qiniu import config, QiniuMacAuth
-from qiniu import http
+from qiniu.http import qn_http_client
+from qiniu.http.middleware import RetryDomainsMiddleware
 from qiniu.utils import urlsafe_base64_encode, entry
+from qiniu.auth import QiniuMacRequestsAuth
 
 
 class BucketManager(object):
@@ -422,7 +424,7 @@ class BucketManager(object):
             private: 0 公开；1 私有 ,str类型
         """
         url = "{0}/private?bucket={1}&private={2}".format(config.get_default("default_uc_host"), bucket_name, private)
-        return self.__post(url)
+        return self.__uc_do(url)
 
     def __api_do(self, bucket, operation, data=None):
         ak = self.auth.get_access_key()
@@ -431,7 +433,17 @@ class BucketManager(object):
         return self.__post(url, data)
 
     def __uc_do(self, operation, *args):
-        return self.__server_do(config.get_default('default_uc_host'), operation, *args)
+        path = _build_op(operation, *args)
+        url = '{0}/{1}'.format(config.get_default('default_uc_host'), path)
+        return self.__post(
+            url,
+            middlewares=[
+                RetryDomainsMiddleware(
+                    backup_domains=config.get_default('default_uc_backup_hosts'),
+                    max_retry_times=config.get_default('default_uc_backup_retry_times')
+                )
+            ]
+        )
 
     def __rs_do(self, bucket, operation, *args):
         ak = self.auth.get_access_key()
@@ -448,11 +460,33 @@ class BucketManager(object):
         url = '{0}/{1}'.format(host, cmd)
         return self.__post(url)
 
-    def __post(self, url, data=None):
-        return http._post_with_qiniu_mac(url, data, self.mac_auth)
+    def __post(self, url, data=None, headers=None, middlewares=None):
+        qn_auth = QiniuMacRequestsAuth(
+            self.mac_auth
+        ) if self.mac_auth is not None else None
 
-    def __get(self, url, params=None):
-        return http._get_with_qiniu_mac(url, params, self.mac_auth)
+        return qn_http_client.post(
+            url,
+            headers=headers,
+            data=data,
+            auth=qn_auth,
+            middlewares=middlewares,
+            timeout=config.get_default('connection_timeout')
+        )
+
+    def __get(self, url, params=None, headers=None, middlewares=None):
+        qn_auth = QiniuMacRequestsAuth(
+            self.mac_auth
+        ) if self.mac_auth is not None else None
+
+        return qn_http_client.get(
+            url,
+            headers=headers,
+            params=params,
+            auth=qn_auth,
+            middlewares=middlewares,
+            timeout=config.get_default('connection_timeout')
+        )
 
 
 def _build_op(*args):

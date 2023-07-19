@@ -15,7 +15,9 @@ _config = {
     'default_api_host': API_HOST,
     'default_uc_host': UC_HOST,
     'default_uc_backup_hosts': [
-        'kodo-config.qiniuapi.com',
+        'uc.qbox.me'
+    ],
+    'default_query_region_backup_hosts': [
         'api.qiniu.com'
     ],
     'default_uc_backup_retry_times': 2,
@@ -32,6 +34,7 @@ _is_customized_default = {
     'default_api_host': False,
     'default_uc_host': False,
     'default_uc_backup_hosts': False,
+    'default_query_region_backup_hosts': False,
     'default_uc_backup_retry_times': False,
     'connection_timeout': False,
     'connection_retries': False,
@@ -52,7 +55,8 @@ def set_default(
         default_zone=None, connection_retries=None, connection_pool=None,
         connection_timeout=None, default_rs_host=None, default_uc_host=None,
         default_rsf_host=None, default_api_host=None, default_upload_threshold=None,
-        default_uc_backup_hosts=None, default_uc_backup_retry_times=None):
+        default_uc_backup_hosts=None, default_uc_backup_retry_times=None,
+        default_query_region_backup_hosts=None):
     if default_zone:
         _config['default_zone'] = default_zone
         _is_customized_default['default_zone'] = True
@@ -70,9 +74,14 @@ def set_default(
         _is_customized_default['default_uc_host'] = True
         _config['default_uc_backup_hosts'] = []
         _is_customized_default['default_uc_backup_hosts'] = True
+        _config['default_query_region_backup_hosts'] = []
+        _is_customized_default['default_query_region_backup_hosts'] = True
     if default_uc_backup_hosts:
         _config['default_uc_backup_hosts'] = default_uc_backup_hosts
         _is_customized_default['default_uc_backup_hosts'] = True
+    if default_query_region_backup_hosts:
+        _config['default_query_region_backup_hosts'] = default_query_region_backup_hosts
+        _is_customized_default['default_query_region_backup_hosts'] = True
     if default_uc_backup_retry_times:
         _config['default_uc_backup_retry_times'] = default_uc_backup_retry_times
         _is_customized_default['default_uc_backup_retry_times'] = True

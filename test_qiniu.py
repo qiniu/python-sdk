@@ -79,6 +79,18 @@ def is_travis():
     return os.environ['QINIU_TEST_ENV'] == 'travis'
 
 
+def restore_backup_domains_config():
+    set_default(
+        default_uc_host=qiniu.config.UC_HOST,
+        default_uc_backup_hosts=[
+            'uc.qbox.me'
+        ],
+        default_query_region_backup_hosts=[
+            'api.qiniu.com'
+        ]
+    )
+
+
 class MiddlewareRecorder(Middleware):
     def __init__(self, rec, label):
         self.rec = rec
@@ -420,6 +432,20 @@ class BucketTestCase(unittest.TestCase):
         ret, info = self.bucket.buckets()
         print(info)
         assert bucket_name in ret
+
+    def test_buckets_with_backup_domains(self):
+        try:
+            set_default(
+                default_uc_host='https://fake-uc.phpsdk.qiniu.com',
+                default_uc_backup_hosts=[
+                    'uc.qbox.me'
+                ],
+            )
+            ret, info = self.bucket.buckets()
+            print(info)
+            assert bucket_name in ret
+        finally:
+            restore_backup_domains_config()
 
     def test_prefetch(self):
         ret, info = self.bucket.prefetch(bucket_name, 'python-sdk.html', hostscache_dir=hostscache_dir)
@@ -1026,13 +1052,24 @@ class RegionTestCase(unittest.TestCase):
             data = zone.bucket_hosts(access_key, bucket_name)
             assert data != 'null'
         finally:
+            restore_backup_domains_config()
+
+    def test_query_region_with_backup_query_region_domains(self):
+        try:
             set_default(
-                default_uc_host=qiniu.config.UC_HOST,
+                default_uc_host='https://fake-uc.phpsdk.qiniu.com',
                 default_uc_backup_hosts=[
-                    'kodo-config.qiniuapi.com',
-                    'api.qiniu.com'
+                    'unavailable-uc.phpsdk.qiniu.com',
+                ],
+                default_query_region_backup_hosts=[
+                    'uc.qbox.me'
                 ]
             )
+            zone = Zone()
+            data = zone.bucket_hosts(access_key, bucket_name)
+            assert data != 'null'
+        finally:
+            restore_backup_domains_config()
 
 
 class ReadWithoutSeek(object):
