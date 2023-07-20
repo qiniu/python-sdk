@@ -46,6 +46,7 @@ elif is_py3:
 access_key = os.getenv('QINIU_ACCESS_KEY')
 secret_key = os.getenv('QINIU_SECRET_KEY')
 bucket_name = os.getenv('QINIU_TEST_BUCKET')
+bucket_domain = os.getenv('QINIU_TEST_DOMAIN')
 hostscache_dir = None
 
 
@@ -971,7 +972,7 @@ class DownloadTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
 
     def test_private_url(self):
-        private_bucket_domain = 'private-sdk.peterpy.cn'
+        private_bucket_domain = bucket_domain
         private_key = 'gogopher.jpg'
         base_url = 'http://%s/%s' % (private_bucket_domain, private_key)
         private_url = self.q.private_download_url(base_url, expires=3600)
