@@ -6,7 +6,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        python_version: ['2.7', '3.4.10', '3.5', '3.6', '3.7', '3.8', '3.9']
+        python_version: ['2.7.18', '3.4.10', '3.5', '3.6', '3.7', '3.8', '3.9']
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repo
@@ -14,13 +14,13 @@ jobs:
         with:
           ref: ${{ github.ref }}
       - name: Setup python
-        if: ${{ matrix.python_version != '3.4.10' }}
+        if: ${{ matrix.python_version != '2.7.18' && matrix.python_version != '3.4.10' }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python_version }}
           architecture: x64
       - name: Setup python manually
-        if: ${{ matrix.python_version == '3.4.10' }}
+        if: ${{ matrix.python_version == '2.7.18' || matrix.python_version == '3.4.10' }}
         env:
           PYTHON_SOURCE_URL: https://www.python.org/ftp/python/${{ matrix.python_version }}/Python-${{ matrix.python_version }}.tgz
         run: |
