@@ -1000,6 +1000,24 @@ class RegionTestCase(unittest.TestCase):
     test_rs_host = 'test.region.compatible.config.rs'
     test_rsf_host = 'test.region.compatible.config.rsf'
 
+    @staticmethod
+    def restore_hosts():
+        set_default(
+            default_rs_host=qiniu.config.RS_HOST,
+            default_rsf_host=qiniu.config.RSF_HOST,
+            default_uc_host=qiniu.config.UC_HOST,
+            default_query_region_host=qiniu.config.QUERY_REGION_HOST,
+            default_query_region_backup_hosts=[
+                'uc.qbox.me',
+                'api.qiniu.com'
+            ]
+        )
+        qiniu.config._is_customized_default['default_rs_host'] = False
+        qiniu.config._is_customized_default['default_rsf_host'] = False
+        qiniu.config._is_customized_default['default_uc_host'] = False
+        qiniu.config._is_customized_default['default_query_region_host'] = False
+        qiniu.config._is_customized_default['default_query_region_backup_hosts'] = False
+
     def test_config_compatible(self):
         try:
             set_default(default_rs_host=self.test_rs_host)
@@ -1008,16 +1026,24 @@ class RegionTestCase(unittest.TestCase):
             assert zone.get_rs_host("mock_ak", "mock_bucket") == self.test_rs_host
             assert zone.get_rsf_host("mock_ak", "mock_bucket") == self.test_rsf_host
         finally:
-            set_default(default_rs_host=qiniu.config.RS_HOST)
-            set_default(default_rsf_host=qiniu.config.RSF_HOST)
-            qiniu.config._is_customized_default['default_rs_host'] = False
-            qiniu.config._is_customized_default['default_rsf_host'] = False
+            RegionTestCase.restore_hosts()
+
+    def test_query_region_with_custom_domain(self):
+        try:
+            set_default(
+                default_query_region_host='https://fake-uc.phpsdk.qiniu.com'
+            )
+            zone = Zone()
+            data = zone.bucket_hosts(access_key, bucket_name)
+            assert data != 'null'
+        finally:
+            RegionTestCase.restore_hosts()
 
     def test_query_region_with_backup_domains(self):
         try:
             set_default(
-                default_uc_host='https://fake-uc.phpsdk.qiniu.com',
-                default_uc_backup_hosts=[
+                default_query_region_host='https://fake-uc.phpsdk.qiniu.com',
+                default_query_region_backup_hosts=[
                     'unavailable-uc.phpsdk.qiniu.com',
                     'uc.qbox.me'
                 ]
@@ -1026,13 +1052,22 @@ class RegionTestCase(unittest.TestCase):
             data = zone.bucket_hosts(access_key, bucket_name)
             assert data != 'null'
         finally:
+            RegionTestCase.restore_hosts()
+
+    def test_query_region_with_uc_and_backup_domains(self):
+        try:
             set_default(
-                default_uc_host=qiniu.config.UC_HOST,
-                default_uc_backup_hosts=[
-                    'kodo-config.qiniuapi.com',
-                    'api.qiniu.com'
+                default_uc_host='https://fake-uc.phpsdk.qiniu.com',
+                default_query_region_backup_hosts=[
+                    'unavailable-uc.phpsdk.qiniu.com',
+                    'uc.qbox.me'
                 ]
             )
+            zone = Zone()
+            data = zone.bucket_hosts(access_key, bucket_name)
+            assert data != 'null'
+        finally:
+            RegionTestCase.restore_hosts()
 
 
 class ReadWithoutSeek(object):
