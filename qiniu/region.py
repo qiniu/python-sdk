@@ -227,8 +227,8 @@ class Region(object):
         uc_host = UC_HOST
         if is_customized_default('default_uc_host'):
             uc_host = get_default('default_uc_host')
-        uc_backup_hosts = get_default('default_uc_backup_hosts')
-        uc_backup_retry_times = get_default('default_uc_backup_retry_times')
+        uc_backup_hosts = get_default('default_query_region_backup_hosts')
+        uc_backup_retry_times = get_default('default_backup_hosts_retry_times')
         url = "{0}/v4/query?ak={1}&bucket={2}".format(uc_host, ak, bucket)
 
         ret, _resp = qn_http_client.get(

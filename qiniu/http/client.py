@@ -66,7 +66,7 @@ class HTTPClient:
             return None, ResponseInfo(None, e)
 
         # if ok try dump response info to dict from json
-        if not resp_info.ok:
+        if not resp_info.ok():
             return None, resp_info
 
         try:
