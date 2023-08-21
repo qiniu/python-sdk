@@ -5,24 +5,7 @@ import io
 import os
 import re
 
-try:
-    import setuptools
-
-    setup = setuptools.setup
-except ImportError:
-    setuptools = None
-    from distutils.core import setup
-
-packages = [
-    'qiniu',
-    'qiniu.services',
-    'qiniu.services.storage',
-    'qiniu.services.processing',
-    'qiniu.services.compute',
-    'qiniu.services.cdn',
-    'qiniu.services.sms',
-    'qiniu.services.pili',
-]
+from setuptools import setup, find_packages
 
 
 def read(*names, **kwargs):
@@ -52,7 +35,7 @@ setup(
     license='MIT',
     url='https://github.com/qiniu/python-sdk',
     platforms='any',
-    packages=packages,
+    packages=find_packages(),
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

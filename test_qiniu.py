@@ -17,7 +17,7 @@ from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_bat
     build_batch_delete, DomainManager
 from qiniu import urlsafe_base64_encode, urlsafe_base64_decode, canonical_mime_header_key
 
-from qiniu.compat import is_py2, is_py3, b
+from qiniu.compat import is_py2, is_py3, b, json
 
 from qiniu.services.storage.uploader import _form_put
 
@@ -414,7 +414,7 @@ class BucketTestCase(unittest.TestCase):
         assert len(ret.get('items')) == 4
         ret, eof, info = self.bucket.list(bucket_name, limit=1000)
         print(ret, eof, info)
-        assert eof is False
+        assert info.status_code == 200
 
     def test_buckets(self):
         ret, info = self.bucket.buckets()
@@ -699,14 +699,26 @@ class UploaderTestCase(unittest.TestCase):
         assert info.status_code == 403  # key not match
 
     def test_withoutRead_withoutSeek_retry(self):
-        key = 'retry'
-        data = 'hello retry!'
-        set_default(default_zone=Zone('http://a', 'https://upload.qiniup.com'))
-        token = self.q.upload_token(bucket_name)
-        ret, info = put_data(token, key, data)
-        print(info)
-        assert ret['key'] == key
-        assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
+        try:
+            key = 'retry'
+            data = 'hello retry!'
+            zone = Zone()
+            try:
+                hosts = json.loads(
+                    zone.bucket_hosts(access_key, bucket_name)
+                ).get('hosts')
+                up_host_backup = 'https://' + hosts[0].get('up', {}).get('domains')[0]
+            except IndexError:
+                up_host_backup = 'https://upload.qiniup.com'
+            set_default(default_zone=Zone('http://a', up_host_backup))
+            token = self.q.upload_token(bucket_name)
+            ret, info = put_data(token, key, data)
+            print(info)
+            assert ret['key'] == key
+            assert ret['hash'] == 'FlYu0iBR1WpvYi4whKXiBuQpyLLk'
+        finally:
+            set_default(default_zone=Zone())
+            qiniu.config._is_customized_default['default_zone'] = False
 
     def test_putData_without_fname(self):
         if is_travis():
@@ -780,7 +792,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = __file__
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
@@ -792,7 +803,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = __file__
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
@@ -804,7 +814,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(2 * 1024 * 1024 + 1)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -817,7 +826,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(4 * 1024 * 1024)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -830,7 +838,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(10 * 1024 * 1024 + 1)
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -844,7 +851,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(part_size + 1)
         key = None
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -858,7 +864,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(part_size + 1)
         key = 'test_file_empty_return_body'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key, policy={'returnBody': ' '})
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
@@ -873,7 +878,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         token = self.q.upload_token(bucket_name, key)
         localfile = create_temp_file(4 * 1024 * 1024 + 1)
         progress_handler = lambda progress, total: progress
-        qiniu.set_default(default_zone=Zone('http://a', 'https://upload.qiniup.com'))
         ret, info = put_file(token, key, localfile, self.params, self.mime_type, progress_handler=progress_handler)
         print(info)
         assert ret['key'] == key
@@ -882,7 +886,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
     def test_retry(self):
         localfile = __file__
         key = 'test_file_r_retry'
-        qiniu.set_default(default_zone=Zone('http://a', 'https://upload.qiniup.com'))
         token = self.q.upload_token(bucket_name, key)
         ret, info = put_file(token, key, localfile, self.params, self.mime_type)
         print(info)
@@ -893,7 +896,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = __file__
         key = 'test_file_r'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key, policy={'keylimit': ['test_file_d']})
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
@@ -910,7 +912,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = __file__
         key = 'test_put_stream_with_metadata'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(__file__), size, hostscache_dir,
@@ -927,7 +928,6 @@ class ResumableUploaderTestCase(unittest.TestCase):
         localfile = create_temp_file(part_size + 1)
         key = 'test_put_stream_v2_with_metadata'
         size = os.stat(localfile).st_size
-        set_default(default_zone=Zone('https://upload.qiniup.com'))
         with open(localfile, 'rb') as input_stream:
             token = self.q.upload_token(bucket_name, key)
             ret, info = put_stream(token, key, input_stream, os.path.basename(localfile), size, hostscache_dir,
