@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-
-from hashlib import sha1
+from hashlib import sha1, new as hashlib_new
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 from datetime import datetime
 from .compat import b, s
@@ -61,6 +60,20 @@ def file_crc32(filePath):
         for block in _file_iter(f, _BLOCK_SIZE):
             crc = binascii.crc32(block, crc) & 0xFFFFFFFF
     return crc
+
+
+def io_crc32(io_data):
+    result = 0
+    for d in io_data:
+        result = binascii.crc32(d, result) & 0xFFFFFFFF
+    return result
+
+
+def io_md5(io_data):
+    h = hashlib_new('md5')
+    for d in io_data:
+        h.update(d)
+    return h.hexdigest()
 
 
 def crc32(data):

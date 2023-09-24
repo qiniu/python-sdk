@@ -110,6 +110,8 @@ class Region(object):
         return api_hosts[0]
 
     def get_up_host(self, ak, bucket, home_dir):
+        if home_dir is None:
+            home_dir = os.getcwd()
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
         if 'upHosts' not in bucket_hosts:
             bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir, force=True)
