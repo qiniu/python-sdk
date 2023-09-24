@@ -53,7 +53,20 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
-    install_requires=['requests'],
+    install_requires=[
+        'requests'
+    ],
+    extras_require={
+        'dev': [
+            'coverage<7.2',
+            'flask8',
+            'pytest',
+            'pytest-cov',
+            'freezegun',
+            'scrutinizer-ocular',
+            'codecov'
+        ]
+    },
 
     entry_points={
         'console_scripts': [

@@ -637,6 +637,20 @@ class BucketTestCase(unittest.TestCase):
         assert info.status_code == 403
 
 
+@pytest.fixture(scope='class')
+def valid_up_host(request):
+    zone = Zone()
+    try:
+        hosts = json.loads(
+            zone.bucket_hosts(access_key, bucket_name)
+        ).get('hosts')
+        up_host = 'https://' + hosts[0].get('up', {}).get('domains')[0]
+    except IndexError:
+        up_host = 'https://upload.qiniup.com'
+    request.cls.valid_up_host = up_host
+
+
+@pytest.mark.usefixtures('valid_up_host')
 class UploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
     params = {'x:a': 'a'}
@@ -702,14 +716,7 @@ class UploaderTestCase(unittest.TestCase):
         try:
             key = 'retry'
             data = 'hello retry!'
-            zone = Zone()
-            try:
-                hosts = json.loads(
-                    zone.bucket_hosts(access_key, bucket_name)
-                ).get('hosts')
-                up_host_backup = 'https://' + hosts[0].get('up', {}).get('domains')[0]
-            except IndexError:
-                up_host_backup = 'https://upload.qiniup.com'
+            up_host_backup = self.valid_up_host
             set_default(default_zone=Zone('http://a', up_host_backup))
             token = self.q.upload_token(bucket_name)
             ret, info = put_data(token, key, data)
@@ -778,6 +785,7 @@ class UploaderTestCase(unittest.TestCase):
         assert ret['x-qn-meta']['age'] == '18'
 
 
+@pytest.mark.usefixtures('valid_up_host')
 class ResumableUploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
     params = {'x:a': 'a'}
@@ -884,13 +892,19 @@ class ResumableUploaderTestCase(unittest.TestCase):
         remove_temp_file(localfile)
 
     def test_retry(self):
-        localfile = __file__
-        key = 'test_file_r_retry'
-        token = self.q.upload_token(bucket_name, key)
-        ret, info = put_file(token, key, localfile, self.params, self.mime_type)
-        print(info)
-        assert ret['key'] == key
-        assert ret['hash'] == etag(localfile)
+        try:
+            localfile = __file__
+            key = 'test_file_r_retry'
+            token = self.q.upload_token(bucket_name, key)
+            up_host_backup = self.valid_up_host
+            set_default(default_zone=Zone('http://a', up_host_backup))
+            ret, info = put_file(token, key, localfile, self.params, self.mime_type)
+            print(info)
+            assert ret['key'] == key
+            assert ret['hash'] == etag(localfile)
+        finally:
+            set_default(default_zone=Zone())
+            qiniu.config._is_customized_default['default_zone'] = False
 
     def test_put_stream_with_key_limits(self):
         localfile = __file__
