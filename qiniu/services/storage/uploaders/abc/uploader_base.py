@@ -6,7 +6,7 @@ import qiniu.config as config
 from qiniu.auth import Auth # noqa
 
 
-class UploaderBase:
+class UploaderBase(object):
     """
     Attributes
     ----------
@@ -33,8 +33,6 @@ class UploaderBase:
         kwargs
             The others arguments may be used by subclass.
         """
-        super().__init__()
-
         self.bucket_name = bucket_name
 
         # change the default when implements AuthProvider

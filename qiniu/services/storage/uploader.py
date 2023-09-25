@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-from qiniu import config
+from qiniu.config import _BLOCK_SIZE, get_default
 
 from qiniu.auth import Auth
 from qiniu.utils import crc32, file_crc32, rfc_from_timestamp
@@ -37,7 +37,7 @@ def put_data(
     final_data = b''
     if hasattr(data, 'read'):
         while True:
-            tmp_data = data.read(config._BLOCK_SIZE)
+            tmp_data = data.read(_BLOCK_SIZE)
             if len(tmp_data) == 0:
                 break
             else:
@@ -84,7 +84,7 @@ def put_file(
     with open(file_path, 'rb') as input_stream:
         file_name = os.path.basename(file_path)
         modify_time = int(os.path.getmtime(file_path))
-        if size > config.get_default('default_upload_threshold'):
+        if size > get_default('default_upload_threshold'):
             ret, info = put_stream(
                 up_token, key, input_stream, file_name, size, hostscache_dir, params,
                 mime_type, progress_handler,

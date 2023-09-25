@@ -1,6 +1,8 @@
 import io
 from collections import namedtuple
 
+from qiniu.compat import is_seekable
+
 
 ChunkInfo = namedtuple(
     'ChunkInfo',
@@ -21,7 +23,7 @@ class IOChunked(io.IOBase):
         lock,
         buffer_size=4 * (1024 ** 2)  # 4MB just for demo
     ):
-        if not base_io.seekable():
+        if not is_seekable(base_io):
             raise TypeError('"base_io" must be seekable')
         self.__base_io = base_io
         self.__chunk_start = chunk_offset

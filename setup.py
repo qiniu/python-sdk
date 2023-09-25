@@ -54,12 +54,13 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     install_requires=[
-        'requests'
+        'requests',
+        'futures; python_version == "2.7"'
     ],
     extras_require={
         'dev': [
             'coverage<7.2',
-            'flask8',
+            'flake8',
             'pytest',
             'pytest-cov',
             'freezegun',

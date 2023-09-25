@@ -5,6 +5,7 @@ from os import path
 from threading import Lock
 from time import time
 
+from qiniu.compat import is_seekable
 from qiniu.auth import Auth
 from qiniu.http import qn_http_client, ResponseInfo
 from qiniu.utils import b, io_md5, urlsafe_base64_encode
@@ -694,7 +695,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
                 )
                 return part, resp
             if (
-                not chunked_data.seekable() or
+                not is_seekable(chunked_data) or
                 not resp.need_retry()
             ):
                 return part, resp

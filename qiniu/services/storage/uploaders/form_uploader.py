@@ -2,6 +2,7 @@ from io import BytesIO
 from os import path
 from time import time
 
+from qiniu.compat import is_seekable
 from qiniu.utils import b, io_crc32
 from qiniu.auth import Auth
 from qiniu.http import qn_http_client
@@ -18,7 +19,7 @@ class FormUploader(UploaderBase):
         kwargs
             auth, regions
         """
-        super().__init__(bucket_name, **kwargs)
+        super(FormUploader, self).__init__(bucket_name, **kwargs)
 
         self.progress_handler = kwargs.get(
             'progress_handler',
@@ -162,7 +163,7 @@ class FormUploader(UploaderBase):
             if resp.ok() and ret:
                 return ret, resp
             if (
-                not data.seekable() or
+                not is_seekable(data) or
                 not resp.need_retry()
             ):
                 return ret, resp
@@ -231,7 +232,7 @@ class FormUploader(UploaderBase):
         str
         """
         result = None
-        if not data.seekable():
+        if not is_seekable(data):
             return result
         result = io_crc32(data)
         data.seek(0)

@@ -32,7 +32,7 @@ class ResumeUploaderBase(UploaderBase):
         concurrent_executor: futures.Executor
         kwargs
         """
-        super().__init__(bucket_name, **kwargs)
+        super(ResumeUploaderBase, self).__init__(bucket_name, **kwargs)
 
         self.part_size = kwargs.get('part_size', 4 * (1024 ** 2))
 
