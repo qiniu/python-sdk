@@ -37,7 +37,7 @@ class FormUploader(UploaderBase):
         mime_type=None,
         metadata=None,
         file_name=None,
-        costume_vars=None,
+        custom_vars=None,
         **kwargs
     ):
         """
@@ -52,9 +52,9 @@ class FormUploader(UploaderBase):
         mime_type: str
         metadata: dict
         file_name: str
-        costume_vars: dict
+        custom_vars: dict
         kwargs
-            up_token, file_crc32
+            up_token, crc32_int
             bucket_name, key, expired, policy, strict_policy for get up_token
 
         Returns
@@ -73,7 +73,7 @@ class FormUploader(UploaderBase):
             up_hosts = self._get_up_hosts(access_key)
 
         # crc32 from outside
-        file_crc32 = kwargs.get('file_crc32', None)
+        crc32_int = kwargs.get('crc32_int', None)
         # try to get file_name
         if not file_name and file_path:
             file_name = path.basename(file_path)
@@ -101,14 +101,14 @@ class FormUploader(UploaderBase):
             elif isinstance(data, str):
                 data_size = len(data)
                 data = BytesIO(b(data))
-            if not file_crc32:
-                file_crc32 = self.__get_file_crc32(data)
+            if not crc32_int:
+                crc32_int = self.__get_crc32_int(data)
             fields = self.__get_form_fields(
                 up_hosts=up_hosts,
                 up_token=up_token,
                 key=key,
-                file_crc32=file_crc32,
-                costume_vars=costume_vars,
+                crc32_int=crc32_int,
+                custom_vars=custom_vars,
                 metadata=metadata
             )
             ret, resp = self.__upload_data(
@@ -180,15 +180,15 @@ class FormUploader(UploaderBase):
         ----------
         up_token: str
         kwargs
-            key, file_crc32, costume_vars, metadata
+            key, crc32_int, custom_vars, metadata
 
         Returns
         -------
         dict
         """
         key = kwargs.get('key', None)
-        file_crc32 = kwargs.get('file_crc32', None)
-        costume_vars = kwargs.get('costume_vars', None)
+        crc32_int = kwargs.get('crc32_int', None)
+        custom_vars = kwargs.get('custom_vars', None)
         metadata = kwargs.get('metadata', None)
 
         result = {
@@ -198,14 +198,14 @@ class FormUploader(UploaderBase):
         if key is not None:
             result['key'] = key
 
-        if file_crc32:
-            result['crc32'] = file_crc32
+        if crc32_int:
+            result['crc32'] = crc32_int
 
-        if costume_vars:
+        if custom_vars:
             result.update(
                 {
                     k: str(v)
-                    for k, v in costume_vars.items()
+                    for k, v in custom_vars.items()
                     if k.startswith('x:')
                 }
             )
@@ -221,7 +221,7 @@ class FormUploader(UploaderBase):
 
         return result
 
-    def __get_file_crc32(self, data):
+    def __get_crc32_int(self, data):
         """
         Parameters
         ----------

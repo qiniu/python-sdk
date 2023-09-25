@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import hashlib
+import os
 import time
 
 from qiniu import config, http
@@ -135,8 +136,7 @@ class _Resume(object):
         # 检查原来的分片是否过期，如有则重传该分片
         for index, block_status in enumerate(self.blockStatus):
             if block_status.get('expired_at', 0) > time.time():
-                # os.SEEK_CUR = 1
-                self.input_stream.seek(self.part_size, 1)
+                self.input_stream.seek(self.part_size, os.SEEK_CUR)
             else:
                 block = self.input_stream.read(self.part_size)
                 response, ok = self._make_block_with_retry(block, host)

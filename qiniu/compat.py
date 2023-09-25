@@ -4,6 +4,7 @@
 pythoncompat
 """
 
+import os
 import sys
 
 try:
@@ -53,7 +54,7 @@ if is_py2:
 
     def is_seekable(data):
         try:
-            data.seek(0, 1)
+            data.seek(0, os.SEEK_CUR)
             return True
         except (AttributeError, IOError):
             return False

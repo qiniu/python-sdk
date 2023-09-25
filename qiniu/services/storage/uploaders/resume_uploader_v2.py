@@ -35,7 +35,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
         _ResumeUploadV2Context
         """
         if not isinstance(context, _ResumeUploadV2Context):
-            raise TypeError('context must be an instance of _ResumeUploadV1Context')
+            raise TypeError('context must be an instance of _ResumeUploadV2Context')
 
         if (
             not self.upload_progress_recorder or
@@ -187,7 +187,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
 
         Returns
         -------
-        ret: dict
+        ret: _ResumeUploadV2Context
         resp: ResponseInfo
         """
         # -- check and initial arguments
@@ -464,7 +464,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
         mime_type=None,
         metadata=None,
         file_name=None,
-        costume_vars=None,
+        custom_vars=None,
         **kwargs
     ):
         """
@@ -479,7 +479,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
         mime_type: str
         metadata: dict
         file_name: str
-        costume_vars: dict
+        custom_vars: dict
         kwargs
             up_token
             bucket_name, expires, policy, strict_policy for generate `up_token`
@@ -549,7 +549,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
                     mime_type=mime_type,
                     metadata=metadata,
                     file_name=file_name,
-                    costume_vars=costume_vars,
+                    custom_vars=custom_vars,
                     **kwargs
                 )
             return ret, resp
@@ -562,7 +562,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
 
             key=key,
             file_name=file_name,
-            params=costume_vars,
+            params=custom_vars,
             metadata=metadata
         )
 
@@ -578,7 +578,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
                 mime_type=mime_type,
                 metadata=metadata,
                 file_name=file_name,
-                costume_vars=costume_vars,
+                custom_vars=custom_vars,
                 **kwargs
             )
 

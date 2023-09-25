@@ -134,7 +134,7 @@ class UploaderBase(object):
         mime_type,
         metadata,
         file_name,
-        costume_vars,
+        custom_vars,
         **kwargs
     ):
         """
@@ -152,7 +152,7 @@ class UploaderBase(object):
         mime_type: str
         metadata: dict
         file_name: str
-        costume_vars: dict
+        custom_vars: dict
         kwargs: dict
 
         Returns

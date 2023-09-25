@@ -1,3 +1,4 @@
+import os
 import io
 from collections import namedtuple
 
@@ -43,13 +44,13 @@ class IOChunked(io.IOBase):
     def seek(self, offset, whence=0):
         if not self.seekable():
             raise io.UnsupportedOperation('does not support seek')
-        if whence == 0:
+        if whence == os.SEEK_SET:
             if offset < 0:
                 raise ValueError('offset should be zero or positive if whence is 0')
             self.__chunk_pos = offset
-        elif whence == 1:
+        elif whence == os.SEEK_CUR:
             self.__chunk_pos += offset
-        elif whence == 2:
+        elif whence == os.SEEK_END:
             if offset > 0:
                 raise ValueError('offset should be zero or negative if whence is 2')
             self.__chunk_pos = self.__chunk_size + offset

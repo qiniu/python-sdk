@@ -423,7 +423,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         mime_type=None,
         metadata=None,
         file_name=None,
-        costume_vars=None,
+        custom_vars=None,
         **kwargs
     ):
         """
@@ -440,7 +440,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         mime_type
         metadata
         file_name
-        costume_vars
+        custom_vars
 
         kwargs:
             up_token
@@ -507,7 +507,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
 
             key=key,
             file_name=file_name,
-            params=costume_vars,
+            params=custom_vars,
             metadata=metadata
         )
 
@@ -523,7 +523,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
                 mime_type=mime_type,
                 metadata=metadata,
                 file_name=file_name,
-                costume_vars=costume_vars,
+                custom_vars=custom_vars,
                 **kwargs
             )
 

@@ -135,7 +135,7 @@ def _form_put(
         mime_type=mime_type,
         metadata=metadata,
         params=params,
-        file_crc32=crc,
+        crc32_int=crc,
         up_token=up_token
     )
 
