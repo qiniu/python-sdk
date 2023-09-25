@@ -88,6 +88,14 @@ class ResumeUploaderV1(ResumeUploaderBase):
         key,
         context
     ):
+        """
+        Parameters
+        ----------
+        file_name: str
+        key: str
+        context: _ResumeUploadV1Context
+
+        """
         if not self.upload_progress_recorder or not any([file_name, key]):
             return
 
@@ -150,9 +158,6 @@ class ResumeUploaderV1(ResumeUploaderBase):
         context: _ResumeUploadV1Context
         uploaded_size: int
         total_size: int
-
-        Returns
-        -------
 
         """
         self._set_to_record(file_name, key, context)
@@ -353,6 +358,21 @@ class ResumeUploaderV1(ResumeUploaderBase):
         context,
         **kwargs
     ):
+        """
+
+        Parameters
+        ----------
+        up_token: str
+        data_size: int
+        context: _ResumeUploadV1Context
+        kwargs:
+            key, file_name, params, metadata
+
+        Returns
+        -------
+        ret: dict
+        resp: ResponseInfo
+        """
         key = kwargs.get('key', None)
         file_name = kwargs.get('file_name', None)
         params = kwargs.get('params', None)
@@ -422,12 +442,13 @@ class ResumeUploaderV1(ResumeUploaderBase):
         costume_vars
 
         kwargs:
-            Support kwargs:
-                `bucket_name`, `expires`, `policy`, `strict_policy` for generate `up_token`
+            up_token
+            bucket_name, expires, policy, strict_policy for generate `up_token`
 
         Returns
         -------
-
+            ret: dict
+            resp: ResponseInfo
         """
         # part_size
         if part_size:
@@ -515,6 +536,20 @@ class ResumeUploaderV1(ResumeUploaderBase):
         up_token,
         lock
     ):
+        """
+        Parameters
+        ----------
+        data: IOBase
+        chunk_info: IOChunked
+        up_hosts: list[str]
+        up_token: str
+        lock: Lock
+
+        Returns
+        -------
+        part: _ResumeUploadV2Part
+        resp: ResponseInfo
+        """
         if not up_hosts:
             raise ValueError('Must provide one up host at least')
 
@@ -567,6 +602,21 @@ class ResumeUploaderV1(ResumeUploaderBase):
         params=None,
         metadata=None
     ):
+        """
+        Parameters
+        ----------
+        up_host: str
+        data_size: int
+        mime_type: str
+        key: str
+        file_name: str
+        params: dict
+        metadata: dict
+
+        Returns
+        -------
+        str
+        """
         url_base = [up_host, 'mkfile', str(data_size)]
         url_params = []
 

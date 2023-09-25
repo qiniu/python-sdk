@@ -84,6 +84,14 @@ class ResumeUploaderV2(ResumeUploaderBase):
         )
 
     def _set_to_record(self, file_name, key, context):
+        """
+        Parameters
+        ----------
+        file_name: str
+        key: str
+        context: _ResumeUploadV2Context
+
+        """
         if not self.upload_progress_recorder or not any([file_name, key]):
             return
 
@@ -114,6 +122,14 @@ class ResumeUploaderV2(ResumeUploaderBase):
         context,
         resp
     ):
+        """
+        Parameters
+        ----------
+        file_name: str
+        key: str
+        context: _ResumeUploadV2Context
+        resp: ResponseInfo
+        """
         if not self.upload_progress_recorder or not any([file_name, key]):
             return
         if resp and context and not any([
@@ -131,6 +147,15 @@ class ResumeUploaderV2(ResumeUploaderBase):
         uploaded_size,
         total_size
     ):
+        """
+        Parameters
+        ----------
+        file_name: str
+        key: str
+        context: _ResumeUploadV2Context
+        uploaded_size: int
+        total_size: int
+        """
         self._set_to_record(file_name, key, context)
         if callable(self.progress_handler):
             self.progress_handler(uploaded_size, total_size)
@@ -146,6 +171,24 @@ class ResumeUploaderV2(ResumeUploaderBase):
         part_size=None,
         **kwargs
     ):
+        """
+
+        Parameters
+        ----------
+        up_token: str
+        key: str
+        file_path: str
+        data: IOBase
+        data_size: int
+        modify_time: int
+        part_size: int
+        kwargs
+
+        Returns
+        -------
+        ret: dict
+        resp: ResponseInfo
+        """
         # -- check and initial arguments
         # must provide file_path or data
         if not file_path and not data:
@@ -351,10 +394,11 @@ class ResumeUploaderV2(ResumeUploaderBase):
         data_size: int
         context: _ResumeUploadV2Context
         kwargs
-
+            key, file_name, params, metadata
         Returns
         -------
-
+            ret: dict
+            resp: ResponseInfo
         """
         key = kwargs.get('key', None)
         file_name = kwargs.get('file_name', None)
@@ -422,6 +466,27 @@ class ResumeUploaderV2(ResumeUploaderBase):
         costume_vars=None,
         **kwargs
     ):
+        """
+        Parameters
+        ----------
+        key: str
+        file_path: str
+        data: IOBase
+        data_size: int
+        part_size: int
+        modify_time: int
+        mime_type: str
+        metadata: dict
+        file_name: str
+        costume_vars: dict
+        kwargs
+            up_token
+            bucket_name, expires, policy, strict_policy for generate `up_token`
+
+        Returns
+        -------
+
+        """
         # up_token
         up_token = kwargs.get('up_token', None)
         if not up_token:
@@ -526,6 +591,19 @@ class ResumeUploaderV2(ResumeUploaderBase):
         upload_id=None,
         part_no=None,
     ):
+        """
+        Parameters
+        ----------
+        up_host: str
+        bucket_name: str
+        key: str
+        upload_id: str
+        part_no: int
+
+        Returns
+        -------
+        str
+        """
         if not bucket_name:
             bucket_name = self.bucket_name
 
@@ -559,6 +637,22 @@ class ResumeUploaderV2(ResumeUploaderBase):
         key,
         lock
     ):
+        """
+        Parameters
+        ----------
+        data: IOBase
+        chunk_info: ChunkInfo
+        up_hosts: list[str]
+        up_token: str
+        upload_id: str
+        key: str
+        lock: Lock
+
+        Returns
+        -------
+        part: _ResumeUploadV2Part
+        resp: ResponseInfo
+        """
         if not up_hosts:
             raise ValueError('Must provide on up host at least')
 

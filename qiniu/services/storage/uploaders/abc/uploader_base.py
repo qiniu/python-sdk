@@ -3,7 +3,7 @@ import abc
 import qiniu.config as config
 
 # type import
-from qiniu.auth import Auth
+from qiniu.auth import Auth # noqa
 
 
 class UploaderBase:
@@ -52,6 +52,14 @@ class UploaderBase:
     def get_up_token(self, **kwargs):
         """
         Generate up token
+
+        Parameters
+        ----------
+        bucket_name: str
+        key: str
+        expired: int
+        policy: dict
+        strict_policy: bool
 
         Returns
         -------
@@ -136,18 +144,18 @@ class UploaderBase:
 
         Parameters
         ----------
-        key
-        file_path
-        data
-        data_size
-        modify_time
+        key: str
+        file_path: str
+        data: IOBase
+        data_size: int
+        modify_time: int
 
-        part_size
-        mime_type
-        metadata
-        file_name
-        costume_vars
-        kwargs
+        part_size: int
+        mime_type: str
+        metadata: dict
+        file_name: str
+        costume_vars: dict
+        kwargs: dict
 
         Returns
         -------

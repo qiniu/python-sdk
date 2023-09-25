@@ -53,6 +53,17 @@ class ResumeUploaderBase(UploaderBase):
         )
 
     def gen_chunk_list(self, size, chunk_size=None, uploaded_chunk_no_list=None):
+        """
+        Parameters
+        ----------
+        size: int
+        chunk_size: int
+        uploaded_chunk_no_list: list[int]
+
+        Yields
+        -------
+            ChunkInfo
+        """
         if not chunk_size:
             chunk_size = self.part_size
         if not uploaded_chunk_no_list:
@@ -78,7 +89,17 @@ class ResumeUploaderBase(UploaderBase):
         key,
         context
     ):
-        pass
+        """
+        Parameters
+        ----------
+        file_name: str
+        key: str
+        context: any
+
+        Returns
+        -------
+        any
+        """
 
     @abc.abstractmethod
     def _set_to_record(
@@ -87,7 +108,13 @@ class ResumeUploaderBase(UploaderBase):
         key,
         context
     ):
-        pass
+        """
+        Parameters
+        ----------
+        file_name: str
+        key: str
+        context: any
+        """
 
     @abc.abstractmethod
     def _progress_handler(
@@ -98,7 +125,15 @@ class ResumeUploaderBase(UploaderBase):
         uploaded_size,
         total_size
     ):
-        pass
+        """
+        Parameters
+        ----------
+        file_name: str
+        key: str
+        context: any
+        uploaded_size: int
+        total_size: int
+        """
 
     @abc.abstractmethod
     def initial_parts(
@@ -112,7 +147,23 @@ class ResumeUploaderBase(UploaderBase):
         part_size,
         **kwargs
     ):
-        pass
+        """
+        Parameters
+        ----------
+        up_token: str
+        key: str
+        file_path: str
+        data: IOBase
+        data_size: int
+        modify_time: int
+        part_size: int
+        kwargs: dict
+
+        Returns
+        -------
+        ret: dict
+        resp: ResponseInfo
+        """
 
     @abc.abstractmethod
     def upload_parts(
@@ -123,7 +174,20 @@ class ResumeUploaderBase(UploaderBase):
         context,
         **kwargs
     ):
-        pass
+        """
+        Parameters
+        ----------
+        up_token: str
+        data: IOBase
+        data_size: int
+        context: any
+        kwargs: dict
+
+        Returns
+        -------
+        ret: dict
+        resp: ResponseInfo
+        """
 
     @abc.abstractmethod
     def complete_parts(
@@ -133,4 +197,16 @@ class ResumeUploaderBase(UploaderBase):
         context,
         **kwargs
     ):
-        pass
+        """
+        Parameters
+        ----------
+        up_token: str
+        data_size: int
+        context: any
+        kwargs: dictr
+
+        Returns
+        -------
+        ret: dict
+        resp: ResponseInfo
+        """

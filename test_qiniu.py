@@ -4,6 +4,7 @@ import os
 import string
 import random
 import tempfile
+import functools
 
 import requests
 
@@ -42,6 +43,23 @@ elif is_py3:
 
     StringIO = io.StringIO
     urlopen = urllib.request.urlopen
+
+if hasattr(functools, 'cache'):
+    cache_decorator = functools.cache
+else:
+    def cache_decorator(func):
+        cache = {}
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            key = (args, frozenset(kwargs.items()))
+            if key in cache:
+                return cache[key]
+            result = func(*args, **kwargs)
+            cache[key] = result
+            return result
+
+        return wrapper
 
 access_key = os.getenv('QINIU_ACCESS_KEY')
 secret_key = os.getenv('QINIU_SECRET_KEY')
@@ -637,8 +655,8 @@ class BucketTestCase(unittest.TestCase):
         assert info.status_code == 403
 
 
-@pytest.fixture(scope='class')
-def valid_up_host(request):
+@cache_decorator
+def get_valid_up_host():
     zone = Zone()
     try:
         hosts = json.loads(
@@ -647,10 +665,9 @@ def valid_up_host(request):
         up_host = 'https://' + hosts[0].get('up', {}).get('domains')[0]
     except IndexError:
         up_host = 'https://upload.qiniup.com'
-    request.cls.valid_up_host = up_host
+    return up_host
 
 
-@pytest.mark.usefixtures('valid_up_host')
 class UploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
     params = {'x:a': 'a'}
@@ -716,7 +733,7 @@ class UploaderTestCase(unittest.TestCase):
         try:
             key = 'retry'
             data = 'hello retry!'
-            up_host_backup = self.valid_up_host
+            up_host_backup = get_valid_up_host()
             set_default(default_zone=Zone('http://a', up_host_backup))
             token = self.q.upload_token(bucket_name)
             ret, info = put_data(token, key, data)
@@ -785,7 +802,6 @@ class UploaderTestCase(unittest.TestCase):
         assert ret['x-qn-meta']['age'] == '18'
 
 
-@pytest.mark.usefixtures('valid_up_host')
 class ResumableUploaderTestCase(unittest.TestCase):
     mime_type = "text/plain"
     params = {'x:a': 'a'}
@@ -896,7 +912,7 @@ class ResumableUploaderTestCase(unittest.TestCase):
             localfile = __file__
             key = 'test_file_r_retry'
             token = self.q.upload_token(bucket_name, key)
-            up_host_backup = self.valid_up_host
+            up_host_backup = get_valid_up_host()
             set_default(default_zone=Zone('http://a', up_host_backup))
             ret, info = put_file(token, key, localfile, self.params, self.mime_type)
             print(info)

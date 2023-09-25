@@ -1,7 +1,7 @@
+from .uploader_base import UploaderBase
+from .resume_uploader_base import ResumeUploaderBase
+
 __all__ = [
     'UploaderBase',
     'ResumeUploaderBase'
 ]
-
-from .uploader_base import *
-from .resume_uploader_base import *

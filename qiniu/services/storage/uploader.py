@@ -10,7 +10,7 @@ from qiniu.services.storage.uploaders import FormUploader, ResumeUploaderV1, Res
 from qiniu.services.storage.upload_progress_recorder import UploadProgressRecorder
 
 # for compact to old sdk
-from qiniu.services.storage.legacy import _Resume
+from qiniu.services.storage.legacy import _Resume # noqa
 
 
 def put_data(

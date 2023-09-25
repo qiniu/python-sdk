@@ -11,6 +11,13 @@ from qiniu.services.storage.uploaders.abc import UploaderBase
 
 class FormUploader(UploaderBase):
     def __init__(self, bucket_name, **kwargs):
+        """
+        Parameters
+        ----------
+        bucket_name: str
+        kwargs
+            auth, regions
+        """
         super().__init__(bucket_name, **kwargs)
 
         self.progress_handler = kwargs.get(
@@ -32,6 +39,28 @@ class FormUploader(UploaderBase):
         costume_vars=None,
         **kwargs
     ):
+        """
+        Parameters
+        ----------
+        key: str
+        file_path: str
+        data: IOBase
+        data_size: int
+        modify_time: int
+        part_size: int
+        mime_type: str
+        metadata: dict
+        file_name: str
+        costume_vars: dict
+        kwargs
+            up_token, file_crc32
+            bucket_name, key, expired, policy, strict_policy for get up_token
+
+        Returns
+        -------
+        ret: dict
+        resp: ResponseInfo
+        """
         # check and initial arguments
         # up_token and up_hosts
         up_token = kwargs.get('up_token', None)
@@ -103,6 +132,21 @@ class FormUploader(UploaderBase):
         data_size=None,
         mimetype='application/octet-stream'
     ):
+        """
+        Parameters
+        ----------
+        up_hosts: list[str]
+        fields: dict
+        file_name: str
+        data: IOBase
+        data_size: int
+        mimetype: str
+
+        Returns
+        -------
+        ret: dict
+        resp: ResponseInfo
+        """
         if not file_name or not file_name.strip():
             file_name = 'file_name'
 
@@ -130,6 +174,17 @@ class FormUploader(UploaderBase):
         up_token,
         **kwargs
     ):
+        """
+        Parameters
+        ----------
+        up_token: str
+        kwargs
+            key, file_crc32, costume_vars, metadata
+
+        Returns
+        -------
+        dict
+        """
         key = kwargs.get('key', None)
         file_crc32 = kwargs.get('file_crc32', None)
         costume_vars = kwargs.get('costume_vars', None)
@@ -166,6 +221,15 @@ class FormUploader(UploaderBase):
         return result
 
     def __get_file_crc32(self, data):
+        """
+        Parameters
+        ----------
+        data: BytesIO
+
+        Returns
+        -------
+        str
+        """
         result = None
         if not data.seekable():
             return result
