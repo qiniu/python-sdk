@@ -164,6 +164,8 @@ def put_stream(
         upload_progress_recorder = UploadProgressRecorder()
     if not version:
         version = 'v1'
+    if not part_size:
+        part_size = 4 * (1024 * 1024)
 
     if version == 'v1':
         uploader = ResumeUploaderV1(
