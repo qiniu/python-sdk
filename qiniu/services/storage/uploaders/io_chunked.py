@@ -68,7 +68,7 @@ class IOChunked(io.IOBase):
         if self.__curr_base_pos >= self.__chunk_end:
             return b''
         read_size = max(self.buffer_size, size)
-        read_size = min(self.__chunk_end - self.__chunk_pos, read_size)
+        read_size = min(self.__rest_chunk_size, read_size)
 
         # -- ignore size argument --
         with self.__lock:
@@ -84,3 +84,7 @@ class IOChunked(io.IOBase):
     @property
     def __curr_base_pos(self):
         return self.__chunk_start + self.__chunk_pos
+
+    @property
+    def __rest_chunk_size(self):
+        return self.__chunk_end - self.__curr_base_pos
