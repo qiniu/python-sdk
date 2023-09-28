@@ -116,7 +116,8 @@ class FormUploader(UploaderBase):
                 fields=fields,
                 file_name=file_name,
                 data=data,
-                data_size=data_size
+                data_size=data_size,
+                mime_type=mime_type
             )
         finally:
             if file_path:
@@ -131,7 +132,7 @@ class FormUploader(UploaderBase):
         file_name,
         data,
         data_size=None,
-        mimetype='application/octet-stream'
+        mime_type='application/octet-stream'
     ):
         """
         Parameters
@@ -141,7 +142,7 @@ class FormUploader(UploaderBase):
         file_name: str
         data: IOBase
         data_size: int
-        mimetype: str
+        mime_type: str
 
         Returns
         -------
@@ -157,7 +158,7 @@ class FormUploader(UploaderBase):
                 url=up_host,
                 data=fields,
                 files={
-                    'file': (file_name, data, mimetype)
+                    'file': (file_name, data, mime_type)
                 }
             )
             if resp.ok() and ret:

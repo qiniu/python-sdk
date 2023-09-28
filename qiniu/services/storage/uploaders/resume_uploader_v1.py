@@ -378,6 +378,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         file_name = kwargs.get('file_name', None)
         params = kwargs.get('params', None)
         metadata = kwargs.get('metadata', None)
+        mime_type = kwargs.get('mime_type', None)
 
         # sort contexts
         sorted_parts = sorted(context.parts, key=lambda part: part.part_no)
@@ -388,6 +389,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
             url = self.__get_mkfile_url(
                 up_host=up_host,
                 data_size=data_size,
+                mime_type=mime_type,
                 key=key,
                 file_name=file_name,
                 params=params,
@@ -506,6 +508,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
             context=context,
 
             key=key,
+            mime_type=mime_type,
             file_name=file_name,
             params=custom_vars,
             metadata=metadata

@@ -403,7 +403,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
         """
         key = kwargs.get('key', None)
         file_name = kwargs.get('file_name', None)
-        mimetype = kwargs.get('mimetype', None)
+        mime_type = kwargs.get('mime_type', None)
         params = kwargs.get('params', None)
         metadata = kwargs.get('metadata', None)
 
@@ -429,7 +429,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
                     for p in sorted_parts
                 ],
                 'fname': file_name,
-                'mimeType': mimetype,
+                'mimeType': mime_type,
                 'customVars': params,
                 'metadata': metadata
             }
@@ -561,6 +561,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
             context=context,
 
             key=key,
+            mime_type=mime_type,
             file_name=file_name,
             params=custom_vars,
             metadata=metadata
