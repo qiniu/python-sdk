@@ -54,7 +54,8 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     install_requires=[
-        'requests',
+        'requests; python_version >= "3.7"',
+        'requests<2.28; python_version < "3.7"',
         'futures; python_version == "2.7"'
     ],
     extras_require={
