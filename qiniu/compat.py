@@ -4,6 +4,7 @@
 pythoncompat
 """
 
+import os
 import sys
 
 try:
@@ -51,6 +52,13 @@ if is_py2:
     def u(data):
         return unicode(data, 'unicode_escape')  # noqa
 
+    def is_seekable(data):
+        try:
+            data.seek(0, os.SEEK_CUR)
+            return True
+        except (AttributeError, IOError):
+            return False
+
 elif is_py3:
     from urllib.parse import urlparse  # noqa
     import io
@@ -75,3 +83,6 @@ elif is_py3:
 
     def u(data):
         return data
+
+    def is_seekable(data):
+        return data.seekable()

@@ -144,6 +144,7 @@ class Auth(object):
             key:     上传的文件名，默认为空
             expires: 上传凭证的过期时间，默认为3600s
             policy:  上传策略，默认为空
+            strict_policy:  严格模式，将校验 policy 字段，默认为 True
 
         Returns:
             上传凭证
@@ -174,6 +175,13 @@ class Auth(object):
         decode_policy = decode_policy.decode('utf-8')
         dict_policy = json.loads(decode_policy)
         return ak, sign, dict_policy
+
+    @staticmethod
+    def get_bucket_name(up_token):
+        _, _, policy = Auth.up_token_decode(up_token)
+        if not policy or not policy['scope']:
+            return None
+        return policy['scope'].split(':', 1)[0]
 
     def __upload_token(self, policy):
         data = json.dumps(policy, separators=(',', ':'))
