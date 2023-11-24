@@ -592,6 +592,7 @@ class BucketTestCase(unittest.TestCase):
             bucket=bucket_name,
             key=key,
             to_line_after_days=10,
+            to_archive_ir_after_days=15,
             to_archive_after_days=20,
             to_deep_archive_after_days=30,
             delete_after_days=40
@@ -609,6 +610,7 @@ class BucketTestCase(unittest.TestCase):
             bucket=bucket_name,
             key=key,
             to_line_after_days=10,
+            to_archive_ir_after_days=15,
             to_archive_after_days=20,
             to_deep_archive_after_days=30,
             delete_after_days=40,
