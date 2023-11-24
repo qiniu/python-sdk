@@ -60,8 +60,8 @@ class BucketManager(object):
             options['delimiter'] = delimiter
 
         ak = self.auth.get_access_key()
-        rs_host = self.zone.get_rsf_host(ak, bucket)
-        url = '{0}/list'.format(rs_host)
+        rsf_host = self.zone.get_rsf_host(ak, bucket)
+        url = '{0}/list'.format(rsf_host)
         ret, info = self.__get(url, options)
 
         eof = False
