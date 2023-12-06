@@ -544,7 +544,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         Parameters
         ----------
         data: IOBase
-        chunk_info: IOChunked
+        chunk_info: ChunkInfo
         up_hosts: list[str]
         up_token: str
         lock: Lock
