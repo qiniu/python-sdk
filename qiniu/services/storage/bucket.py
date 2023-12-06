@@ -243,7 +243,7 @@ class BucketManager(object):
         Args:
             bucket:         待操作资源所在空间
             key:            待操作资源文件名
-            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储，2 为归档存储，3 为深度归档
+            storage_type:   待操作资源存储类型，0为普通存储，1为低频存储，2 为归档存储，3 为深度归档，4 为归档直读存储
         """
         resource = entry(bucket, key)
         return self.__rs_do(bucket, 'chtype', resource, 'type/{0}'.format(storage_type))

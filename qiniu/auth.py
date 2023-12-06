@@ -36,7 +36,7 @@ _policy_fields = set([
     'persistentNotifyUrl',  # 持久化处理结果通知URL
     'persistentPipeline',  # 持久化处理独享队列
     'deleteAfterDays',  # 文件多少天后自动删除
-    'fileType',  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储
+    'fileType',  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储，4为归档直读存储
     'isPrefixalScope'  # 指定上传文件必须使用的前缀
 ])
 
