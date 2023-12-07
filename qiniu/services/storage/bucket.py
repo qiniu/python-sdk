@@ -3,6 +3,7 @@
 from qiniu import config, QiniuMacAuth
 from qiniu import http
 from qiniu.utils import urlsafe_base64_encode, entry
+from datetime import datetime, timedelta
 
 
 class BucketManager(object):
@@ -415,6 +416,63 @@ class BucketManager(object):
             bucket_name: 存储空间名
         """
         return self.list_domains(bucket_name)
+
+    def bucket_usedspace(self, bucket_name, begin_time=None, end_time=None, g=None):
+        """
+        获取bucket的存储空间大小.可查询当天计量，统计延迟大概 5 分钟。
+        Args:
+            bucket_name: 存储空间名
+            begin_time: 起始日期字符串，闭区间，例如： 20060102150405
+            end_time: 结束日期字符串，开区间，例如： 20060102150405
+            g: 时间粒度，支持 day；当天支持5min、hour、day
+        """
+        url = "{0}/v6/space".format(config.get_default("default_api_host"))
+        now_time =  datetime.now()
+        hour_ago = now_time + timedelta(hours=-1)
+
+        if begin_time is None:
+            begin_time=datetime.strftime(hour_ago, '%Y%m%d%H%M%S')
+        if end_time is None:
+            end_time=datetime.strftime(now_time, '%Y%m%d%H%M%S')
+        if g is None:
+            g="hour"
+        params = {
+            "bucket": bucket_name,
+            "begin": begin_time,
+            "end": end_time,
+            "g": g
+        }
+        return self.__get(url, params=params)
+
+    def bucket_filecount(self, bucket_name, begin_time=None, end_time=None, g=None):
+        """
+        获取bucket的存储空间文件数量.可查询当天计量，统计延迟大概 5 分钟。
+        Args:
+            bucket_name: 存储空间名
+            begin_time: 起始日期字符串，闭区间，例如： 20060102150405
+            end_time: 结束日期字符串，开区间，例如： 20060102150405
+            g: 时间粒度，支持 day；当天支持5min、hour、day
+        """
+        url = "{0}/v6/count".format(config.get_default("default_api_host"))
+
+        now_time = datetime.now()
+        hour_ago = now_time + timedelta(hours=-1)
+
+        if begin_time is None:
+            begin_time=datetime.strftime(hour_ago, '%Y%m%d%H%M%S')
+        if end_time is None:
+            end_time=datetime.strftime(now_time, '%Y%m%d%H%M%S')
+        if g is None:
+            g="hour"
+
+        params = {
+            "bucket": bucket_name,
+            "begin": begin_time,
+            "end": end_time,
+            "g": g
+        }
+
+        return self.__get(url, params=params)
 
     def change_bucket_permission(self, bucket_name, private):
         """
