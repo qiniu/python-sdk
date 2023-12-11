@@ -16,7 +16,7 @@ from qiniu import Auth, set_default, etag, PersistentFop, build_op, op_save, Zon
 from qiniu import put_data, put_file, put_stream
 from qiniu import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, build_batch_stat, \
     build_batch_delete, DomainManager
-from qiniu import urlsafe_base64_encode, urlsafe_base64_decode, canonical_mime_header_key
+from qiniu import urlsafe_base64_encode, urlsafe_base64_decode, canonical_mime_header_key, entry, decode_entry
 
 from qiniu.compat import is_py2, is_py3, b, json
 
@@ -254,6 +254,90 @@ class UtilsTest(unittest.TestCase):
         assert len(field_names) == len(expect_canonical_field_names)
         for i in range(len(field_names)):
             assert canonical_mime_header_key(field_names[i]) == expect_canonical_field_names[i]
+
+    def test_entry(self):
+        case_list = [
+            {
+                'msg': 'normal',
+                'bucket': 'qiniuphotos',
+                'key': 'gogopher.jpg',
+                'expect': 'cWluaXVwaG90b3M6Z29nb3BoZXIuanBn'
+            },
+            {
+                'msg': 'key empty',
+                'bucket': 'qiniuphotos',
+                'key': '',
+                'expect': 'cWluaXVwaG90b3M6'
+            },
+            {
+                'msg': 'key undefined',
+                'bucket': 'qiniuphotos',
+                'key': None,
+                'expect': 'cWluaXVwaG90b3M='
+            },
+            {
+                'msg': 'key need replace plus symbol',
+                'bucket': 'qiniuphotos',
+                'key': '012ts>a',
+                'expect': 'cWluaXVwaG90b3M6MDEydHM-YQ=='
+            },
+            {
+                'msg': 'key need replace slash symbol',
+                'bucket': 'qiniuphotos',
+                'key': '012ts?a',
+                'expect': 'cWluaXVwaG90b3M6MDEydHM_YQ=='
+            }
+        ]
+        for c in case_list:
+            assert c.get('expect') == entry(c.get('bucket'), c.get('key')), c.get('msg')
+
+    def test_decode_entry(self):
+        case_list = [
+            {
+                'msg': 'normal',
+                'expect': {
+                    'bucket': 'qiniuphotos',
+                    'key': 'gogopher.jpg'
+                },
+                'entry': 'cWluaXVwaG90b3M6Z29nb3BoZXIuanBn'
+            },
+            {
+                'msg': 'key empty',
+                'expect': {
+                    'bucket': 'qiniuphotos',
+                    'key': ''
+                },
+                'entry': 'cWluaXVwaG90b3M6'
+            },
+            {
+                'msg': 'key undefined',
+                'expect': {
+                    'bucket': 'qiniuphotos',
+                    'key': None
+                },
+                'entry': 'cWluaXVwaG90b3M='
+            },
+            {
+                'msg': 'key need replace plus symbol',
+                'expect': {
+                    'bucket': 'qiniuphotos',
+                    'key': '012ts>a'
+                },
+                'entry': 'cWluaXVwaG90b3M6MDEydHM-YQ=='
+            },
+            {
+                'msg': 'key need replace slash symbol',
+                'expect': {
+                    'bucket': 'qiniuphotos',
+                    'key': '012ts?a'
+                },
+                'entry': 'cWluaXVwaG90b3M6MDEydHM_YQ=='
+            }
+        ]
+        for c in case_list:
+            bucket, key = decode_entry(c.get('entry'))
+            assert bucket == c.get('expect').get('bucket'), c.get('msg')
+            assert key == c.get('expect').get('key'), c.get('msg')
 
 
 class AuthTestCase(unittest.TestCase):

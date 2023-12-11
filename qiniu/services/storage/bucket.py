@@ -2,7 +2,7 @@
 
 from qiniu import config, QiniuMacAuth
 from qiniu import http
-from qiniu.utils import urlsafe_base64_encode, entry
+from qiniu.utils import urlsafe_base64_encode, entry, decode_entry
 
 
 class BucketManager(object):
@@ -344,7 +344,20 @@ class BucketManager(object):
                 ]
             一个ResponseInfo对象
         """
-        url = '{0}/batch'.format(config.get_default('default_rs_host'))
+        if not operations:
+            raise Exception('operations is empty')
+        bucket = ''
+        for op in operations:
+            segments = op.split('/')
+            e = segments[1] if len(segments) >= 2 else ''
+            bucket, _ = decode_entry(e)
+            if bucket:
+                break
+        if not bucket:
+            raise Exception('bucket is empty')
+        ak = self.auth.get_access_key()
+        rs_host = self.zone.get_rs_host(ak, bucket)
+        url = '{0}/batch'.format(rs_host)
         return self.__post(url, dict(op=operations))
 
     def buckets(self):

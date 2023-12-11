@@ -175,6 +175,10 @@ def entry(bucket, key):
         return urlsafe_base64_encode('{0}:{1}'.format(bucket, key))
 
 
+def decode_entry(e):
+    return (s(urlsafe_base64_decode(e)).split(':') + [None] * 2)[:2]
+
+
 def rfc_from_timestamp(timestamp):
     """将时间戳转换为HTTP RFC格式
 
