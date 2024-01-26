@@ -84,6 +84,7 @@ class UploaderBase(object):
         if self.regions:
             return self.regions
 
+        # handle compatibility for default_zone
         default_region = config.get_default('default_zone')
         if default_region:
             self.regions = [default_region]
@@ -108,11 +109,14 @@ class UploaderBase(object):
         if not regions:
             raise ValueError('No region available.')
 
-        if regions[0].up_host and regions[0].up_host_backup:
-            return [
-                regions[0].up_host,
-                regions[0].up_host_backup
-            ]
+        # get up hosts in region
+        up_hosts = [
+            regions[0].up_host,
+            regions[0].up_host_backup
+        ]
+        up_hosts = [h for h in up_hosts if h]
+        if up_hosts:
+            return up_hosts
 
         # this is correct, it does return hosts. bad function name by legacy
         return regions[0].get_up_host(

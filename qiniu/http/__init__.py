@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import platform
+import functools
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -20,6 +21,19 @@ qn_http_client = HTTPClient(
     ]
 )
 
+
+# compatibility with some config from qiniu.config
+def _before_send(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if _session is None:
+            _init()
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
+
+qn_http_client.send_request = _before_send(qn_http_client.send_request)
 
 _sys_info = '{0}; {1}'.format(platform.system(), platform.machine())
 _python_ver = platform.python_version()
