@@ -46,7 +46,13 @@ class ResponseInfo(object):
         return self.status_code // 100 == 2
 
     def need_retry(self):
-        if 0 < self.status_code < 500:
+        if 100 <= self.status_code < 500:
+            return False
+        if all([
+            self.status_code < 0,
+            self.exception is not None,
+            'BadStatusLine' in str(self.exception)
+        ]):
             return False
         # https://developer.qiniu.com/fusion/kb/1352/the-http-request-return-a-status-code
         if self.status_code in [

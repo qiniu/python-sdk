@@ -60,13 +60,21 @@ setup(
     ],
     extras_require={
         'dev': [
-            'coverage<7.2',
+            'coverage',
             'flake8',
             'pytest',
             'pytest-cov',
             'freezegun',
             'scrutinizer-ocular',
             'codecov'
+        ],
+        'dev: python_version <= "3.4"': [
+            'pytest~=4.6',
+            'coverage~=5.5'
+        ],
+        'dev: python_version < "3.8"': [
+            'pytest~=5.4',
+            'coverage~=7.1'
         ]
     },
 

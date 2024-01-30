@@ -35,6 +35,14 @@ jobs:
             wget -qLO get-pip.py "$PIP_BOOTSTRAP_SCRIPT_PREFIX/$MAJOR.$MINOR/get-pip.py"
             python get-pip.py --user
           fi
+      - name: Setup mock server
+        run: |
+          conda create -n mock-server python=3.10
+          conda activate mock-server
+          nohup python3 ./tests/mock-server/main.py --port 9000 > py-mock-server.log &
+          echo $! > mock-server.pid
+          
+          conda deactivate
       - name: Install dependencies
         shell: bash -l {0}
         run: |
@@ -48,11 +56,11 @@ jobs:
           QINIU_TEST_BUCKET: ${{ secrets.QINIU_TEST_BUCKET }}
           QINIU_TEST_DOMAIN: ${{ secrets.QINIU_TEST_DOMAIN }}
           QINIU_TEST_ENV: "travis"
+          MOCK_SERVER_ADDRESS: "http://127.0.0.1:9000"
           PYTHONPATH: "$PYTHONPATH:."
         run: |
           set -e
           flake8 --show-source --max-line-length=160 .
-          py.test --cov qiniu
+          coverage run -m pytest ./test_qiniu.py ./tests/cases
           ocular --data-file .coverage
-          coverage run test_qiniu.py
           codecov
