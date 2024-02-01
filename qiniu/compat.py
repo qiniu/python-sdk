@@ -33,6 +33,7 @@ is_py3 = (_ver[0] == 3)
 # ---------
 
 if is_py2:
+    from urllib import urlencode  # noqa
     from urlparse import urlparse  # noqa
     import StringIO
     StringIO = BytesIO = StringIO.StringIO
@@ -60,7 +61,7 @@ if is_py2:
             return False
 
 elif is_py3:
-    from urllib.parse import urlparse  # noqa
+    from urllib.parse import urlparse, urlencode  # noqa
     import io
     StringIO = io.StringIO
     BytesIO = io.BytesIO

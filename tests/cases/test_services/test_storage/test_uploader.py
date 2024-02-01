@@ -4,7 +4,7 @@ from collections import namedtuple
 import tempfile
 import pytest
 
-from qiniu.compat import json
+from qiniu.compat import json, is_py2
 from qiniu import (
     Zone,
     etag,
@@ -90,7 +90,7 @@ def temp_file(request):
 
     try:
         os.remove(tmp_file_path)
-    except FileNotFoundError:
+    except Exception:
         pass
 
 
@@ -522,3 +522,58 @@ class TestResumableUploader:
         assert 'x-qn-meta' in ret
         assert ret['x-qn-meta']['name'] == 'qiniu'
         assert ret['x-qn-meta']['age'] == '18'
+
+    @pytest.mark.parametrize('temp_file', [30 * MB], indirect=True)
+    @pytest.mark.parametrize('version', ['v1', 'v2'])
+    def test_resume_upload(self, bucket_name, qn_auth, temp_file, version):
+        key = 'test_resume_upload_{}'.format(version)
+        size = os.stat(temp_file).st_size
+        part_size = 4 * MB
+
+        def mock_fail(uploaded_size, _total_size):
+            if uploaded_size > 10 * MB:
+                raise Exception('Mock Fail')
+
+        try:
+            with open(temp_file, 'rb') as input_stream:
+                token = qn_auth.upload_token(bucket_name, key)
+                try:
+                    _ret, _into = put_stream(
+                        up_token=token,
+                        key=key,
+                        input_stream=input_stream,
+                        file_name=os.path.basename(temp_file),
+                        data_size=size,
+                        hostscache_dir=None,
+                        part_size=part_size,
+                        version=version,
+                        bucket_name=bucket_name,
+                        progress_handler=mock_fail
+                    )
+                except Exception as e:
+                    if 'Mock Fail' not in str(e):
+                        raise e
+        except IOError:
+            if is_py2:
+                # https://github.com/pytest-dev/pytest/issues/2370
+                # https://github.com/pytest-dev/pytest/pull/3305
+                pass
+
+        def should_start_from_resume(uploaded_size, _total_size):
+            assert uploaded_size // part_size >= 1
+
+        with open(temp_file, 'rb') as input_stream:
+            token = qn_auth.upload_token(bucket_name, key)
+            ret, into = put_stream(
+                up_token=token,
+                key=key,
+                input_stream=input_stream,
+                file_name=os.path.basename(temp_file),
+                data_size=size,
+                hostscache_dir=None,
+                part_size=part_size,
+                version=version,
+                bucket_name=bucket_name,
+                progress_handler=should_start_from_resume
+            )
+            assert ret['key'] == key
