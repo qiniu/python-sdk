@@ -16,7 +16,6 @@ from qiniu import (
 from qiniu import config as qn_config
 from qiniu.services.storage.uploader import _form_put
 
-
 KB = 1024
 MB = 1024 * KB
 GB = 1024 * MB
@@ -61,9 +60,17 @@ def commonly_options(request):
 
 
 @pytest.fixture(scope='function')
-def first_fail_up_host_zone(valid_up_host):
+def set_default_up_host_zone(request, valid_up_host):
+    zone_args = {
+        'up_host': valid_up_host,
+    }
+    if hasattr(request, 'param') and request.param is not None:
+        zone_args = {
+            'up_host': request.param,
+            'up_host_backup': valid_up_host
+        }
     set_default(
-        default_zone=Zone('http://fake.qiniu.com', valid_up_host)
+        default_zone=Zone(**zone_args)
     )
     yield
     set_default(default_zone=Zone())
@@ -151,8 +158,15 @@ class TestUploadFuncs:
         assert ret is None
         assert info.status_code == 403  # key not match
 
-    @pytest.mark.usefixtures('first_fail_up_host_zone')
-    def test_without_read_without_seek_retry(self, qn_auth, bucket_name):
+    @pytest.mark.parametrize(
+        'set_default_up_host_zone',
+        [
+            'http://fake.qiniu.com',
+            None
+        ],
+        indirect=True
+    )
+    def test_without_read_without_seek_retry(self, set_default_up_host_zone, qn_auth, bucket_name):
         key = 'retry'
         data = 'hello retry!'
         token = qn_auth.upload_token(bucket_name)
@@ -325,7 +339,7 @@ class TestResumableUploader:
         ],
         indirect=True
     )
-    def test_put_2m_stream_v2(self, qn_auth, bucket_name, temp_file, commonly_options):
+    def test_put_stream_v2(self, qn_auth, bucket_name, temp_file, commonly_options):
         key = 'test_file_r'
         size = os.stat(temp_file).st_size
         with open(temp_file, 'rb') as input_stream:
@@ -406,9 +420,16 @@ class TestResumableUploader:
         print(info)
         assert ret['key'] == key
 
-    @pytest.mark.usefixtures('first_fail_up_host_zone')
+    @pytest.mark.parametrize(
+        'set_default_up_host_zone',
+        [
+            'http://fake.qiniu.com',
+            None
+        ],
+        indirect=True
+    )
     @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
-    def test_retry(self, qn_auth, bucket_name, temp_file, commonly_options):
+    def test_retry(self, set_default_up_host_zone, qn_auth, bucket_name, temp_file, commonly_options):
         key = 'test_file_r_retry'
         token = qn_auth.upload_token(bucket_name, key)
         ret, info = put_file(
