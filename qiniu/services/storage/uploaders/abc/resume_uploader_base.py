@@ -145,6 +145,7 @@ class ResumeUploaderBase(UploaderBase):
         data_size,
         modify_time,
         part_size,
+        file_name,
         **kwargs
     ):
         """
@@ -157,6 +158,7 @@ class ResumeUploaderBase(UploaderBase):
         data_size: int
         modify_time: int
         part_size: int
+        file_name: str
         kwargs: dict
 
         Returns

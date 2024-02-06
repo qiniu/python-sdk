@@ -1,3 +1,4 @@
+import math
 from collections import namedtuple
 from concurrent import futures
 from io import BytesIO
@@ -65,7 +66,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
         if (
             not record_upload_id or
             record_modify_time != context.modify_time or
-            record_expired_at > time()
+            record_expired_at < time()
         ):
             return context
 
@@ -80,6 +81,10 @@ class ResumeUploaderV2(ResumeUploaderBase):
                     etag=p['etag']
                 )
                 for p in record_etags
+                if (
+                    p.get('partNumber', None) and
+                    p.get('etag', None)
+                )
             ],
             resumed=True
         )
@@ -105,7 +110,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
             'etags': [
                 {
                     'etag': part.etag,
-                    'part_no': part.part_no
+                    'partNumber': part.part_no
                 }
                 for part in context.parts
             ]
@@ -170,6 +175,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
         data_size=None,
         modify_time=None,
         part_size=None,
+        file_name=None,
         **kwargs
     ):
         """
@@ -183,6 +189,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
         data_size: int
         modify_time: int
         part_size: int
+        file_name: str
         kwargs
 
         Returns
@@ -222,7 +229,8 @@ class ResumeUploaderV2(ResumeUploaderBase):
         )
 
         # try to recover from record
-        file_name = path.basename(file_path) if file_path else None
+        if not file_name and file_path:
+            file_name = path.basename(file_path)
         context = self._recover_from_record(
             file_name,
             key,
@@ -307,7 +315,10 @@ class ResumeUploaderV2(ResumeUploaderBase):
 
         # initial upload state
         part, resp = None, None
-        uploaded_size = 0
+        uploaded_size = context.part_size * len(context.parts)
+        if math.ceil(data_size / context.part_size) in [p.part_no for p in context.parts]:
+            # if last part uploaded, should correct the uploaded size
+            uploaded_size += (data_size % context.part_size) - context.part_size
         lock = Lock()
 
         if not self.concurrent_executor:
@@ -500,6 +511,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
             up_token,
             key,
             file_path=file_path,
+            file_name=file_name,
             data=data,
             data_size=data_size,
             modify_time=modify_time,

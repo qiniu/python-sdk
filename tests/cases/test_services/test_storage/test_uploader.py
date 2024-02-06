@@ -556,24 +556,21 @@ class TestResumableUploader:
                 raise Exception('Mock Fail')
 
         try:
-            with open(temp_file, 'rb') as input_stream:
-                token = qn_auth.upload_token(bucket_name, key)
-                try:
-                    _ret, _into = put_stream(
-                        up_token=token,
-                        key=key,
-                        input_stream=input_stream,
-                        file_name=os.path.basename(temp_file),
-                        data_size=size,
-                        hostscache_dir=None,
-                        part_size=part_size,
-                        version=version,
-                        bucket_name=bucket_name,
-                        progress_handler=mock_fail
-                    )
-                except Exception as e:
-                    if 'Mock Fail' not in str(e):
-                        raise e
+            token = qn_auth.upload_token(bucket_name, key)
+            try:
+                _ret, _into = put_file(
+                    up_token=token,
+                    key=key,
+                    file_path=temp_file,
+                    hostscache_dir=None,
+                    part_size=part_size,
+                    version=version,
+                    bucket_name=bucket_name,
+                    progress_handler=mock_fail
+                )
+            except Exception as e:
+                if 'Mock Fail' not in str(e):
+                    raise e
         except IOError:
             if is_py2:
                 # https://github.com/pytest-dev/pytest/issues/2370
@@ -581,20 +578,17 @@ class TestResumableUploader:
                 pass
 
         def should_start_from_resume(uploaded_size, _total_size):
-            assert uploaded_size // part_size >= 1
+            assert uploaded_size // part_size >= 3
 
-        with open(temp_file, 'rb') as input_stream:
-            token = qn_auth.upload_token(bucket_name, key)
-            ret, into = put_stream(
-                up_token=token,
-                key=key,
-                input_stream=input_stream,
-                file_name=os.path.basename(temp_file),
-                data_size=size,
-                hostscache_dir=None,
-                part_size=part_size,
-                version=version,
-                bucket_name=bucket_name,
-                progress_handler=should_start_from_resume
-            )
-            assert ret['key'] == key
+        token = qn_auth.upload_token(bucket_name, key)
+        ret, into = put_file(
+            up_token=token,
+            key=key,
+            file_path=temp_file,
+            hostscache_dir=None,
+            part_size=part_size,
+            version=version,
+            bucket_name=bucket_name,
+            progress_handler=should_start_from_resume
+        )
+        assert ret['key'] == key

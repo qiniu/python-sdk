@@ -9,18 +9,13 @@ import qiniu.http as qiniu_http
 def retry_id(request, mock_server_addr):
     success_times = []
     failure_times = []
-    delay = None
     if hasattr(request, 'param'):
         success_times = request.param.get('success_times', success_times)
         failure_times = request.param.get('failure_times', failure_times)
-        delay = request.param.get('delay', None)
     query_dict = {
         's': success_times,
         'f': failure_times,
-        'd': delay
     }
-    if not query_dict['d']:
-        del query_dict['d']
     query_params = urlencode(
         query_dict,
         doseq=True
