@@ -35,24 +35,37 @@ jobs:
             wget -qLO get-pip.py "$PIP_BOOTSTRAP_SCRIPT_PREFIX/$MAJOR.$MINOR/get-pip.py"
             python get-pip.py --user
           fi
+      - name: Setup mock server
+        shell: bash -el {0}
+        run: |
+          conda create -y -n mock-server python=3.10
+          conda activate mock-server
+          python3 --version
+          nohup python3 tests/mock_server/main.py --port 9000 > py-mock-server.log &
+          echo $! > mock-server.pid
+          conda deactivate
       - name: Install dependencies
         shell: bash -l {0}
         run: |
           python -m pip install --upgrade pip
           python -m pip install -I -e ".[dev]"
       - name: Run cases
-        shell: bash -l {0}
+        shell: bash -el {0}
         env:
           QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
           QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
           QINIU_TEST_BUCKET: ${{ secrets.QINIU_TEST_BUCKET }}
           QINIU_TEST_DOMAIN: ${{ secrets.QINIU_TEST_DOMAIN }}
           QINIU_TEST_ENV: "travis"
+          MOCK_SERVER_ADDRESS: "http://127.0.0.1:9000"
           PYTHONPATH: "$PYTHONPATH:."
         run: |
-          set -e
-          flake8 --show-source --max-line-length=160 .
-          py.test --cov qiniu
+          flake8 --show-source --max-line-length=160 ./qiniu
+          coverage run -m pytest ./test_qiniu.py ./tests/cases
           ocular --data-file .coverage
-          coverage run test_qiniu.py
           codecov
+          cat mock-server.pid | xargs kill
+      - name: Print mock server log
+        if: ${{ failure() }}
+        run: |
+          cat py-mock-server.log

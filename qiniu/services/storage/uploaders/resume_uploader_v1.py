@@ -1,4 +1,5 @@
 import logging
+import math
 from collections import namedtuple
 from concurrent import futures
 from io import BytesIO
@@ -65,7 +66,11 @@ class ResumeUploaderV1(ResumeUploaderBase):
             record_context = [
                 ctx
                 for ctx in record_context
-                if ctx.get('expired_at', 0) > now
+                if (
+                    ctx.get('expired_at', 0) > now and
+                    ctx.get('part_no', None) and
+                    ctx.get('ctx', None)
+                )
             ]
 
         # assign to context
@@ -173,6 +178,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         data=None,
         modify_time=None,
         data_size=None,
+        file_name=None,
         **kwargs
     ):
         """
@@ -184,6 +190,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         data
         modify_time
         data_size
+        file_name
 
         kwargs
 
@@ -222,7 +229,8 @@ class ResumeUploaderV1(ResumeUploaderBase):
         )
 
         # try to recover from record
-        file_name = path.basename(file_path) if file_path else None
+        if not file_name and file_path:
+            file_name = path.basename(file_path)
         context = self._recover_from_record(
             file_name,
             key,
@@ -275,7 +283,10 @@ class ResumeUploaderV1(ResumeUploaderBase):
 
         # initial upload state
         part, resp = None, None
-        uploaded_size = 0
+        uploaded_size = context.part_size * len(context.parts)
+        if math.ceil(data_size / context.part_size) in [p.part_no for p in context.parts]:
+            # if last part uploaded, should correct the uploaded size
+            uploaded_size += (data_size % context.part_size) - context.part_size
         lock = Lock()
 
         if not self.concurrent_executor:
@@ -469,6 +480,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
             up_token,
             key,
             file_path=file_path,
+            file_name=file_name,
             data=data,
             data_size=data_size,
             modify_time=modify_time,

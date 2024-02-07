@@ -3,6 +3,7 @@ import logging
 
 import requests
 
+from qiniu.config import get_default
 from .response import ResponseInfo
 from .middleware import compose_middleware
 
@@ -14,6 +15,9 @@ class HTTPClient:
         self.send_opts = {} if send_opts is None else send_opts
 
     def _wrap_send(self, req, **kwargs):
+        # compatibility with setting timeout by qiniu.config.set_default
+        kwargs.setdefault('timeout', get_default('connection_timeout'))
+
         resp = self.session.send(req.prepare(), **kwargs)
         return ResponseInfo(resp, None)
 
