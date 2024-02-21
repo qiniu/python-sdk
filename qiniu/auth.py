@@ -11,7 +11,7 @@ from .utils import urlsafe_base64_encode, canonical_mime_header_key
 
 # 上传策略，参数规格详见
 # https://developer.qiniu.com/kodo/manual/1206/put-policy
-_policy_fields = set([
+_policy_fields = {
     'callbackUrl',  # 回调URL
     'callbackBody',  # 回调Body
     'callbackHost',  # 回调URL指定的Host
@@ -37,8 +37,12 @@ _policy_fields = set([
     'persistentPipeline',  # 持久化处理独享队列
     'deleteAfterDays',  # 文件多少天后自动删除
     'fileType',  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储，4为归档直读存储
-    'isPrefixalScope'  # 指定上传文件必须使用的前缀
-])
+    'isPrefixalScope',  # 指定上传文件必须使用的前缀
+
+    'transform',  # deprecated
+    'transformFallbackKey',  # deprecated
+    'transformFallbackMode'  # deprecated
+}
 
 
 class Auth(object):
