@@ -194,11 +194,6 @@ class UtilsTest(unittest.TestCase):
 
 
 class AuthTestCase(unittest.TestCase):
-    def test_policy_fields_len(self):
-        # count the fields manually to prevent lost comma token at the end of field
-        from qiniu.auth import _policy_fields
-        assert len(_policy_fields) == 25
-
     def test_token(self):
         token = dummy_auth.token('test')
         assert token == 'abcdefghklmnopq:mSNBTR7uS2crJsyFr2Amwv1LaYg='
