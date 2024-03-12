@@ -11,34 +11,40 @@ from .utils import urlsafe_base64_encode, canonical_mime_header_key
 
 # 上传策略，参数规格详见
 # https://developer.qiniu.com/kodo/manual/1206/put-policy
-_policy_fields = set([
-    'callbackUrl',  # 回调URL
-    'callbackBody',  # 回调Body
-    'callbackHost',  # 回调URL指定的Host
-    'callbackBodyType',  # 回调Body的Content-Type
-    'callbackFetchKey',  # 回调FetchKey模式开关
+# the `str()` prevent implicit concatenation of string. DON'T remove it.
+# for example, avoid you lost comma at the end of line in middle.
+_policy_fields = {
+    str('callbackUrl'),  # 回调URL
+    str('callbackBody'),  # 回调Body
+    str('callbackHost'),  # 回调URL指定的Host
+    str('callbackBodyType'),  # 回调Body的Content-Type
+    str('callbackFetchKey'),  # 回调FetchKey模式开关
 
-    'returnUrl',  # 上传端的303跳转URL
-    'returnBody',  # 上传端简单反馈获取的Body
+    str('returnUrl'),  # 上传端的303跳转URL
+    str('returnBody'),  # 上传端简单反馈获取的Body
 
-    'endUser',  # 回调时上传端标识
-    'saveKey',  # 自定义资源名
-    'forceSaveKey',  # saveKey的优先级设置。为 true 时，saveKey不能为空，会忽略客户端指定的key，强制使用saveKey进行文件命名。参数不设置时，默认值为false
-    'insertOnly',  # 插入模式开关
+    str('endUser'),  # 回调时上传端标识
+    str('saveKey'),  # 自定义资源名
+    str('forceSaveKey'),  # saveKey的优先级设置。为 true 时，saveKey不能为空，会忽略客户端指定的key，强制使用saveKey进行文件命名。参数不设置时，默认值为false
+    str('insertOnly'),  # 插入模式开关
 
-    'detectMime',  # MimeType侦测开关
-    'mimeLimit',  # MimeType限制
-    'fsizeLimit',  # 上传文件大小限制
-    'fsizeMin',  # 上传文件最少字节数
-    'keylimit',  # 设置允许上传的key列表，字符串数组类型，数组长度不可超过20个，如果设置了这个字段，上传时必须提供key
+    str('detectMime'),  # MimeType侦测开关
+    str('mimeLimit'),  # MimeType限制
+    str('fsizeLimit'),  # 上传文件大小限制
+    str('fsizeMin'),  # 上传文件最少字节数
+    str('keylimit'),  # 设置允许上传的key列表，字符串数组类型，数组长度不可超过20个，如果设置了这个字段，上传时必须提供key
 
-    'persistentOps',  # 持久化处理操作
-    'persistentNotifyUrl',  # 持久化处理结果通知URL
-    'persistentPipeline',  # 持久化处理独享队列
-    'deleteAfterDays',  # 文件多少天后自动删除
-    'fileType',  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储，4为归档直读存储
-    'isPrefixalScope'  # 指定上传文件必须使用的前缀
-])
+    str('persistentOps'),  # 持久化处理操作
+    str('persistentNotifyUrl'),  # 持久化处理结果通知URL
+    str('persistentPipeline'),  # 持久化处理独享队列
+    str('deleteAfterDays'),  # 文件多少天后自动删除
+    str('fileType'),  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储，4为归档直读存储
+    str('isPrefixalScope'),  # 指定上传文件必须使用的前缀
+
+    str('transform'),  # deprecated
+    str('transformFallbackKey'),  # deprecated
+    str('transformFallbackMode'),  # deprecated
+}
 
 
 class Auth(object):
