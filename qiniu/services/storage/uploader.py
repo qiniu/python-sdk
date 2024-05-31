@@ -134,7 +134,7 @@ def _form_put(
         modify_time=modify_time,
         mime_type=mime_type,
         metadata=metadata,
-        params=params,
+        custom_vars=params,
         crc32_int=crc,
         up_token=up_token
     )
@@ -194,6 +194,6 @@ def put_stream(
         modify_time=modify_time,
         mime_type=mime_type,
         metadata=metadata,
-        params=params,
+        custom_vars=params,
         up_token=up_token
     )

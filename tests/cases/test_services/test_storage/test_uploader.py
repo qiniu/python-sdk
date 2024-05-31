@@ -282,6 +282,68 @@ class TestUploadFuncs:
         assert ret['x-qn-meta']['name'] == 'qiniu'
         assert ret['x-qn-meta']['age'] == '18'
 
+    @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
+    def test_put_file_with_callback(
+        self,
+        qn_auth,
+        bucket_name,
+        temp_file,
+        commonly_options,
+        bucket_manager,
+        upload_callback_url
+    ):
+        key = 'test_file_with_callback'
+        policy = {
+            'callbackUrl': upload_callback_url,
+            'callbackBody': '{"custom_vars":{"a":$(x:a)},"key":$(key),"hash":$(etag)}',
+            'callbackBodyType': 'application/json',
+        }
+        token = qn_auth.upload_token(bucket_name, key, policy=policy)
+        ret, info = put_file(
+            token,
+            key,
+            temp_file,
+            metadata=commonly_options.metadata,
+            params=commonly_options.params,
+        )
+        assert ret['key'] == key
+        assert ret['hash'] == etag(temp_file)
+        assert ret['custom_vars']['a'] == 'a'
+        ret, info = bucket_manager.stat(bucket_name, key)
+        assert 'x-qn-meta' in ret
+        assert ret['x-qn-meta']['name'] == 'qiniu'
+        assert ret['x-qn-meta']['age'] == '18'
+
+    def test_put_data_with_callback(
+        self,
+        qn_auth,
+        bucket_name,
+        commonly_options,
+        bucket_manager,
+        upload_callback_url
+    ):
+        key = 'put_data_with_metadata'
+        data = 'hello metadata!'
+        policy = {
+            'callbackUrl': upload_callback_url,
+            'callbackBody': '{"custom_vars":{"a":$(x:a)},"key":$(key),"hash":$(etag)}',
+            'callbackBodyType': 'application/json',
+        }
+        token = qn_auth.upload_token(bucket_name, key, policy=policy)
+        ret, info = put_data(
+            token,
+            key,
+            data,
+            metadata=commonly_options.metadata,
+            params=commonly_options.params
+        )
+        assert ret['key'] == key
+        assert ret['custom_vars']['a'] == 'a'
+        ret, info = bucket_manager.stat(bucket_name, key)
+        assert 'x-qn-meta' in ret
+        assert ret['x-qn-meta']['name'] == 'qiniu'
+        assert ret['x-qn-meta']['age'] == '18'
+
 
 class TestResumableUploader:
     @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
@@ -539,6 +601,87 @@ class TestResumableUploader:
                 metadata=commonly_options.metadata
             )
             assert ret['key'] == key
+        ret, info = bucket_manager.stat(bucket_name, key)
+        assert 'x-qn-meta' in ret
+        assert ret['x-qn-meta']['name'] == 'qiniu'
+        assert ret['x-qn-meta']['age'] == '18'
+
+    @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
+    def test_put_stream_with_callback(
+        self,
+        qn_auth,
+        bucket_name,
+        temp_file,
+        commonly_options,
+        bucket_manager,
+        upload_callback_url
+    ):
+        key = 'test_put_stream_with_callback'
+        size = os.stat(temp_file).st_size
+        with open(temp_file, 'rb') as input_stream:
+            policy = {
+                'callbackUrl': upload_callback_url,
+                'callbackBody': '{"custom_vars":{"a":$(x:a)},"key":$(key),"hash":$(etag)}',
+                'callbackBodyType': 'application/json',
+            }
+            token = qn_auth.upload_token(bucket_name, key, policy=policy)
+            ret, info = put_stream(
+                token,
+                key,
+                input_stream,
+                os.path.basename(temp_file),
+                size,
+                None,
+                commonly_options.params,
+                commonly_options.mime_type,
+                part_size=None,
+                version=None,
+                bucket_name=None,
+                metadata=commonly_options.metadata
+            )
+            assert ret['key'] == key
+            assert ret['custom_vars']['a'] == 'a'
+        ret, info = bucket_manager.stat(bucket_name, key)
+        assert 'x-qn-meta' in ret
+        assert ret['x-qn-meta']['name'] == 'qiniu'
+        assert ret['x-qn-meta']['age'] == '18'
+
+    @pytest.mark.parametrize('temp_file', [4 * MB + 1], indirect=True)
+    def test_put_stream_v2_with_callback(
+        self,
+        qn_auth,
+        bucket_name,
+        temp_file,
+        commonly_options,
+        bucket_manager,
+        upload_callback_url
+    ):
+        part_size = 4 * MB
+        key = 'test_put_stream_v2_with_metadata'
+        size = os.stat(temp_file).st_size
+        with open(temp_file, 'rb') as input_stream:
+            policy = {
+                'callbackUrl': upload_callback_url,
+                'callbackBody': '{"custom_vars":{"a":$(x:a)},"key":$(key),"hash":$(etag)}',
+                'callbackBodyType': 'application/json',
+            }
+            token = qn_auth.upload_token(bucket_name, key, policy=policy)
+            ret, info = put_stream(
+                token,
+                key,
+                input_stream,
+                os.path.basename(temp_file),
+                size,
+                None,
+                commonly_options.params,
+                commonly_options.mime_type,
+                part_size=part_size,
+                version='v2',
+                bucket_name=bucket_name,
+                metadata=commonly_options.metadata
+            )
+            assert ret['key'] == key
+            assert ret['custom_vars']['a'] == 'a'
         ret, info = bucket_manager.stat(bucket_name, key)
         assert 'x-qn-meta' in ret
         assert ret['x-qn-meta']['name'] == 'qiniu'

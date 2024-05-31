@@ -24,6 +24,11 @@ def bucket_name():
 
 
 @pytest.fixture(scope='session')
+def upload_callback_url():
+    yield os.getenv('QINIU_UPLOAD_CALLBACK_URL')
+
+
+@pytest.fixture(scope='session')
 def qn_auth(access_key, secret_key):
     yield Auth(access_key, secret_key)
 
