@@ -24,6 +24,11 @@ def bucket_name():
 
 
 @pytest.fixture(scope='session')
+def download_domain():
+    yield os.getenv('QINIU_TEST_DOMAIN')
+
+
+@pytest.fixture(scope='session')
 def upload_callback_url():
     yield os.getenv('QINIU_UPLOAD_CALLBACK_URL')
 

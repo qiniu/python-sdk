@@ -121,15 +121,21 @@ def _sha1(data):
 
 
 def etag_stream(input_stream):
-    """计算输入流的etag:
+    """
+    计算输入流的etag
 
-    etag规格参考 https://developer.qiniu.com/kodo/manual/1231/appendix#3
+    .. deprecated::
+        在 v2 分片上传使用 4MB 以外分片大小时无法正常工作
 
-    Args:
-        input_stream: 待计算etag的二进制流
+    Parameters
+    ----------
+    input_stream: io.IOBase
+        支持随机访问的文件型对象
 
-    Returns:
-        输入流的etag值
+    Returns
+    -------
+    str
+
     """
     array = [_sha1(block) for block in _file_iter(input_stream, _BLOCK_SIZE)]
     if len(array) == 0:
@@ -145,12 +151,21 @@ def etag_stream(input_stream):
 
 
 def etag(filePath):
-    """计算文件的etag:
+    """
+    计算文件的etag:
 
-    Args:
-        filePath: 待计算etag的文件路径
+    .. deprecated::
+        在 v2 分片上传使用 4MB 以外分片大小时无法正常工作
 
-    Returns:
+
+    Parameters
+    ----------
+    filePath: str
+        待计算 etag 的文件路径
+
+    Returns
+    -------
+    str
         输入文件的etag值
     """
     with open(filePath, 'rb') as f:

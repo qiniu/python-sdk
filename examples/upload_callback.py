@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 
-from qiniu import Auth, put_file, etag
+from qiniu import Auth, put_file
 
 access_key = '...'
 secret_key = '...'
@@ -25,4 +25,3 @@ localfile = './sync/bbb.jpg'
 ret, info = put_file(token, key, localfile)
 print(info)
 assert ret['key'] == key
-assert ret['hash'] == etag(localfile)
