@@ -4,7 +4,6 @@ import os
 import pytest
 
 from qiniu import config as qn_config
-from qiniu import region
 from qiniu import Auth
 
 
@@ -53,7 +52,7 @@ def set_conf_default(request):
         qn_config.set_default(**request.param)
     yield
     qn_config._config = {
-        'default_zone': region.Region(),
+        'default_zone': None,
         'default_rs_host': qn_config.RS_HOST,
         'default_rsf_host': qn_config.RSF_HOST,
         'default_api_host': qn_config.API_HOST,

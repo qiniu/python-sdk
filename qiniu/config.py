@@ -1,25 +1,24 @@
 # -*- coding: utf-8 -*-
-from qiniu import region
-
 RS_HOST = 'http://rs.qiniu.com'  # 管理操作Host
 RSF_HOST = 'http://rsf.qbox.me'  # 列举操作Host
 API_HOST = 'http://api.qiniuapi.com'  # 数据处理操作Host
-UC_HOST = region.UC_HOST  # 获取空间信息Host
+UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
 QUERY_REGION_HOST = 'https://kodo-config.qiniuapi.com'
+QUERY_REGION_BACKUP_HOSTS = [
+    'uc.qbox.me',
+    'api.qiniu.com'
+]
 
 _BLOCK_SIZE = 1024 * 1024 * 4  # 断点续传分块大小，该参数为接口规格，暂不支持修改
 
 _config = {
-    'default_zone': region.Region(),
+    'default_zone': None,
     'default_rs_host': RS_HOST,
     'default_rsf_host': RSF_HOST,
     'default_api_host': API_HOST,
     'default_uc_host': UC_HOST,
     'default_query_region_host': QUERY_REGION_HOST,
-    'default_query_region_backup_hosts': [
-        'uc.qbox.me',
-        'api.qiniu.com'
-    ],
+    'default_query_region_backup_hosts': QUERY_REGION_BACKUP_HOSTS,
     'default_backup_hosts_retry_times': 2,
     'connection_timeout': 30,  # 链接超时为时间为30s
     'connection_retries': 3,  # 链接重试次数为3次
@@ -48,6 +47,10 @@ def is_customized_default(key):
 
 
 def get_default(key):
+    if key == 'default_zone' and not _is_customized_default[key]:
+        # prevent circle import
+        from .region import Region
+        return Region()
     return _config[key]
 
 

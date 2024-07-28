@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import functools
 import logging
 import os
 import time
@@ -6,7 +7,22 @@ import time
 from qiniu import compat
 from qiniu import utils
 
-UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
+from .config import UC_HOST, is_customized_default, get_default
+
+
+def _legacy_default_get(key):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if hasattr(self, key) and getattr(self, key):
+                return self.rs_host
+            if is_customized_default('default_' + key):
+                return get_default('default_' + key)
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class Region(object):
@@ -67,12 +83,8 @@ class Region(object):
         io_hosts = bucket_hosts['ioHosts']
         return io_hosts[0]
 
+    @_legacy_default_get('rs_host')
     def get_rs_host(self, ak, bucket, home_dir=None):
-        from .config import get_default, is_customized_default
-        if self.rs_host:
-            return self.rs_host
-        if is_customized_default('default_rs_host'):
-            return get_default('default_rs_host')
         if home_dir is None:
             home_dir = os.getcwd()
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
@@ -81,12 +93,8 @@ class Region(object):
         rs_hosts = bucket_hosts['rsHosts']
         return rs_hosts[0]
 
+    @_legacy_default_get('rsf_host')
     def get_rsf_host(self, ak, bucket, home_dir=None):
-        from .config import get_default, is_customized_default
-        if self.rsf_host:
-            return self.rsf_host
-        if is_customized_default('default_rsf_host'):
-            return get_default('default_rsf_host')
         if home_dir is None:
             home_dir = os.getcwd()
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
@@ -95,12 +103,8 @@ class Region(object):
         rsf_hosts = bucket_hosts['rsfHosts']
         return rsf_hosts[0]
 
+    @_legacy_default_get('api_host')
     def get_api_host(self, ak, bucket, home_dir=None):
-        from .config import get_default, is_customized_default
-        if self.api_host:
-            return self.api_host
-        if is_customized_default('default_api_host'):
-            return get_default('default_api_host')
         if home_dir is None:
             home_dir = os.getcwd()
         bucket_hosts = self.get_bucket_hosts(ak, bucket, home_dir)
