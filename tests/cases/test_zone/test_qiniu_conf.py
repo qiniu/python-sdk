@@ -39,9 +39,11 @@ class TestQiniuConfWithZone:
         indirect=True
     )
     def test_query_region_with_custom_domain(self, access_key, bucket_name, set_conf_default):
-        zone = Zone()
-        data = zone.bucket_hosts(access_key, bucket_name)
-        assert data != 'null'
+        with pytest.raises(Exception) as exc:
+            zone = Zone()
+            data = zone.bucket_hosts(access_key, bucket_name)
+        assert data is None
+        assert 'HTTP Status Code -1' in str(exc)
 
     @pytest.mark.parametrize(
         'set_conf_default',

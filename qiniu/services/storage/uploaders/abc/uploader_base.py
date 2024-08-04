@@ -1,9 +1,13 @@
 import abc
 
 import qiniu.config as config
+from qiniu.region import LegacyRegion
+from qiniu.http.endpoint import Endpoint
+from qiniu.http.regions_provider import get_default_regions_provider
 
 # type import
 from qiniu.auth import Auth # noqa
+from qiniu.http.region import Region, ServiceName  # noqa
 
 
 class UploaderBase(object):
@@ -33,21 +37,37 @@ class UploaderBase(object):
         kwargs
             The others arguments may be used by subclass.
         """
+        # default bucket_name
         self.bucket_name = bucket_name
 
         # change the default when implements AuthProvider
         self.auth = kwargs.get('auth', None)
 
-        regions = kwargs.get('regions', [])
-        # remove the check when implement RegionsProvider
-        # if not regions:
-        #     raise TypeError('You must provide the regions')
+        # regions config
+        regions = kwargs.get('regions', None)
+        if not regions:
+            regions = []
         self.regions = regions
 
-        hosts_cache_dir = kwargs.get('hosts_cache_dir', None)
-        self.hosts_cache_dir = hosts_cache_dir
+        query_regions_endpoints = kwargs.get('query_regions_endpoints', None)
+        if not query_regions_endpoints:
+            query_regions_endpoints = []
+        self.query_regions_endpoints = query_regions_endpoints
 
-    def get_up_token(self, **kwargs):
+        self.preferred_scheme = kwargs.get('preferred_scheme', 'https')
+
+        # change the default value to False when remove config.get_default('default_zone')
+        self.accelerate_uploading = kwargs.get('accelerate_uploading', None)
+
+    def get_up_token(
+        self,
+        bucket_name=None,
+        key=None,
+        expired=None,
+        policy=None,
+        strict_policy=None,
+        **_kwargs
+    ):
         """
         Generate up token
 
@@ -56,8 +76,11 @@ class UploaderBase(object):
         bucket_name: str
         key: str
         expired: int
+            seconds
         policy: dict
         strict_policy: bool
+        _kwargs: dict
+            useless for now, just for compatibility
 
         Returns
         -------
@@ -66,64 +89,116 @@ class UploaderBase(object):
         if not self.auth:
             raise ValueError('can not get up_token by auth not provided')
 
-        bucket_name = kwargs.get('bucket_name', self.bucket_name)
+        bucket_name = bucket_name if bucket_name else self.bucket_name
 
         kwargs_for_up_token = {
-            k: kwargs[k]
-            for k in [
-                'key', 'expires', 'policy', 'strict_policy'
-            ] if k in kwargs
+            k: v
+            for k, v in {
+                'bucket': bucket_name,
+                'key': key,
+                'expired': expired,
+                'policy': policy,
+                'strict_policy': strict_policy
+            }.items()
+            if k
         }
-        up_token = self.auth.upload_token(
-            bucket=bucket_name,
-            **kwargs_for_up_token
-        )
+        up_token = self.auth.upload_token(**kwargs_for_up_token)
         return up_token
 
-    def _get_regions(self):
+    def _get_regions_provider(self, access_key=None, bucket_name=None):
+        """
+        Parameters
+        ----------
+        access_key: str
+        bucket_name: str
+
+        Returns
+        -------
+        Iterable[Region or LegacyRegion]
+        """
         if self.regions:
             return self.regions
 
         # handle compatibility for default_zone
-        default_region = config.get_default('default_zone')
-        if default_region:
-            self.regions = [default_region]
+        if config.is_customized_default('default_zone'):
+            return [config.get_default('default_zone')]
 
-        return self.regions
+        # handle compatibility for default_query_region_host
+        query_regions_endpoints = self.query_regions_endpoints
+        if not query_regions_endpoints:
+            query_region_host = config.get_default('default_query_region_host')
+            query_region_backup_hosts = config.get_default('default_query_region_backup_hosts')
+            query_regions_endpoints = [
+                Endpoint.from_host(h)
+                for h in [query_region_host] + query_region_backup_hosts
+            ]
 
-    def _get_up_hosts(self, access_key=None):
+        # get regions from default regions provider
+        if not self.auth and not access_key:
+            raise ValueError('Must provide access_key and bucket_name if auth is unavailable.')
+        if not access_key:
+            access_key = self.auth.get_access_key()
+        if not bucket_name:
+            bucket_name = self.bucket_name
+
+        return get_default_regions_provider(
+            query_endpoints_provider=query_regions_endpoints,
+            access_key=access_key,
+            bucket_name=bucket_name,
+            accelerate_uploading=self.accelerate_uploading,
+            preferred_scheme=self.preferred_scheme,
+        )
+
+    def _get_regions(self, access_key=None, bucket_name=None):
         """
-        This will be deprecated when implement regions and endpoints
+        .. deprecated::
+            This has been deprecated by implemented regions provider and endpoints
+
+        Parameters
+        ----------
+        access_key: str
+        bucket_name: str
+
+        Returns
+        -------
+        list[LegacyRegion]
+        """
+        # TODO(lihs): the type not match legacy, fix it
+        return list(self._get_regions_provider(access_key, bucket_name))
+
+    def _get_up_hosts(self, access_key=None, bucket_name=None):
+        """
+        get hosts of upload by access key or the first region
+
+        .. deprecated::
+            This has been deprecated by implemented regions provider and endpoints
 
         Returns
         -------
         list[str]
         """
+        if not bucket_name:
+            bucket_name = self.bucket_name
         if not self.auth and not access_key:
             raise ValueError('Must provide access_key if auth is unavailable.')
         if not access_key:
             access_key = self.auth.get_access_key()
 
-        regions = self._get_regions()
+        regions = self._get_regions(access_key, bucket_name)
 
         if not regions:
             raise ValueError('No region available.')
 
         # get up hosts in region
-        up_hosts = [
-            regions[0].up_host,
-            regions[0].up_host_backup
-        ]
-        up_hosts = [h for h in up_hosts if h]
-        if up_hosts:
-            return up_hosts
+        service_names = [ServiceName.UP]
+        if self.accelerate_uploading:
+            service_names.insert(0, ServiceName.UP_ACC)
 
-        # this is correct, it does return hosts. bad function name by legacy
-        return regions[0].get_up_host(
-            ak=access_key,
-            bucket=self.bucket_name,
-            home_dir=self.hosts_cache_dir
-        )
+        return [
+            e.get_value()
+            for sn in service_names
+            for e in regions[0].services[sn]
+        ]
 
     @abc.abstractmethod
     def upload(

@@ -36,7 +36,9 @@ if is_py2:
     from urllib import urlencode  # noqa
     from urlparse import urlparse  # noqa
     import StringIO
+    import enum34
     StringIO = BytesIO = StringIO.StringIO
+    Enum = enum34.Enum
 
     builtin_str = str
     bytes = str
@@ -63,8 +65,10 @@ if is_py2:
 elif is_py3:
     from urllib.parse import urlparse, urlencode  # noqa
     import io
+    import enum
     StringIO = io.StringIO
     BytesIO = io.BytesIO
+    Enum = enum.Enum
 
     builtin_str = str
     str = str

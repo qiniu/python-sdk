@@ -1,5 +1,6 @@
 import logging
 import math
+import functools
 from collections import namedtuple
 from concurrent import futures
 from io import BytesIO
@@ -11,10 +12,12 @@ from time import time
 from qiniu.compat import is_seekable
 from qiniu.auth import Auth
 from qiniu.http import qn_http_client, ResponseInfo
+from qiniu.http.endpoint import Endpoint
 from qiniu.utils import b, io_crc32, urlsafe_base64_encode
 
-from qiniu.services.storage.uploaders.abc import ResumeUploaderBase
-from qiniu.services.storage.uploaders.io_chunked import IOChunked
+from ._default_retrier import ProgressRecord, get_default_retrier
+from .abc import ResumeUploaderBase
+from .io_chunked import IOChunked
 
 
 class ResumeUploaderV1(ResumeUploaderBase):
@@ -54,7 +57,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         record_modify_time = record.get('modify_time', 0)
         record_context = record.get('contexts', [])
 
-        # compact with old sdk(<= v7.11.1)
+        # compat with old sdk(<= v7.11.1)
         if not record_up_hosts or not record_part_size:
             return context
 
@@ -128,23 +131,20 @@ class ResumeUploaderV1(ResumeUploaderBase):
         self,
         file_name,
         key,
-        context,
-        resp
+        context=None,
+        resp=None
     ):
         """
         Parameters
         ----------
-        file_name: str
-        key: str
+        file_name: str or None
+        key: str or None
         context: _ResumeUploadV1Context
         resp: ResponseInfo
         """
         if not self.upload_progress_recorder or not any([file_name, key]):
             return
-        if resp and context and not any([
-            resp.ok(),
-            resp.status_code == 701 and context.resumed
-        ]):
+        if resp and not resp.ok():
             return
         self.upload_progress_recorder.delete_upload_record(file_name, key)
 
@@ -167,8 +167,46 @@ class ResumeUploaderV1(ResumeUploaderBase):
 
         """
         self._set_to_record(file_name, key, context)
-        if callable(self.progress_handler):
+        if not callable(self.progress_handler):
+            return
+        try:
             self.progress_handler(uploaded_size, total_size)
+        except Exception as err:
+            err.no_need_retry = True
+            raise err
+
+    def _initial_context(
+        self,
+        key,
+        file_name,
+        modify_time
+    ):
+        """
+        Parameters
+        ----------
+        key: str
+        file_name: str
+        modify_time: float
+
+        Returns
+        -------
+        _ResumeUploadV1Context
+        """
+        part_size = 4 * (1024 ** 2)
+        context = _ResumeUploadV1Context(
+            up_hosts=[],
+            part_size=part_size,
+            parts=[],
+            modify_time=modify_time,
+            resumed=False
+        )
+
+        # try to recover from record
+        return self._recover_from_record(
+            key=key,
+            file_name=file_name,
+            context=context
+        )
 
     def initial_parts(
         self,
@@ -176,23 +214,28 @@ class ResumeUploaderV1(ResumeUploaderBase):
         key,
         file_path=None,
         data=None,
-        modify_time=None,
         data_size=None,
+        modify_time=None,
+        part_size=None,
         file_name=None,
+        up_endpoint=None,
         **kwargs
     ):
         """
         Parameters
         ----------
-        up_token
-        key
-        file_path
-        data
-        modify_time
-        data_size
-        file_name
+        up_token: str
+        key: str
+        file_path: str or None
+        data: str or None
+        modify_time: float
+        data_size: int
+        part_size: None
+            useless for v1 by fixed part size
+        file_name: str
+        up_endpoint: Endpoint
 
-        kwargs
+        kwargs: dict
 
         Returns
         -------
@@ -217,28 +260,20 @@ class ResumeUploaderV1(ResumeUploaderBase):
             else:
                 modify_time = int(time())
 
-        part_size = 4 * (1024 ** 2)
-
-        # -- initial context
-        context = _ResumeUploadV1Context(
-            up_hosts=[],
-            part_size=part_size,
-            parts=[],
-            modify_time=modify_time,
-            resumed=False
-        )
-
-        # try to recover from record
         if not file_name and file_path:
             file_name = path.basename(file_path)
-        context = self._recover_from_record(
-            file_name,
-            key,
-            context
+
+        context = self._initial_context(
+            key=key,
+            file_name=file_name,
+            modify_time=modify_time
         )
 
-        access_key, _, _ = Auth.up_token_decode(up_token)
+        if not context.up_hosts and up_endpoint:
+            context.up_hosts.extend([up_endpoint.get_value()])
+
         if not context.up_hosts:
+            access_key, _, _ = Auth.up_token_decode(up_token)
             context.up_hosts.extend(self._get_up_hosts(access_key))
 
         return context, None
@@ -285,7 +320,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         part, resp = None, None
         uploaded_size = context.part_size * len(context.parts)
         if math.ceil(data_size / context.part_size) in [p.part_no for p in context.parts]:
-            # if last part uploaded, should correct the uploaded size
+            # if last part has been uploaded, should correct the uploaded size
             uploaded_size += (data_size % context.part_size) - context.part_size
         lock = Lock()
 
@@ -424,57 +459,95 @@ class ResumeUploaderV1(ResumeUploaderBase):
         )
         return ret, resp
 
-    def upload(
+    def __upload_with_retrier(
         self,
-        key,
-        file_path=None,
-        data=None,
-        data_size=None,
-        modify_time=None,
-
-        part_size=None,
-        mime_type=None,
-        metadata=None,
-        file_name=None,
-        custom_vars=None,
-        **kwargs
+        access_key,
+        bucket_name,
+        **upload_opts
     ):
-        """
+        file_name = upload_opts.get('file_name', None)
+        key = upload_opts.get('key', None)
+        modify_time = upload_opts.get('modify_time', None)
 
-        Parameters
-        ----------
-        key
-        file_path
-        data
-        data_size
-        modify_time
+        context = self._initial_context(
+            key=key,
+            file_name=file_name,
+            modify_time=modify_time
+        )
+        preferred_endpoints = None
+        if context.up_hosts:
+            preferred_endpoints = [
+                Endpoint.from_host(h)
+                for h in context.up_hosts
+            ]
 
-        part_size
-        mime_type
-        metadata
-        file_name
-        custom_vars
+        progress_record = None
+        if all([
+            self.upload_progress_recorder,
+            file_name,
+            key
+        ]):
+            progress_record = ProgressRecord(
+                upload_api_version='v1',
+                exists=functools.partial(
+                    self.upload_progress_recorder.has_upload_record,
+                    file_name=file_name,
+                    key=key
+                ),
+                delete=functools.partial(
+                    self.upload_progress_recorder.delete_upload_record,
+                    file_name=file_name,
+                    key=key
+                )
+            )
 
-        kwargs:
-            up_token
-            bucket_name, expires, policy, strict_policy for generate `up_token`
+        retrier = get_default_retrier(
+            regions_provider=self._get_regions_provider(
+                access_key=access_key,
+                bucket_name=bucket_name
+            ),
+            preferred_endpoints_provider=preferred_endpoints,
+            progress_record=progress_record,
+            accelerate_uploading=self.accelerate_uploading,
+        )
 
-        Returns
-        -------
-            ret: dict
-            resp: ResponseInfo
-        """
-        # part_size
-        if part_size:
-            logging.warning('ResumeUploader not support part_size. It is fixed to 4MB.')
+        data = upload_opts.get('data')
+        attempt = None
+        for attempt in retrier:
+            with attempt:
+                upload_opts['up_endpoint'] = attempt.context.get('endpoint')
+                attempt.result = self.__upload(
+                    **upload_opts
+                )
+                ret, resp = attempt.result
+                if resp.ok() and ret:
+                    return attempt.result
+                if (
+                    not is_seekable(data) or
+                    not resp.need_retry()
+                ):
+                    return attempt.result
+                data.seek(0)
 
-        # up_token
-        up_token = kwargs.get('up_token', None)
-        if not up_token:
-            up_token = self.get_up_token(**kwargs)
-        if not file_name and file_path:
-            file_name = path.basename(file_path)
+        if attempt is None:
+            raise RuntimeError('Retrier is not working. attempt is None')
 
+        return attempt.result
+
+    def __upload(
+        self,
+        up_token,
+        key,
+        file_path,
+        file_name,
+        data,
+        data_size,
+        modify_time,
+        mime_type,
+        custom_vars,
+        metadata,
+        up_endpoint
+    ):
         # initial_parts
         context, resp = self.initial_parts(
             up_token,
@@ -484,6 +557,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
             data=data,
             data_size=data_size,
             modify_time=modify_time,
+            up_endpoint=up_endpoint
         )
 
         # upload_parts
@@ -526,23 +600,89 @@ class ResumeUploaderV1(ResumeUploaderBase):
             metadata=metadata
         )
 
-        # retry if expired. the record file will be deleted by complete_parts
-        if resp.status_code == 701 and context.resumed:
-            return self.upload(
-                key,
-                file_path=file_path,
-                data=data,
-                data_size=data_size,
-                modify_time=modify_time,
-
-                mime_type=mime_type,
-                metadata=metadata,
-                file_name=file_name,
-                custom_vars=custom_vars,
-                **kwargs
-            )
-
         return ret, resp
+
+    def upload(
+        self,
+        key,
+        file_path=None,
+        data=None,
+        data_size=None,
+        modify_time=None,
+
+        part_size=None,
+        mime_type=None,
+        metadata=None,
+        file_name=None,
+        custom_vars=None,
+        **kwargs
+    ):
+        """
+
+        Parameters
+        ----------
+        key
+        file_path
+        data
+        data_size
+        modify_time
+
+        part_size
+        mime_type
+        metadata
+        file_name
+        custom_vars
+
+        kwargs:
+            up_token: str
+            crc32_int: int
+            bucket_name: str
+                is required if upload to another bucket
+            expired: int
+                option for generate up_token if not provide up_token. seconds
+            policy: dict
+                option for generate up_token if not provide up_token. details see `auth.Auth`
+            strict_policy: bool
+                option for generate up_token if not provide up_token
+
+        Returns
+        -------
+        ret: dict
+        resp: ResponseInfo
+        """
+        # part_size
+        if part_size:
+            logging.warning('ResumeUploader not support part_size. It is fixed to 4MB.')
+
+        # up_token
+        up_token = kwargs.get('up_token', None)
+        if not up_token:
+            kwargs.setdefault('up_token', self.get_up_token(**kwargs))
+            access_key = self.auth.get_access_key()
+        else:
+            access_key, _, _ = Auth.up_token_decode(up_token)
+
+        # bucket_name
+        kwargs['bucket_name'] = Auth.get_bucket_name(up_token)
+
+        # file_name
+        if not file_name and file_path:
+            file_name = path.basename(file_path)
+
+        # upload
+        return self.__upload_with_retrier(
+            access_key=access_key,
+            key=key,
+            file_path=file_path,
+            data=data,
+            data_size=data_size,
+            modify_time=modify_time,
+            mime_type=mime_type,
+            metadata=metadata,
+            file_name=file_name,
+            custom_vars=custom_vars,
+            **kwargs
+        )
 
     def __upload_part(
         self,
@@ -623,11 +763,11 @@ class ResumeUploaderV1(ResumeUploaderBase):
         ----------
         up_host: str
         data_size: int
-        mime_type: str
-        key: str
-        file_name: str
-        params: dict
-        metadata: dict
+        mime_type: str or None
+        key: str or None
+        file_name: str or None
+        params: dict or None
+        metadata: dict or None
 
         Returns
         -------

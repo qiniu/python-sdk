@@ -14,6 +14,8 @@ from qiniu import (
     put_data,
     put_stream
 )
+from qiniu.http.endpoint import Endpoint
+from qiniu.http.region import Region, ServiceName
 from qiniu.services.storage.uploader import _form_put
 
 KB = 1024
@@ -54,8 +56,8 @@ def commonly_options(request):
             'x-qn-meta-age': '18'
         }
     )
-    if hasattr(request, 'params'):
-        res = res._replace(**request.params)
+    if hasattr(request, 'param'):
+        res = res._replace(**request.param)
     yield res
 
 
@@ -158,6 +160,7 @@ class TestUploadFuncs:
 
         _, actual_md5 = get_remote_object_headers_and_md5(key=key)
 
+        assert ret is not None, info
         assert ret['key'] == key, info
         assert actual_md5 == temp_file.md5
 
@@ -519,7 +522,7 @@ class TestResumableUploader:
         indirect=True
     )
     @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
-    def test_retry(
+    def test_legacy_retry(
         self,
         set_default_up_host_zone,
         qn_auth,
@@ -533,7 +536,7 @@ class TestResumableUploader:
         ret, info = put_file(
             token,
             key,
-            temp_file,
+            temp_file.path,
             commonly_options.params,
             commonly_options.mime_type
         )
@@ -765,3 +768,48 @@ class TestResumableUploader:
             progress_handler=should_start_from_resume
         )
         assert ret['key'] == key
+
+    @pytest.mark.parametrize('temp_file', [
+        64 * KB,  # form
+        10 * MB  # resume
+    ], indirect=True)
+    @pytest.mark.parametrize('version', ['v1', 'v2'])
+    def test_upload_acc_normally(self, bucket_name, qn_auth, temp_file, version):
+        key = 'test_upload_acc_normally'
+
+        token = qn_auth.upload_token(bucket_name, key)
+        ret, resp = put_file(
+            up_token=token,
+            key=key,
+            file_path=temp_file.path,
+            version=version,
+            accelerate_uploading=True
+        )
+
+        assert ret['key'] == key, resp
+        assert 'kodo-accelerate' in resp.url, resp
+
+    @pytest.mark.parametrize('temp_file', [
+        64 * KB,  # form
+        10 * MB  # resume
+    ], indirect=True)
+    @pytest.mark.parametrize('version', ['v1', 'v2'])
+    def test_upload_acc_fallback_src_by_network_err(self, bucket_name, qn_auth, temp_file, version):
+        r = Region.from_region_id('z0')
+        r.services[ServiceName.UP_ACC] = [
+            Endpoint('qiniu-acc.fake.qiniu.com')
+        ]
+
+        key = 'test_upload_acc_fallback_src_by_network_err'
+
+        token = qn_auth.upload_token(bucket_name, key)
+        ret, resp = put_file(
+            up_token=token,
+            key=key,
+            file_path=temp_file.path,
+            version=version,
+            regions=[r],
+            accelerate_uploading=True
+        )
+
+        assert ret['key'] == key, resp

@@ -1,5 +1,5 @@
 class Attempt:
-    def __init__(self, custom_context):
+    def __init__(self, custom_context=None):
         self.context = custom_context if custom_context is not None else {}
         self.exception = None
         self.result = None

@@ -1,39 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
 import platform
-import functools
 
 import requests
-from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
 from qiniu import config, __version__
 import qiniu.auth
 
-from .client import HTTPClient
 from .response import ResponseInfo
-from .middleware import UserAgentMiddleware
-
-
-qn_http_client = HTTPClient(
-    middlewares=[
-        UserAgentMiddleware(__version__)
-    ]
-)
-
-
-# compatibility with some config from qiniu.config
-def _before_send(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if _session is None:
-            _init()
-        return func(self, *args, **kwargs)
-
-    return wrapper
-
-
-qn_http_client.send_request = _before_send(qn_http_client.send_request)
+from .default_client import qn_http_client, _init_http_adapter
 
 _sys_info = '{0}; {1}'.format(platform.system(), platform.machine())
 _python_ver = platform.python_version()
@@ -61,12 +37,7 @@ def _init():
     global _session
     if _session is None:
         _session = qn_http_client.session
-
-    adapter = HTTPAdapter(
-        pool_connections=config.get_default('connection_pool'),
-        pool_maxsize=config.get_default('connection_pool'),
-        max_retries=config.get_default('connection_retries'))
-    _session.mount('http://', adapter)
+    _init_http_adapter()
 
 
 def _post(url, data, files, auth, headers=None):

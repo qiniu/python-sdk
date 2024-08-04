@@ -4,10 +4,12 @@ import logging
 import os
 import time
 
-from qiniu import compat
-from qiniu import utils
 
+from .compat import json, s as str_from_bytes
+from .utils import urlsafe_base64_decode
 from .config import UC_HOST, is_customized_default, get_default
+from .http.endpoint import Endpoint as _HTTPEndpoint
+from .http.regions_provider import Region as _HTTPRegion, ServiceName, get_default_regions_provider
 
 
 def _legacy_default_get(key):
@@ -25,23 +27,26 @@ def _legacy_default_get(key):
     return decorator
 
 
-class Region(object):
+class LegacyRegion(_HTTPRegion):
     """七牛上传区域类
     该类主要内容上传区域地址。
     """
 
     def __init__(
-            self,
-            up_host=None,
-            up_host_backup=None,
-            io_host=None,
-            host_cache=None,
-            home_dir=None,
-            scheme="http",
-            rs_host=None,
-            rsf_host=None,
-            api_host=None):
+        self,
+        up_host=None,
+        up_host_backup=None,
+        io_host=None,
+        host_cache=None,
+        home_dir=None,
+        scheme="http",
+        rs_host=None,
+        rsf_host=None,
+        api_host=None,
+        accelerate_uploading=False
+    ):
         """初始化Zone类"""
+        super(LegacyRegion, self).__init__()
         if host_cache is None:
             host_cache = {}
         self.up_host = up_host
@@ -53,6 +58,20 @@ class Region(object):
         self.home_dir = home_dir
         self.host_cache = host_cache
         self.scheme = scheme
+        self.services.update({
+            k: [
+                _HTTPEndpoint.from_host(h)
+                for h in v if h
+            ]
+            for k, v in {
+                ServiceName.UP: [up_host, up_host_backup],
+                ServiceName.IO: [io_host],
+                ServiceName.RS: [rs_host],
+                ServiceName.RSF: [rsf_host],
+                ServiceName.API: [api_host]
+            }.items()
+        })
+        self.accelerate_uploading = accelerate_uploading
 
     def get_up_host_by_token(self, up_token, home_dir):
         ak, bucket = self.unmarshal_up_token(up_token)
@@ -124,64 +143,54 @@ class Region(object):
 
     def unmarshal_up_token(self, up_token):
         token = up_token.split(':')
-        if (len(token) != 3):
+        if len(token) != 3:
             raise ValueError('invalid up_token')
 
         ak = token[0]
-        policy = compat.json.loads(
-            compat.s(
-                utils.urlsafe_base64_decode(
+        policy = json.loads(
+            str_from_bytes(
+                urlsafe_base64_decode(
                     token[2])))
 
         scope = policy["scope"]
         bucket = scope
-        if (':' in scope):
+        if ':' in scope:
             bucket = scope.split(':')[0]
 
         return ak, bucket
 
-    def get_bucket_hosts(self, ak, bucket, home_dir, force=False):
-        key = self.scheme + ":" + ak + ":" + bucket
+    def get_bucket_hosts(self, ak, bucket, home_dir=None, force=False):
+        cache_persist_path = os.path.join(home_dir, 'qn-regions-cache.jsonl') if home_dir else None
+        regions = self.__get_bucket_regions(
+            ak,
+            bucket,
+            force_query=force,
+            cache_persist_path=cache_persist_path
+        )
 
-        bucket_hosts = self.get_bucket_hosts_to_cache(key, home_dir)
-        if not force and len(bucket_hosts) > 0:
-            return bucket_hosts
+        if not regions:
+            raise KeyError("Please check your BUCKET_NAME! Server hosts not correct! The hosts is empty")
 
-        hosts = compat.json.loads(self.bucket_hosts(ak, bucket)).get('hosts', [])
-
-        if type(hosts) is not list or len(hosts) == 0:
-            raise KeyError("Please check your BUCKET_NAME! Server hosts not correct! The hosts is %s" % hosts)
-
-        region = hosts[0]
-
-        default_ttl = 24 * 3600  # 1 day
-        region['ttl'] = region.get('ttl', default_ttl)
+        region = regions[0]
 
         bucket_hosts = {
-            'upHosts': [
-                '{0}://{1}'.format(self.scheme, domain)
-                for domain in region.get('up', {}).get('domains', [])
-            ],
-            'ioHosts': [
-                '{0}://{1}'.format(self.scheme, domain)
-                for domain in region.get('io', {}).get('domains', [])
-            ],
-            'rsHosts': [
-                '{0}://{1}'.format(self.scheme, domain)
-                for domain in region.get('rs', {}).get('domains', [])
-            ],
-            'rsfHosts': [
-                '{0}://{1}'.format(self.scheme, domain)
-                for domain in region.get('rsf', {}).get('domains', [])
-            ],
-            'apiHosts': [
-                '{0}://{1}'.format(self.scheme, domain)
-                for domain in region.get('api', {}).get('domains', [])
-            ],
-            'deadline': int(time.time()) + region['ttl']
+            k: [
+                e.get_value(scheme=self.scheme)
+                for e in region.services[sn]
+                if e
+            ]
+            for k, sn in {
+                'upHosts': ServiceName.UP,
+                'ioHosts': ServiceName.IO,
+                'rsHosts': ServiceName.RS,
+                'rsfHosts': ServiceName.RSF,
+                'apiHosts': ServiceName.API
+            }.items()
         }
-        home_dir = ""
-        self.set_bucket_hosts_to_cache(key, bucket_hosts, home_dir)
+
+        ttl = region.ttl if region.ttl > 0 else 24 * 3600  # 1 day
+        bucket_hosts['deadline'] = region.create_time.timestamp() + ttl
+
         return bucket_hosts
 
     def get_bucket_hosts_to_cache(self, key, home_dir):
@@ -210,7 +219,7 @@ class Region(object):
             return None
         with open(path, 'r') as f:
             try:
-                bucket_hosts = compat.json.load(f)
+                bucket_hosts = json.load(f)
                 self.host_cache = bucket_hosts
             except Exception as e:
                 logging.error(e)
@@ -223,28 +232,63 @@ class Region(object):
     def host_cache_to_file(self, home_dir):
         path = self.host_cache_file_path()
         with open(path, 'w') as f:
-            compat.json.dump(self.host_cache, f)
+            json.dump(self.host_cache, f)
         f.close()
 
     def bucket_hosts(self, ak, bucket):
-        from .config import get_default, is_customized_default
-        from .http import qn_http_client
-        from .http.middleware import RetryDomainsMiddleware
-        uc_host = UC_HOST
-        if is_customized_default('default_uc_host'):
-            uc_host = get_default('default_uc_host')
-        uc_backup_hosts = get_default('default_query_region_backup_hosts')
-        uc_backup_retry_times = get_default('default_backup_hosts_retry_times')
-        url = "{0}/v4/query?ak={1}&bucket={2}".format(uc_host, ak, bucket)
+        regions = self.__get_bucket_regions(ak, bucket)
 
-        ret, _resp = qn_http_client.get(
-            url,
-            middlewares=[
-                RetryDomainsMiddleware(
-                    backup_domains=uc_backup_hosts,
-                    max_retry_times=uc_backup_retry_times,
-                )
+        data_dict = {
+            'hosts': [
+                {
+                    k.value if isinstance(k, ServiceName) else k: {
+                        'domains': [
+                            e.host for e in v
+                        ]
+                    }
+                    for k, v in r.services.items()
+                }
+                for r in regions
             ]
-        )
-        data = compat.json.dumps(ret, separators=(',', ':'))
+        }
+        for r in data_dict['hosts']:
+            if 'up_acc' in r:
+                r.setdefault('up', {})
+                r['up'].update(acc_domains=r['up_acc'].get('domains', []))
+                del r['up_acc']
+
+        data = json.dumps(data_dict)
+
         return data
+
+    def __get_bucket_regions(
+        self,
+        access_key,
+        bucket_name,
+        force_query=False,
+        cache_persist_path=None
+    ):
+        query_region_host = UC_HOST
+        if is_customized_default('default_query_region_host'):
+            query_region_host = get_default('default_query_region_host')
+        query_region_backup_hosts = get_default('default_query_region_backup_hosts')
+        query_region_backup_retry_times = get_default('default_backup_hosts_retry_times')
+
+        regions_provider = get_default_regions_provider(
+            query_endpoints_provider=[
+                _HTTPEndpoint.from_host(h)
+                for h in [query_region_host] + query_region_backup_hosts
+                if h
+            ],
+            access_key=access_key,
+            bucket_name=bucket_name,
+            accelerate_uploading=self.accelerate_uploading,
+            force_query=force_query,
+            preferred_scheme=self.scheme,
+            max_retry_times_per_endpoint=query_region_backup_retry_times
+        )
+
+        return list(regions_provider)
+
+
+Region = LegacyRegion

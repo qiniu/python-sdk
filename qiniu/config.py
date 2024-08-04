@@ -19,7 +19,7 @@ _config = {
     'default_uc_host': UC_HOST,
     'default_query_region_host': QUERY_REGION_HOST,
     'default_query_region_backup_hosts': QUERY_REGION_BACKUP_HOSTS,
-    'default_backup_hosts_retry_times': 2,
+    'default_backup_hosts_retry_times': 3,  # 仅控制旧 Region 查询 Hosts 的重试次数
     'connection_timeout': 30,  # 链接超时为时间为30s
     'connection_retries': 3,  # 链接重试次数为3次
     'connection_pool': 10,  # 链接池个数为10

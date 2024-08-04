@@ -20,12 +20,14 @@ class ResponseInfo(object):
         self.__response = response
         self.exception = exception
         if response is None:
+            self.url = None
             self.status_code = -1
             self.text_body = None
             self.req_id = None
             self.x_log = None
             self.error = str(exception)
         else:
+            self.url = response.url
             self.status_code = response.status_code
             self.text_body = response.text
             self.req_id = response.headers.get('X-Reqid')

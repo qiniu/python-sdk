@@ -28,6 +28,11 @@ class Retrier:
         while True:
             attempt = Attempt(retrying.context)
             yield attempt
+            if (
+                hasattr(attempt.exception, 'no_need_retry') and
+                attempt.exception.no_need_retry
+            ):
+                break
             policy = retrying.get_retry_policy(attempt)
             if not policy:
                 break
@@ -35,6 +40,8 @@ class Retrier:
                 break
             policy.prepare_retry(attempt)
             retrying.after_retried(attempt, policy)
+        if attempt.exception:
+            raise attempt.exception
 
     def try_do(
         self,
@@ -42,7 +49,6 @@ class Retrier:
         *args,
         **kwargs
     ):
-        result = None
         attempt = None
         for attempt in self:
             with attempt:
@@ -53,15 +59,12 @@ class Retrier:
                     del kwargs['with_retry_context']
 
                 # store result
-                result = func(*args, **kwargs)
-                attempt.result = result
+                attempt.result = func(*args, **kwargs)
 
         if attempt is None:
             raise RuntimeError('attempt is none')
-        if attempt.exception:
-            raise attempt.exception
 
-        return result
+        return attempt.result
 
     def _wrap(self, with_retry_context=False):
         def decorator(func):

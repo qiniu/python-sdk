@@ -7,7 +7,8 @@ from qiniu.utils import b, io_crc32
 from qiniu.auth import Auth
 from qiniu.http import qn_http_client
 
-from qiniu.services.storage.uploaders.abc import UploaderBase
+from .abc import UploaderBase
+from ._default_retrier import get_default_retrier
 
 
 class FormUploader(UploaderBase):
@@ -54,8 +55,16 @@ class FormUploader(UploaderBase):
         file_name: str
         custom_vars: dict
         kwargs
-            up_token, crc32_int
-            bucket_name, key, expired, policy, strict_policy for get up_token
+            up_token: str
+            crc32_int: int
+            bucket_name: str
+                is required if upload to another bucket
+            expired: int
+                option for generate up_token if not provide up_token. seconds
+            policy: dict
+                option for generate up_token if not provide up_token. details see `auth.Auth`
+            strict_policy: bool
+                option for generate up_token if not provide up_token
 
         Returns
         -------
@@ -63,14 +72,16 @@ class FormUploader(UploaderBase):
         resp: ResponseInfo
         """
         # check and initial arguments
-        # up_token and up_hosts
+        # bucket_name
+        bucket_name = kwargs.get('bucket_name', self.bucket_name)
+
+        # up_token
         up_token = kwargs.get('up_token', None)
         if not up_token:
             up_token = self.get_up_token(**kwargs)
-            up_hosts = self._get_up_hosts()
+            access_key = self.auth.get_access_key()
         else:
             access_key, _, _ = Auth.up_token_decode(up_token)
-            up_hosts = self._get_up_hosts(access_key)
 
         # crc32 from outside
         crc32_int = kwargs.get('crc32_int', None)
@@ -84,6 +95,7 @@ class FormUploader(UploaderBase):
         if file_path and data:
             raise TypeError('Must provide only one of file_path or data.')
 
+        # useless for form upload
         if not modify_time:
             if file_path:
                 modify_time = int(path.getmtime(file_path))
@@ -104,15 +116,17 @@ class FormUploader(UploaderBase):
             if not crc32_int:
                 crc32_int = self.__get_crc32_int(data)
             fields = self.__get_form_fields(
-                up_hosts=up_hosts,
                 up_token=up_token,
                 key=key,
                 crc32_int=crc32_int,
                 custom_vars=custom_vars,
                 metadata=metadata
             )
-            ret, resp = self.__upload_data(
-                up_hosts=up_hosts,
+            ret, resp = self.__upload_data_with_retrier(
+                # retrier options
+                access_key=access_key,
+                bucket_name=bucket_name,
+                # upload_data options
                 fields=fields,
                 file_name=file_name,
                 data=data,
@@ -125,9 +139,45 @@ class FormUploader(UploaderBase):
 
         return ret, resp
 
+    def __upload_data_with_retrier(
+        self,
+        access_key,
+        bucket_name,
+        **upload_data_opts
+    ):
+        retrier = get_default_retrier(
+            regions_provider=self._get_regions_provider(
+                access_key=access_key,
+                bucket_name=bucket_name
+            ),
+            accelerate_uploading=self.accelerate_uploading
+        )
+        data = upload_data_opts.get('data')
+        attempt = None
+        for attempt in retrier:
+            with attempt:
+                attempt.result = self.__upload_data(
+                    up_endpoint=attempt.context.get('endpoint'),
+                    **upload_data_opts
+                )
+                ret, resp = attempt.result
+                if resp.ok() and ret:
+                    return attempt.result
+                if (
+                    not is_seekable(data) or
+                    not resp.need_retry()
+                ):
+                    return attempt.result
+                data.seek(0)
+
+        if attempt is None:
+            raise RuntimeError('Retrier is not working. attempt is None')
+
+        return attempt.result
+
     def __upload_data(
         self,
-        up_hosts,
+        up_endpoint,
         fields,
         file_name,
         data,
@@ -137,7 +187,7 @@ class FormUploader(UploaderBase):
         """
         Parameters
         ----------
-        up_hosts: list[str]
+        up_endpoint: Endpoint
         fields: dict
         file_name: str
         data: IOBase
@@ -149,26 +199,17 @@ class FormUploader(UploaderBase):
         ret: dict
         resp: ResponseInfo
         """
+        req_url = up_endpoint.get_value()
         if not file_name or not file_name.strip():
             file_name = 'file_name'
 
-        ret, resp = None, None
-        for up_host in up_hosts:
-            ret, resp = qn_http_client.post(
-                url=up_host,
-                data=fields,
-                files={
-                    'file': (file_name, data, mime_type)
-                }
-            )
-            if resp.ok() and ret:
-                return ret, resp
-            if (
-                not is_seekable(data) or
-                not resp.need_retry()
-            ):
-                return ret, resp
-            data.seek(0)
+        ret, resp = qn_http_client.post(
+            url=req_url,
+            data=fields,
+            files={
+                'file': (file_name, data, mime_type)
+            }
+        )
         return ret, resp
 
     def __get_form_fields(
