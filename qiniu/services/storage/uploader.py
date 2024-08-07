@@ -140,7 +140,8 @@ def _form_put(
         bucket_name,
         progress_handler=progress_handler,
         regions=regions,
-        accelerate_uploading=accelerate_uploading
+        accelerate_uploading=accelerate_uploading,
+        preferred_scheme=get_default('default_zone').scheme
     )
 
     if modify_time and keep_last_modified:
@@ -195,7 +196,8 @@ def put_stream(
             progress_handler=progress_handler,
             upload_progress_recorder=upload_progress_recorder,
             regions=regions,
-            accelerate_uploading=accelerate_uploading
+            accelerate_uploading=accelerate_uploading,
+            preferred_scheme=get_default('default_zone').scheme
         )
         if modify_time and keep_last_modified:
             metadata['x-qn-meta-!Last-Modified'] = rfc_from_timestamp(modify_time)
@@ -206,7 +208,8 @@ def put_stream(
             upload_progress_recorder=upload_progress_recorder,
             part_size=part_size,
             regions=regions,
-            accelerate_uploading=accelerate_uploading
+            accelerate_uploading=accelerate_uploading,
+            preferred_scheme=get_default('default_zone').scheme
         )
     else:
         raise ValueError('version only could be v1 or v2')

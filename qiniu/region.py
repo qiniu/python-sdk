@@ -285,6 +285,7 @@ class LegacyRegion(_HTTPRegion):
             accelerate_uploading=self.accelerate_uploading,
             force_query=force_query,
             preferred_scheme=self.scheme,
+            persist_path=cache_persist_path,
             max_retry_times_per_endpoint=query_region_backup_retry_times
         )
 

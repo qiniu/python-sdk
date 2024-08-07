@@ -40,7 +40,9 @@ class MutableRegionsProvider(RegionsProvider):
 # --- serializers for QueryRegionsProvider ---
 
 def _get_region_from_query(data, **kwargs):
-    preferred_scheme = kwargs.get('preferred_scheme', 'https')
+    preferred_scheme = kwargs.get('preferred_scheme')
+    if not preferred_scheme:
+        preferred_scheme = 'http'
 
     domain_path_map = {
         k: (k.value, 'domains')
@@ -72,7 +74,7 @@ class QueryRegionsProvider(RegionsProvider):
         access_key,
         bucket_name,
         endpoints_provider,
-        preferred_scheme='https',
+        preferred_scheme='http',
         max_retry_times_per_endpoint=1,
     ):
         self.access_key = access_key
@@ -620,7 +622,7 @@ def get_default_regions_provider(
     query_endpoints_provider,
     access_key,
     bucket_name,
-    accelerate_uploading,
+    accelerate_uploading=False,
     force_query=False,
     **kwargs
 ):

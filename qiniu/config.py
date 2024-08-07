@@ -49,8 +49,8 @@ def is_customized_default(key):
 def get_default(key):
     if key == 'default_zone' and not _is_customized_default[key]:
         # prevent circle import
-        from .region import Region
-        return Region()
+        from .region import LegacyRegion
+        return LegacyRegion()
     return _config[key]
 
 

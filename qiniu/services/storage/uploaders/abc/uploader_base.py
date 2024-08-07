@@ -54,7 +54,7 @@ class UploaderBase(object):
             query_regions_endpoints = []
         self.query_regions_endpoints = query_regions_endpoints
 
-        self.preferred_scheme = kwargs.get('preferred_scheme', 'https')
+        self.preferred_scheme = kwargs.get('preferred_scheme', 'http')
 
         # change the default value to False when remove config.get_default('default_zone')
         self.accelerate_uploading = kwargs.get('accelerate_uploading', None)
@@ -163,8 +163,40 @@ class UploaderBase(object):
         -------
         list[LegacyRegion]
         """
-        # TODO(lihs): the type not match legacy, fix it
-        return list(self._get_regions_provider(access_key, bucket_name))
+        def get_legacy_region(r):
+            if isinstance(r, LegacyRegion):
+                return r
+            opts = {
+                'scheme': self.preferred_scheme,
+                'accelerate_uploading': self.accelerate_uploading
+            }
+            if r.services[ServiceName.UP]:
+                opts['up_host'] = r.services[ServiceName.UP][0].get_value(self.preferred_scheme)
+            if len(r.services[ServiceName.UP]) > 1:
+                opts['up_host_backup'] = [
+                    e.get_value(self.preferred_scheme)
+                    for e in r.services[ServiceName.UP][1:]
+                ]
+            if r.services[ServiceName.IO]:
+                opts['io_host'] = r.services[ServiceName.IO][0].get_value(self.preferred_scheme)
+            if r.services[ServiceName.RS]:
+                opts['rs_host'] = r.services[ServiceName.RS][0].get_value(self.preferred_scheme)
+            if r.services[ServiceName.RSF]:
+                opts['rsf_host'] = r.services[ServiceName.RSF][0].get_value(self.preferred_scheme)
+            if r.services[ServiceName.API]:
+                opts['api_host'] = r.services[ServiceName.API][0].get_value(self.preferred_scheme)
+            result = LegacyRegion(**opts)
+            result.services = r.services
+            result.region_id = r.region_id
+            result.s3_region_id = r.s3_region_id
+            result.ttl = r.ttl
+            result.create_time = r.create_time
+            return result
+
+        return [
+            get_legacy_region(r)
+            for r in self._get_regions_provider(access_key, bucket_name)
+        ]
 
     def _get_up_hosts(self, access_key=None, bucket_name=None):
         """

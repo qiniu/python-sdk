@@ -199,7 +199,7 @@ class FormUploader(UploaderBase):
         ret: dict
         resp: ResponseInfo
         """
-        req_url = up_endpoint.get_value()
+        req_url = up_endpoint.get_value(scheme=self.preferred_scheme)
         if not file_name or not file_name.strip():
             file_name = 'file_name'
 
