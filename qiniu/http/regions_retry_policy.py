@@ -1,6 +1,6 @@
 from qiniu.retry.abc import RetryPolicy
 
-from .region import Region
+from .region import Region, ServiceName
 
 
 class RegionsRetryPolicy(RetryPolicy):
@@ -152,7 +152,10 @@ class RegionsRetryPolicy(RetryPolicy):
             else:
                 raise RuntimeError(
                     'There isn\'t available endpoint for {0} service(s) in any available regions'.format(
-                        ', '.join(self.service_names)
+                        ', '.join(
+                            sn.value if isinstance(sn, ServiceName) else sn
+                            for sn in self.service_names
+                        )
                     )
                 )
         context['alternative_endpoints'] = endpoints

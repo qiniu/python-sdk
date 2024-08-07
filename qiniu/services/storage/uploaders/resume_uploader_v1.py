@@ -39,7 +39,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         _ResumeUploadV1Context
         """
         if not isinstance(context, _ResumeUploadV1Context):
-            raise TypeError('context must be an instance of _ResumeUploadV1Context')
+            raise TypeError('"context" must be an instance of _ResumeUploadV1Context')
 
         if not self.upload_progress_recorder or not any([file_name, key]):
             return context
@@ -270,7 +270,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
         )
 
         if not context.up_hosts and up_endpoint:
-            context.up_hosts.extend([up_endpoint.get_value()])
+            context.up_hosts.extend([up_endpoint.get_value(self.preferred_scheme)])
 
         if not context.up_hosts:
             access_key, _, _ = Auth.up_token_decode(up_token)
