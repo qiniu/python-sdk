@@ -27,7 +27,7 @@ def _legacy_default_get(key):
     return decorator
 
 
-class LegacyRegion(_HTTPRegion):
+class LegacyRegion(_HTTPRegion, object):
     """七牛上传区域类
     该类主要内容上传区域地址。
     """

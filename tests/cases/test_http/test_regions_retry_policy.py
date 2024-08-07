@@ -204,13 +204,13 @@ class TestRegionsRetryPolicy:
         self,
         regions,
         service_names,
-        expect_change_region_times
+        expect_change_region_times,
+        use_ref
     ):
-        actual_change_region_times = 0
+        actual_change_region_times_ref = use_ref(0)
 
         def handle_change_region(_context):
-            nonlocal actual_change_region_times
-            actual_change_region_times += 1
+            actual_change_region_times_ref.value += 1
 
         regions_retry_policy = RegionsRetryPolicy(
             regions_provider=regions,
@@ -224,7 +224,7 @@ class TestRegionsRetryPolicy:
         while regions_retry_policy.should_retry(mocked_attempt):
             regions_retry_policy.prepare_retry(mocked_attempt)
 
-        assert actual_change_region_times == expect_change_region_times
+        assert actual_change_region_times_ref.value == expect_change_region_times
 
     def test_init_with_preferred_endpoints_option_new_temp_region(self, mocked_regions_provider):
         preferred_endpoints = [

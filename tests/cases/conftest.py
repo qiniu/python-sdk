@@ -101,3 +101,19 @@ def rand_string():
             for _ in range(length)
         )
     yield _rand_string
+
+
+class Ref:
+    """
+    python2 not support nonlocal keyword
+    """
+    def __init__(self, value=None):
+        self.value = value
+
+
+@pytest.fixture(scope='session')
+def use_ref():
+    def _use_ref(value):
+        return Ref(value)
+
+    yield _use_ref

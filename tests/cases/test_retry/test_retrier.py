@@ -28,12 +28,11 @@ class MaxRetryPolicy(qiniu.retry.abc.RetryPolicy):
 
 
 class TestRetry:
-    def test_retrier_with_code_block(self):
-        retried_times = 0
+    def test_retrier_with_code_block(self, use_ref):
+        retried_times_ref = use_ref(0)
 
         def handle_before_retry(_attempt, _policy):
-            nonlocal retried_times
-            retried_times += 1
+            retried_times_ref.value += 1
             return True
 
         max_retry_times = 3
@@ -54,14 +53,13 @@ class TestRetry:
             assert str(err) == 'mocked error'
 
         assert tried_times == max_retry_times + 1
-        assert retried_times == max_retry_times
+        assert retried_times_ref.value == max_retry_times
 
-    def test_retrier_with_try_do(self):
-        retried_times = 0
+    def test_retrier_with_try_do(self, use_ref):
+        retried_times_ref = use_ref(0)
 
         def handle_before_retry(_attempt, _policy):
-            nonlocal retried_times
-            retried_times += 1
+            retried_times_ref.value += 1
             return True
 
         max_retry_times = 3
@@ -72,26 +70,24 @@ class TestRetry:
             before_retry=handle_before_retry
         )
 
-        tried_times = 0
+        tried_times_ref = use_ref(0)
 
         def add_one(n):
-            nonlocal tried_times
-            tried_times += 1
-            if tried_times <= 3:
+            tried_times_ref.value += 1
+            if tried_times_ref.value <= 3:
                 raise Exception('mock error')
             return n + 1
 
         result = retrier.try_do(add_one, 1)
         assert result == 2
-        assert tried_times == max_retry_times + 1
-        assert retried_times == max_retry_times
+        assert tried_times_ref.value == max_retry_times + 1
+        assert retried_times_ref.value == max_retry_times
 
-    def test_retrier_with_decorator(self):
-        retried_times = 0
+    def test_retrier_with_decorator(self, use_ref):
+        retried_times_ref = use_ref(0)
 
         def handle_before_retry(_attempt, _policy):
-            nonlocal retried_times
-            retried_times += 1
+            retried_times_ref.value += 1
             return True
 
         max_retry_times = 3
@@ -102,27 +98,25 @@ class TestRetry:
             before_retry=handle_before_retry
         )
 
-        tried_times = 0
+        tried_times_ref = use_ref(0)
 
         @retrier.retry
         def add_one(n):
-            nonlocal tried_times
-            tried_times += 1
-            if tried_times <= 3:
+            tried_times_ref.value += 1
+            if tried_times_ref.value <= 3:
                 raise Exception('mock error')
             return n + 1
 
         result = add_one(1)
         assert result == 2
-        assert tried_times == max_retry_times + 1
-        assert retried_times == max_retry_times
+        assert tried_times_ref.value == max_retry_times + 1
+        assert retried_times_ref.value == max_retry_times
 
-    def test_retrier_with_no_need_retry_err(self):
-        retried_times = 0
+    def test_retrier_with_no_need_retry_err(self, use_ref):
+        retried_times_ref = use_ref(0)
 
         def handle_before_retry(_attempt, _policy):
-            nonlocal retried_times
-            retried_times += 1
+            retried_times_ref.value += 1
             return True
 
         max_retry_times = 3
@@ -145,4 +139,4 @@ class TestRetry:
             assert str(err) == 'mocked error'
 
         assert tried_times == 1
-        assert retried_times == 0
+        assert retried_times_ref.value == 0

@@ -21,7 +21,8 @@ class Retrier:
 
     def __iter__(self):
         retrying = Retrying(
-            policies=self.policies.copy(),
+            # change to `list.copy` for more readable when min version of python update to >= 3
+            policies=self.policies[:],
             before_retry=self.before_retry
         )
         retrying.init_context()
