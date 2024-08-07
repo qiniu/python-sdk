@@ -22,9 +22,6 @@ class Endpoint:
         self.host = host
         self.default_scheme = default_scheme
 
-    def __iter__(self):
-        yield self
-
     def __str__(self):
         return 'Endpoint(host:\'{0}\',default_scheme:\'{1}\')'.format(
             self.host,
