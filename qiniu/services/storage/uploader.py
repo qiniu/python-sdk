@@ -25,7 +25,7 @@ def put_data(
     hostscache_dir=None,
     metadata=None,
     regions=None,
-    accerlate_uploading=False
+    accelerate_uploading=False
 ):
     """上传二进制流到七牛
 
@@ -37,8 +37,11 @@ def put_data(
         mime_type:        上传数据的mimeType
         check_crc:        是否校验crc32
         progress_handler: 上传进度
+        fname:            文件名
         hostscache_dir:   host请求 缓存文件保存位置
         metadata:         元数据
+        regions:          区域信息，默认自动查询
+        accelerate_uploading: 是否优先使用加速上传
 
     Returns:
         一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
@@ -59,7 +62,7 @@ def put_data(
     return _form_put(
         up_token, key, final_data, params, mime_type,
         crc, hostscache_dir, progress_handler, fname, metadata=metadata,
-        regions=regions, accelerate_uploading=accerlate_uploading
+        regions=regions, accelerate_uploading=accelerate_uploading
     )
 
 
