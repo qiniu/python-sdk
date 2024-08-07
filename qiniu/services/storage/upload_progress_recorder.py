@@ -5,6 +5,7 @@ import os
 import tempfile
 from qiniu.compat import is_py2
 
+
 class UploadProgressRecorder(object):
     """
     持久化上传记录类

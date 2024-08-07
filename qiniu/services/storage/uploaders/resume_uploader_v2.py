@@ -541,7 +541,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
             ),
             preferred_endpoints_provider=preferred_endpoints,
             progress_record=progress_record,
-            accelerate_uploading = self.accelerate_uploading
+            accelerate_uploading=self.accelerate_uploading
         )
 
         data = upload_opts.get('data')
