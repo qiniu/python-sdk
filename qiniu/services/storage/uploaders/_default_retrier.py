@@ -115,7 +115,9 @@ class AccUnavailableRetryPolicy(RetryPolicy):
             if not attempt.context.get('alternative_service_names'):
                 raise RuntimeError('No alternative service available')
             attempt.context['service_name'] = attempt.context.get('alternative_service_names').pop(0)
-            endpoints = attempt.context['region'].services.get(attempt.context['service_name'], [])
+            # shallow copy list
+            # change to `list.copy` for more readable when min version of python update to >= 3
+            endpoints = attempt.context['region'].services.get(attempt.context['service_name'], [])[:]
         attempt.context['alternative_endpoints'] = endpoints
         attempt.context['endpoint'] = attempt.context['alternative_endpoints'].pop(0)
 
