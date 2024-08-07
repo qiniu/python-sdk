@@ -27,24 +27,9 @@ def _before_send(func):
 qn_http_client.send_request = _before_send(qn_http_client.send_request)
 
 
-def _call_once(func):
-    called = False
-    result = None
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        nonlocal called, result
-        if called:
-            return result
-        result = func(*args, **kwargs)
-        called = True
-        return result
-
-    return wrapper
-
-
-@_call_once
 def _init_http_adapter():
+    # may be optimized:
+    # only called when config changed, not every time before send request
     adapter = HTTPAdapter(
         pool_connections=config.get_default('connection_pool'),
         pool_maxsize=config.get_default('connection_pool'),
