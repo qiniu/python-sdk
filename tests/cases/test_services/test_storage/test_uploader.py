@@ -843,8 +843,17 @@ class TestResumableUploader:
         10 * MB  # resume
     ], indirect=True)
     @pytest.mark.parametrize('version', ['v1', 'v2'])
-    def test_upload_acc_fallback_src_by_network_err(self, bucket_name, qn_auth, temp_file, version, get_key):
-        r = Region.from_region_id('z0')
+    def test_upload_acc_fallback_src_by_network_err(
+        self,
+        bucket_name,
+        qn_auth,
+        temp_file,
+        version,
+        get_key,
+        get_real_regions
+    ):
+        regions = get_real_regions(qn_auth.get_access_key(), bucket_name)
+        r = regions[0]
         r.services[ServiceName.UP_ACC] = [
             Endpoint('qiniu-acc.fake.qiniu.com')
         ]
