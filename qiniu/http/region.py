@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from qiniu.compat import Enum
+from enum import Enum
 
 from .endpoint import Endpoint
 
