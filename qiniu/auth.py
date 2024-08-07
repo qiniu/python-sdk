@@ -37,6 +37,7 @@ _policy_fields = {
     str('persistentOps'),  # 持久化处理操作
     str('persistentNotifyUrl'),  # 持久化处理结果通知URL
     str('persistentPipeline'),  # 持久化处理独享队列
+    str('persistentType'),  # 指定是否开始闲时任务
     str('deleteAfterDays'),  # 文件多少天后自动删除
     str('fileType'),  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储，4为归档直读存储
     str('isPrefixalScope'),  # 指定上传文件必须使用的前缀
