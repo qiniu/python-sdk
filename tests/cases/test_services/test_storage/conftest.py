@@ -4,9 +4,12 @@ import requests
 
 from qiniu import BucketManager
 from qiniu.utils import io_md5
+from qiniu.config import QUERY_REGION_HOST, QUERY_REGION_BACKUP_HOSTS
+from qiniu.http.endpoint import Endpoint
+from qiniu.http.regions_provider import Region, ServiceName, get_default_regions_provider
 
 
-@pytest.fixture()
+@pytest.fixture(scope='session')
 def bucket_manager(qn_auth):
     yield BucketManager(qn_auth)
 
@@ -28,3 +31,64 @@ def get_remote_object_headers_and_md5(download_domain):
         return resp.headers, io_md5(resp.iter_content(chunk_size=8192))
 
     yield fetch_calc_md5
+
+
+@pytest.fixture(scope='session')
+def get_real_regions():
+    def _get_real_regions(access_key, bucket_name):
+        regions = list(
+            get_default_regions_provider(
+                query_endpoints_provider=[
+                    Endpoint.from_host(h)
+                    for h in [QUERY_REGION_HOST] + QUERY_REGION_BACKUP_HOSTS
+                ],
+                access_key=access_key,
+                bucket_name=bucket_name
+            )
+        )
+
+        if not regions:
+            raise RuntimeError('No regions found')
+
+        return regions
+
+    yield _get_real_regions
+
+
+@pytest.fixture(scope='function')
+def regions_with_real_endpoints(access_key, bucket_name, get_real_regions):
+    yield get_real_regions(access_key, bucket_name)
+
+
+@pytest.fixture(scope='function')
+def regions_with_fake_endpoints(regions_with_real_endpoints):
+    """
+    Returns
+    -------
+    list[Region]
+        The first element is the fake region with fake endpoints for every service.
+        The second element is the real region with first fake endpoint for every service.
+        The rest elements are real regions with real endpoints if exists.
+    """
+    regions = regions_with_real_endpoints
+
+    regions[0].services = {
+        sn: [
+            Endpoint('fake-{0}.python-sdk.qiniu.com'.format(sn.value))
+        ] + endpoints
+        for sn, endpoints in regions[0].services.items()
+    }
+
+    regions.insert(0, Region(
+        'fake-id',
+        'fake-s3-id',
+        services={
+            sn: [
+                Endpoint('fake-region-{0}.python-sdk.qiniu.com'.format(sn.value))
+            ]
+            for sn in ServiceName
+        }
+    ))
+
+    yield regions
+

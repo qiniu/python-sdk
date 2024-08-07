@@ -368,8 +368,7 @@ class BucketTestCase(unittest.TestCase):
         assert eof is False
         assert len(ret.get('items')) == 4
         ret, eof, info = self.bucket.list(bucket_name, limit=1000)
-        print(ret, eof, info)
-        assert info.status_code == 200
+        assert info.status_code == 200, info
 
     def test_buckets(self):
         ret, info = self.bucket.buckets()

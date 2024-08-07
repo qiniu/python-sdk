@@ -48,7 +48,9 @@ class TestQueryRegionsProvider:
         assert '612' in str(exc)
 
     def test_error_with_bad_endpoint(self, query_regions_provider):
-        query_regions_provider.endpoints_provider = Endpoint('fake-uc.python.qiniu.com')
+        query_regions_provider.endpoints_provider = [
+            Endpoint('fake-uc.python.qiniu.com')
+        ]
         with pytest.raises(Exception) as exc:
             list(query_regions_provider)
         assert '-1' in str(exc)

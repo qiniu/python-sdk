@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+import random
+import string
 
 import pytest
 
@@ -20,6 +22,11 @@ def secret_key():
 @pytest.fixture(scope='session')
 def bucket_name():
     yield os.getenv('QINIU_TEST_BUCKET')
+
+
+@pytest.fixture(scope='session')
+def no_acc_bucket_name():
+    yield os.getenv('QINIU_TEST_NO_ACC_BUCKET')
 
 
 @pytest.fixture(scope='session')
@@ -83,3 +90,14 @@ def set_conf_default(request):
         'connection_pool': False,
         'default_upload_threshold': False
     }
+
+
+@pytest.fixture(scope='session')
+def rand_string():
+    def _rand_string(length):
+        # use random.choices when min version of python >= 3.6
+        return ''.join(
+            random.choice(string.ascii_letters + string.digits)
+            for _ in range(length)
+        )
+    yield _rand_string

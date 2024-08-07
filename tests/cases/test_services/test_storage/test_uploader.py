@@ -12,7 +12,8 @@ from qiniu import (
     set_default,
     put_file,
     put_data,
-    put_stream
+    put_stream,
+    build_batch_delete
 )
 from qiniu.http.endpoint import Endpoint
 from qiniu.http.region import Region, ServiceName
@@ -59,6 +60,38 @@ def commonly_options(request):
     if hasattr(request, 'param'):
         res = res._replace(**request.param)
     yield res
+
+
+@pytest.fixture(scope='class')
+def auto_remove(bucket_manager):
+    grouped_keys_by_bucket_name = {}
+
+    def _auto_remove(bucket_name, key):
+        if bucket_name not in grouped_keys_by_bucket_name:
+            grouped_keys_by_bucket_name[bucket_name] = []
+        grouped_keys_by_bucket_name[bucket_name].append(key)
+        return key
+
+    yield _auto_remove
+
+    for bkt_name, keys in grouped_keys_by_bucket_name.items():
+        try:
+            delete_ops = build_batch_delete(bkt_name, keys)
+            bucket_manager.batch(delete_ops)
+        except Exception as err:
+            print('Failed to delete {0} keys: {1} by {2}'.format(bkt_name, keys, err))
+
+
+@pytest.fixture(scope='class')
+def get_key(bucket_name, rand_string, auto_remove):
+    def _get_key(key, no_rand_trail=False):
+        result = key + '-' + rand_string(8)
+        if no_rand_trail:
+            result = key
+        auto_remove(bucket_name, result)
+        return result
+
+    yield _get_key
 
 
 @pytest.fixture(scope='function')
@@ -122,16 +155,16 @@ def temp_file(request):
 
 
 class TestUploadFuncs:
-    def test_put(self, qn_auth, bucket_name):
-        key = 'a\\b\\c"hello'
+    def test_put(self, qn_auth, bucket_name, get_key):
+        key = get_key('a\\b\\c"hello', no_rand_trail=True)
         data = 'hello bubby!'
         token = qn_auth.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
         print(info)
         assert ret['key'] == key
 
-    def test_put_crc(self, qn_auth, bucket_name):
-        key = ''
+    def test_put_crc(self, qn_auth, bucket_name, get_key):
+        key = get_key('', no_rand_trail=True)
         data = 'hello bubby!'
         token = qn_auth.upload_token(bucket_name, key)
         ret, info = put_data(token, key, data, check_crc=True)
@@ -145,9 +178,10 @@ class TestUploadFuncs:
         bucket_name,
         temp_file,
         commonly_options,
-        get_remote_object_headers_and_md5
+        get_remote_object_headers_and_md5,
+        get_key
     ):
-        key = 'test_file'
+        key = get_key('test_file')
 
         token = qn_auth.upload_token(bucket_name, key)
         ret, info = put_file(
@@ -164,8 +198,8 @@ class TestUploadFuncs:
         assert ret['key'] == key, info
         assert actual_md5 == temp_file.md5
 
-    def test_put_with_invalid_crc(self, qn_auth, bucket_name):
-        key = 'test_invalid'
+    def test_put_with_invalid_crc(self, qn_auth, bucket_name, get_key):
+        key = get_key('test_invalid')
         data = 'hello bubby!'
         crc32 = 'wrong crc32'
         token = qn_auth.upload_token(bucket_name)
@@ -173,13 +207,14 @@ class TestUploadFuncs:
         assert ret is None, info
         assert info.status_code == 400, info
 
-    def test_put_without_key(self, qn_auth, bucket_name):
+    def test_put_without_key(self, qn_auth, bucket_name, get_key):
         key = None
         data = 'hello bubby!'
         token = qn_auth.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
-        print(info)
-        assert ret['hash'] == ret['key']
+        assert 'key' in ret, info
+        get_key(ret['key'], no_rand_trail=True)  # auto remove the file
+        assert ret['hash'] == ret['key'], info
 
         data = 'hello bubby!'
         token = qn_auth.upload_token(bucket_name, 'nokey2')
@@ -196,8 +231,8 @@ class TestUploadFuncs:
         ],
         indirect=True
     )
-    def test_without_read_without_seek_retry(self, set_default_up_host_zone, qn_auth, bucket_name):
-        key = 'retry'
+    def test_without_read_without_seek_retry(self, set_default_up_host_zone, qn_auth, bucket_name, get_key):
+        key = get_key('retry')
         data = 'hello retry!'
         token = qn_auth.upload_token(bucket_name)
         ret, info = put_data(token, key, data)
@@ -211,11 +246,12 @@ class TestUploadFuncs:
         qn_auth,
         bucket_name,
         is_travis,
-        temp_file
+        temp_file,
+        get_key
     ):
         if is_travis:
             return
-        key = 'test_putData_without_fname'
+        key = get_key('test_putData_without_fname')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_data(token, key, input_stream)
@@ -229,11 +265,12 @@ class TestUploadFuncs:
         bucket_name,
         is_travis,
         temp_file,
-        commonly_options
+        commonly_options,
+        get_key
     ):
         if is_travis:
             return
-        key = 'test_putData_without_fname1'
+        key = get_key('test_putData_without_fname1')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_data(
@@ -256,11 +293,12 @@ class TestUploadFuncs:
         bucket_name,
         is_travis,
         temp_file,
-        commonly_options
+        commonly_options,
+        get_key
     ):
         if is_travis:
             return
-        key = 'test_putData_without_fname2'
+        key = get_key('test_putData_without_fname2')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_data(
@@ -284,9 +322,10 @@ class TestUploadFuncs:
         temp_file,
         commonly_options,
         bucket_manager,
-        get_remote_object_headers_and_md5
+        get_remote_object_headers_and_md5,
+        get_key
     ):
-        key = 'test_file_with_metadata'
+        key = get_key('test_file_with_metadata')
         token = qn_auth.upload_token(bucket_name, key)
         ret, info = put_file(token, key, temp_file.path, metadata=commonly_options.metadata)
         _, actual_md5 = get_remote_object_headers_and_md5(key=key)
@@ -303,9 +342,10 @@ class TestUploadFuncs:
         qn_auth,
         bucket_name,
         commonly_options,
-        bucket_manager
+        bucket_manager,
+        get_key
     ):
-        key = 'put_data_with_metadata'
+        key = get_key('put_data_with_metadata')
         data = 'hello metadata!'
         token = qn_auth.upload_token(bucket_name, key)
         ret, info = put_data(token, key, data, metadata=commonly_options.metadata)
@@ -324,9 +364,10 @@ class TestUploadFuncs:
         commonly_options,
         bucket_manager,
         upload_callback_url,
-        get_remote_object_headers_and_md5
+        get_remote_object_headers_and_md5,
+        get_key
     ):
-        key = 'test_file_with_callback'
+        key = get_key('test_file_with_callback')
         policy = {
             'callbackUrl': upload_callback_url,
             'callbackBody': '{"custom_vars":{"a":$(x:a)},"key":$(key),"hash":$(etag)}',
@@ -356,9 +397,10 @@ class TestUploadFuncs:
         bucket_name,
         commonly_options,
         bucket_manager,
-        upload_callback_url
+        upload_callback_url,
+        get_key
     ):
-        key = 'put_data_with_metadata'
+        key = get_key('put_data_with_metadata')
         data = 'hello metadata!'
         policy = {
             'callbackUrl': upload_callback_url,
@@ -383,8 +425,8 @@ class TestUploadFuncs:
 
 class TestResumableUploader:
     @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
-    def test_put_stream(self, qn_auth, bucket_name, temp_file, commonly_options):
-        key = 'test_file_r'
+    def test_put_stream(self, qn_auth, bucket_name, temp_file, commonly_options, get_key):
+        key = get_key('test_file_r')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_stream(
@@ -403,8 +445,8 @@ class TestResumableUploader:
             assert ret['key'] == key
 
     @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
-    def test_put_stream_v2_without_bucket_name(self, qn_auth, bucket_name, temp_file, commonly_options):
-        key = 'test_file_r'
+    def test_put_stream_v2_without_bucket_name(self, qn_auth, bucket_name, temp_file, commonly_options, get_key):
+        key = get_key('test_file_r')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_stream(
@@ -435,8 +477,8 @@ class TestResumableUploader:
         ],
         indirect=True
     )
-    def test_put_stream_v2(self, qn_auth, bucket_name, temp_file, commonly_options):
-        key = 'test_file_r'
+    def test_put_stream_v2(self, qn_auth, bucket_name, temp_file, commonly_options, get_key):
+        key = get_key('test_file_r')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_stream(
@@ -455,7 +497,7 @@ class TestResumableUploader:
             assert ret['key'] == key
 
     @pytest.mark.parametrize('temp_file', [4 * MB + 1], indirect=True)
-    def test_put_stream_v2_without_key(self, qn_auth, bucket_name, temp_file, commonly_options):
+    def test_put_stream_v2_without_key(self, qn_auth, bucket_name, temp_file, commonly_options, get_key):
         part_size = 4 * MB
         key = None
         with open(temp_file.path, 'rb') as input_stream:
@@ -473,12 +515,14 @@ class TestResumableUploader:
                 version='v2',
                 bucket_name=bucket_name
             )
-            assert ret['key'] == ret['hash']
+        assert 'key' in ret
+        get_key(ret['key'], no_rand_trail=True)  # auto remove the file
+        assert ret['key'] == ret['hash']
 
     @pytest.mark.parametrize('temp_file', [4 * MB + 1], indirect=True)
-    def test_put_stream_v2_with_empty_return_body(self, qn_auth, bucket_name, temp_file, commonly_options):
+    def test_put_stream_v2_with_empty_return_body(self, qn_auth, bucket_name, temp_file, commonly_options, get_key):
         part_size = 4 * MB
-        key = 'test_file_empty_return_body'
+        key = get_key('test_file_empty_return_body')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key, policy={'returnBody': ' '})
             ret, info = put_stream(
@@ -498,8 +542,8 @@ class TestResumableUploader:
             assert ret == {}
 
     @pytest.mark.parametrize('temp_file', [4 * MB + 1], indirect=True)
-    def test_big_file(self, qn_auth, bucket_name, temp_file, commonly_options):
-        key = 'big'
+    def test_big_file(self, qn_auth, bucket_name, temp_file, commonly_options, get_key):
+        key = get_key('big')
         token = qn_auth.upload_token(bucket_name, key)
 
         ret, info = put_file(
@@ -529,9 +573,10 @@ class TestResumableUploader:
         bucket_name,
         temp_file,
         commonly_options,
-        get_remote_object_headers_and_md5
+        get_remote_object_headers_and_md5,
+        get_key
     ):
-        key = 'test_file_r_retry'
+        key = get_key('test_file_r_retry')
         token = qn_auth.upload_token(bucket_name, key)
         ret, info = put_file(
             token,
@@ -545,8 +590,8 @@ class TestResumableUploader:
         assert actual_md5 == temp_file.md5
 
     @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
-    def test_put_stream_with_key_limits(self, qn_auth, bucket_name, temp_file, commonly_options):
-        key = 'test_file_r'
+    def test_put_stream_with_key_limits(self, qn_auth, bucket_name, temp_file, commonly_options, get_key):
+        key = get_key('test_file_r')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key, policy={'keylimit': ['test_file_d']})
             ret, info = put_stream(
@@ -563,7 +608,7 @@ class TestResumableUploader:
             token = qn_auth.upload_token(
                 bucket_name,
                 key,
-                policy={'keylimit': ['test_file_d', 'test_file_r']}
+                policy={'keylimit': ['test_file_d', key]}
             )
             ret, info = put_stream(
                 token,
@@ -584,9 +629,10 @@ class TestResumableUploader:
         bucket_name,
         temp_file,
         commonly_options,
-        bucket_manager
+        bucket_manager,
+        get_key
     ):
-        key = 'test_put_stream_with_metadata'
+        key = get_key('test_put_stream_with_metadata')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_stream(
@@ -616,10 +662,11 @@ class TestResumableUploader:
         bucket_name,
         temp_file,
         commonly_options,
-        bucket_manager
+        bucket_manager,
+        get_key
     ):
         part_size = 4 * MB
-        key = 'test_put_stream_v2_with_metadata'
+        key = get_key('test_put_stream_v2_with_metadata')
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_stream(
@@ -650,9 +697,10 @@ class TestResumableUploader:
         temp_file,
         commonly_options,
         bucket_manager,
-        upload_callback_url
+        upload_callback_url,
+        get_key
     ):
-        key = 'test_put_stream_with_callback'
+        key = get_key('test_put_stream_with_callback')
         with open(temp_file.path, 'rb') as input_stream:
             policy = {
                 'callbackUrl': upload_callback_url,
@@ -689,10 +737,11 @@ class TestResumableUploader:
         temp_file,
         commonly_options,
         bucket_manager,
-        upload_callback_url
+        upload_callback_url,
+        get_key
     ):
         part_size = 4 * MB
-        key = 'test_put_stream_v2_with_metadata'
+        key = get_key('test_put_stream_v2_with_metadata')
         with open(temp_file.path, 'rb') as input_stream:
             policy = {
                 'callbackUrl': upload_callback_url,
@@ -723,8 +772,8 @@ class TestResumableUploader:
 
     @pytest.mark.parametrize('temp_file', [30 * MB], indirect=True)
     @pytest.mark.parametrize('version', ['v1', 'v2'])
-    def test_resume_upload(self, bucket_name, qn_auth, temp_file, version):
-        key = 'test_resume_upload_{}'.format(version)
+    def test_resume_upload(self, bucket_name, qn_auth, temp_file, version, get_key):
+        key = get_key('test_resume_upload_' + version)
         part_size = 4 * MB
 
         def mock_fail(uploaded_size, _total_size):
@@ -774,8 +823,8 @@ class TestResumableUploader:
         10 * MB  # resume
     ], indirect=True)
     @pytest.mark.parametrize('version', ['v1', 'v2'])
-    def test_upload_acc_normally(self, bucket_name, qn_auth, temp_file, version):
-        key = 'test_upload_acc_normally'
+    def test_upload_acc_normally(self, bucket_name, qn_auth, temp_file, version, get_key):
+        key = get_key('test_upload_acc_normally')
 
         token = qn_auth.upload_token(bucket_name, key)
         ret, resp = put_file(
@@ -794,13 +843,13 @@ class TestResumableUploader:
         10 * MB  # resume
     ], indirect=True)
     @pytest.mark.parametrize('version', ['v1', 'v2'])
-    def test_upload_acc_fallback_src_by_network_err(self, bucket_name, qn_auth, temp_file, version):
+    def test_upload_acc_fallback_src_by_network_err(self, bucket_name, qn_auth, temp_file, version, get_key):
         r = Region.from_region_id('z0')
         r.services[ServiceName.UP_ACC] = [
             Endpoint('qiniu-acc.fake.qiniu.com')
         ]
 
-        key = 'test_upload_acc_fallback_src_by_network_err'
+        key = get_key('test_upload_acc_fallback_src_by_network_err')
 
         token = qn_auth.upload_token(bucket_name, key)
         ret, resp = put_file(
@@ -809,6 +858,43 @@ class TestResumableUploader:
             file_path=temp_file.path,
             version=version,
             regions=[r],
+            accelerate_uploading=True
+        )
+
+        assert ret['key'] == key, resp
+
+    @pytest.mark.parametrize('temp_file', [
+        64 * KB,  # form
+        10 * MB  # resume
+    ], indirect=True)
+    @pytest.mark.parametrize('version', ['v1', 'v2'])
+    def test_upload_acc_fallback_src_by_acc_unavailable(
+        self,
+        no_acc_bucket_name,
+        qn_auth,
+        temp_file,
+        version,
+        rand_string,
+        auto_remove,
+        get_real_regions
+    ):
+        regions = get_real_regions(qn_auth.get_access_key(), no_acc_bucket_name)
+
+        region = regions[0]
+        region.services[ServiceName.UP_ACC] = [
+            Endpoint('{0}.kodo-accelerate.{1}.qiniucs.com'.format(no_acc_bucket_name, region.s3_region_id)),
+            Endpoint('fake-acc.python-sdk.qiniu.com')
+        ]
+
+        key = 'test_upload_acc_fallback_src_by_acc_unavailable-' + rand_string(8)
+        auto_remove(no_acc_bucket_name, key)
+
+        token = qn_auth.upload_token(no_acc_bucket_name, key)
+        ret, resp = put_file(
+            up_token=token,
+            key=key,
+            file_path=temp_file.path,
+            version=version,
             accelerate_uploading=True
         )
 
