@@ -75,7 +75,7 @@ class TokenExpiredRetryPolicy(RetryPolicy):
 
     def prepare_retry(self, attempt):
         state = attempt.context[self]
-        state.retried_times += 1
+        attempt.context[self] = state._replace(retried_times=state.retried_times + 1)
 
         if not self.record_exists_handler():
             return
