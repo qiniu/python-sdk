@@ -19,6 +19,12 @@ class Endpoint:
             return Endpoint(host=host)
 
     def __init__(self, host, default_scheme='https'):
+        """
+        Parameters
+        ----------
+        host: str
+        default_scheme: str
+        """
         self.host = host
         self.default_scheme = default_scheme
 
@@ -38,10 +44,24 @@ class Endpoint:
         return self.host == other.host and self.default_scheme == other.default_scheme
 
     def get_value(self, scheme=None):
+        """
+        Parameters
+        ----------
+        scheme: str
+
+        Returns
+        -------
+        str
+        """
         scheme = scheme if scheme is not None else self.default_scheme
         return ''.join([scheme, '://', self.host])
 
     def clone(self):
+        """
+        Returns
+        -------
+        Endpoint
+        """
         return Endpoint(
             host=self.host,
             default_scheme=self.default_scheme

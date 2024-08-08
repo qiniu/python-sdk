@@ -166,12 +166,22 @@ class Region:
 
     @property
     def is_live(self):
+        """
+        Returns
+        -------
+        bool
+        """
         if self.ttl < 0:
             return True
         live_time = datetime.now() - self.create_time
         return live_time < timedelta(seconds=self.ttl)
 
     def clone(self):
+        """
+        Returns
+        -------
+        Region
+        """
         return Region(
             region_id=self.region_id,
             s3_region_id=self.s3_region_id,

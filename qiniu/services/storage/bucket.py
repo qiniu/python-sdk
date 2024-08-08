@@ -567,6 +567,15 @@ class BucketManager(object):
         )
 
     def _get_regions_provider(self, bucket_name):
+        """
+        Parameters
+        ----------
+        bucket_name: str
+
+        Returns
+        -------
+        Iterable[Region]
+        """
         if self.regions:
             return self.regions
 
@@ -600,6 +609,17 @@ class BucketManager(object):
         )
 
     def __uc_do_with_retrier(self, url_resource, data=None):
+        """
+        Parameters
+        ----------
+        url_resource: url
+        data: dict or None
+
+        Returns
+        -------
+        ret: dict or None
+        resp: ResponseInfo
+        """
         regions = self.regions
 
         # ignore self.zone by no uc in it
@@ -635,6 +655,20 @@ class BucketManager(object):
         return attempt.result
 
     def __server_do_with_retrier(self, bucket_name, service_names, url_resource, data=None, method='POST'):
+        """
+        Parameters
+        ----------
+        bucket_name: str
+        service_names: List[ServiceName]
+        url_resource: str
+        data: dict or None
+        method: str
+
+        Returns
+        -------
+        ret: dict or None
+        resp: ResponseInfo
+        """
         if not service_names:
             raise ValueError('service_names is empty')
 
@@ -680,14 +714,49 @@ def _build_op(*args):
 
 
 def build_batch_copy(source_bucket, key_pairs, target_bucket, force='false'):
+    """
+    Parameters
+    ----------
+    source_bucket: str
+    key_pairs: dict
+    target_bucket: str
+    force: str
+
+    Returns
+    -------
+    list[str]
+    """
     return _two_key_batch('copy', source_bucket, key_pairs, target_bucket, force)
 
 
 def build_batch_rename(bucket, key_pairs, force='false'):
+    """
+    Parameters
+    ----------
+    bucket: str
+    key_pairs: dict
+    force: str
+
+    Returns
+    -------
+    list[str]
+    """
     return build_batch_move(bucket, key_pairs, bucket, force)
 
 
 def build_batch_move(source_bucket, key_pairs, target_bucket, force='false'):
+    """
+    Parameters
+    ----------
+    source_bucket: str
+    key_pairs: dict
+    target_bucket: str
+    force: str
+
+    Returns
+    -------
+    list[str]
+    """
     return _two_key_batch('move', source_bucket, key_pairs, target_bucket, force)
 
 
@@ -726,10 +795,30 @@ def build_batch_restore_ar(bucket, keys):
 
 
 def build_batch_delete(bucket, keys):
+    """
+    Parameters
+    ----------
+    bucket: str
+    keys: list[str]
+
+    Returns
+    -------
+    list[str]
+    """
     return _one_key_batch('delete', bucket, keys)
 
 
 def build_batch_stat(bucket, keys):
+    """
+    Parameters
+    ----------
+    bucket: str
+    keys: list[str]
+
+    Returns
+    -------
+    list[str]
+    """
     return _one_key_batch('stat', bucket, keys)
 
 

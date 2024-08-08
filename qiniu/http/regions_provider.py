@@ -77,6 +77,15 @@ class QueryRegionsProvider(RegionsProvider):
         preferred_scheme='http',
         max_retry_times_per_endpoint=1,
     ):
+        """
+        Parameters
+        ----------
+        access_key: str
+        bucket_name: str
+        endpoints_provider: Iterable[Endpoint]
+        preferred_scheme: str
+        max_retry_times_per_endpoint: int
+        """
         self.access_key = access_key
         self.bucket_name = bucket_name
         self.endpoints_provider = endpoints_provider
@@ -142,6 +151,11 @@ class _FileLocker:
 
     @property
     def lock_file_path(self):
+        """
+        Returns
+        -------
+        str
+        """
         return self._origin_file + '.lock'
 
 
@@ -290,6 +304,16 @@ def _get_region_from_persisted(data):
 
 
 def _parse_persisted_regions(persisted_data):
+    """
+    Parameters
+    ----------
+    persisted_data: str
+
+    Returns
+    -------
+    cache_key: str
+    regions: list[Region]
+    """
     parsed_data = json.loads(persisted_data)
     regions = [
         _get_region_from_persisted(d)
@@ -299,6 +323,16 @@ def _parse_persisted_regions(persisted_data):
 
 
 def _walk_persist_cache_file(persist_path, ignore_parse_error=False):
+    """
+    Parameters
+    ----------
+    persist_path: str
+    ignore_parse_error: bool
+
+    Returns
+    -------
+    Iterable[(str, list[Region])]
+    """
     if not os.access(persist_path, os.R_OK):
         return
 
@@ -397,6 +431,11 @@ class CachedRegionsProvider(MutableRegionsProvider):
             yield r
 
     def set_regions(self, regions):
+        """
+        Parameters
+        ----------
+        regions: list[Region]
+        """
         self._cache_scope.memo_cache[self.cache_key] = regions
 
         if not self._cache_scope.persist_path:
@@ -557,6 +596,11 @@ class CachedRegionsProvider(MutableRegionsProvider):
 
     @property
     def __should_shrink(self):
+        """
+        Returns
+        -------
+        bool
+        """
         return self._cache_scope.last_shrink_at + self._cache_scope.shrink_interval >= datetime.datetime.now()
 
     def __shrink_cache(self):

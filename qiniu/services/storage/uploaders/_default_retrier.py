@@ -40,12 +40,26 @@ class TokenExpiredRetryPolicy(RetryPolicy):
         self.max_retry_times = max_retry_times
 
     def init_context(self, context):
+        """
+        Parameters
+        ----------
+        context: dict
+        """
         context[self] = _TokenExpiredRetryState(
             retried_times=0,
             upload_api_version=self.upload_api_version
         )
 
     def should_retry(self, attempt):
+        """
+        Parameters
+        ----------
+        attempt: qiniu.retry.Attempt
+
+        Returns
+        -------
+        bool
+        """
         state = attempt.context[self]
 
         if (
@@ -74,6 +88,11 @@ class TokenExpiredRetryPolicy(RetryPolicy):
         return False
 
     def prepare_retry(self, attempt):
+        """
+        Parameters
+        ----------
+        attempt: qiniu.retry.Attempt
+        """
         state = attempt.context[self]
         attempt.context[self] = state._replace(retried_times=state.retried_times + 1)
 
@@ -91,6 +110,15 @@ class AccUnavailableRetryPolicy(RetryPolicy):
         pass
 
     def should_retry(self, attempt):
+        """
+        Parameters
+        ----------
+        attempt: qiniu.retry.Attempt
+
+        Returns
+        -------
+        bool
+        """
         if not attempt.result:
             return False
 
@@ -110,6 +138,11 @@ class AccUnavailableRetryPolicy(RetryPolicy):
             'transfer acceleration is not configured on this bucket' in resp.text_body
 
     def prepare_retry(self, attempt):
+        """
+        Parameters
+        ----------
+        attempt: qiniu.retry.Attempt
+        """
         endpoints = []
         while not endpoints:
             if not attempt.context.get('alternative_service_names'):
@@ -138,6 +171,18 @@ def get_default_retrier(
     progress_record=None,
     accelerate_uploading=False
 ):
+    """
+    Parameters
+    ----------
+    regions_provider: Iterable[Region]
+    preferred_endpoints_provider: Iterable[Endpoint]
+    progress_record: ProgressRecord
+    accelerate_uploading: bool
+
+    Returns
+    -------
+    Retrier
+    """
     retry_policies = []
     upload_service_names = [ServiceName.UP]
 

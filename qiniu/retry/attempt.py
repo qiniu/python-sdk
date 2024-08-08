@@ -1,5 +1,10 @@
 class Attempt:
     def __init__(self, custom_context=None):
+        """
+        Parameters
+        ----------
+        custom_context: dict or None
+        """
         self.context = custom_context if custom_context is not None else {}
         self.exception = None
         self.result = None
