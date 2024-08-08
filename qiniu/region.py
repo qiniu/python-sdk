@@ -189,7 +189,9 @@ class LegacyRegion(_HTTPRegion, object):
         }
 
         ttl = region.ttl if region.ttl > 0 else 24 * 3600  # 1 day
-        bucket_hosts['deadline'] = region.create_time.timestamp() + ttl
+        # use datetime.datetime.timestamp() when min version of python >= 3
+        create_time = int(float(region.create_time.strftime('%s.%f')) * 1000)
+        bucket_hosts['deadline'] = create_time + ttl
 
         return bucket_hosts
 
