@@ -28,7 +28,7 @@ def fake_progress_record(request):
     def _delete():
         try:
             os.remove(file_path)
-        except FileNotFoundError:
+        except OSError:
             pass
 
     def _exists():

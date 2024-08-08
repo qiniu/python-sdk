@@ -91,7 +91,7 @@ def cached_regions_provider(request):
     if persist_path:
         try:
             os.remove(persist_path)
-        except FileNotFoundError:
+        except OSError:
             pass
 
 
@@ -130,7 +130,7 @@ class TestCachedQueryRegionsProvider:
         assert list(cached_regions_provider) == [r_z0]
         try:
             os.remove(cached_regions_provider.persist_path)
-        except FileNotFoundError:
+        except OSError:
             pass
 
     @pytest.mark.parametrize(
