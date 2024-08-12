@@ -3,10 +3,10 @@ RS_HOST = 'http://rs.qiniu.com'  # 管理操作Host
 RSF_HOST = 'http://rsf.qbox.me'  # 列举操作Host
 API_HOST = 'http://api.qiniuapi.com'  # 数据处理操作Host
 UC_HOST = 'https://uc.qbox.me'  # 获取空间信息Host
-QUERY_REGION_HOST = 'https://kodo-config.qiniuapi.com'
+QUERY_REGION_HOST = 'https://uc.qiniuapi.com'
 QUERY_REGION_BACKUP_HOSTS = [
-    'uc.qbox.me',
-    'api.qiniu.com'
+    'kodo-config.qiniuapi.com',
+    'uc.qbox.me'
 ]
 
 _BLOCK_SIZE = 1024 * 1024 * 4  # 断点续传分块大小，该参数为接口规格，暂不支持修改
