@@ -1,6 +1,7 @@
 import pytest
 
 from qiniu import Zone
+from qiniu.config import get_default
 
 TEST_RS_HOST = 'rs.test.region.compatible.config.qiniu.com'
 TEST_RSF_HOST = 'rsf.test.region.compatible.config.qiniu.com'
@@ -9,8 +10,25 @@ TEST_API_HOST = 'api.test.region.compatible.config.qiniu.com'
 
 class TestQiniuConfWithZone:
     """
-    Test qiniu.conf with Zone(aka legacy Region)
+    Test qiniu.conf with Zone(aka LegacyRegion)
     """
+
+    @pytest.mark.parametrize(
+        'set_conf_default',
+        [
+            {
+                'default_uc_backup_hosts': [],
+            },
+            {
+                'default_uc_backup_hosts': [],
+                'default_query_region_backup_hosts': []
+            }
+        ],
+        indirect=True
+    )
+    def test_disable_backup_hosts(self, set_conf_default):
+        assert get_default('default_uc_backup_hosts') == []
+        assert get_default('default_query_region_backup_hosts') == []
 
     @pytest.mark.parametrize(
         'set_conf_default',

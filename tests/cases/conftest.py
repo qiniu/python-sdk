@@ -64,6 +64,7 @@ def set_conf_default(request):
         'default_rsf_host': qn_config.RSF_HOST,
         'default_api_host': qn_config.API_HOST,
         'default_uc_host': qn_config.UC_HOST,
+        'default_uc_backup_hosts': qn_config.UC_BACKUP_HOSTS,
         'default_query_region_host': qn_config.QUERY_REGION_HOST,
         'default_query_region_backup_hosts': [
             'uc.qbox.me',

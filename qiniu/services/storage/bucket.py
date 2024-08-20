@@ -626,9 +626,10 @@ class BucketManager(object):
         # handle compatibility for default_uc
         if not regions:
             uc_host = config.get_default('default_uc_host')
+            uc_backup_hosts = config.get_default('default_uc_backup_hosts')
             uc_endpoints = [
                 Endpoint.from_host(h)
-                for h in [uc_host]
+                for h in [uc_host] + uc_backup_hosts
             ]
             regions = [Region(services={ServiceName.UC: uc_endpoints})]
 
