@@ -319,7 +319,7 @@ def _parse_persisted_regions(persisted_data):
         _get_region_from_persisted(d)
         for d in parsed_data.get('regions', [])
     ]
-    return parsed_data.get('cache_key'), regions
+    return parsed_data.get('cacheKey'), regions
 
 
 def _walk_persist_cache_file(persist_path, ignore_parse_error=False):
@@ -601,15 +601,17 @@ class CachedRegionsProvider(MutableRegionsProvider):
         -------
         bool
         """
-        return self._cache_scope.last_shrink_at + self._cache_scope.shrink_interval >= datetime.datetime.now()
+        return datetime.datetime.now() - self._cache_scope.last_shrink_at > self._cache_scope.shrink_interval
 
     def __shrink_cache(self):
         # shrink memory cache
         if self._cache_scope.should_shrink_expired_regions:
+            kept_memo_cache = {}
             for k, regions in self._cache_scope.memo_cache.items():
-                live_regions = [r.is_live for r in regions]
+                live_regions = [r for r in regions if r.is_live]
                 if live_regions:
-                    self._cache_scope.memo_cache[k] = live_regions
+                    kept_memo_cache[k] = live_regions
+            self._cache_scope = self._cache_scope._replace(memo_cache=kept_memo_cache)
 
         # shrink file cache
         if not self._cache_scope.persist_path:

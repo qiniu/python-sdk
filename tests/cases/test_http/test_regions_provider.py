@@ -95,6 +95,18 @@ def cached_regions_provider(request):
             pass
 
 
+@pytest.fixture(scope='function')
+def bad_regions_provider():
+    regions_provider = QueryRegionsProvider(
+        access_key='fake',
+        bucket_name='fake',
+        endpoints_provider=[
+            Endpoint('fake-uc.python.qiniu.com')
+        ]
+    )
+    yield regions_provider
+
+
 class TestCachedQueryRegionsProvider:
     @pytest.mark.parametrize(
         'cached_regions_provider',
@@ -178,14 +190,78 @@ class TestCachedQueryRegionsProvider:
                 line_num += 1
         assert line_num == 1
 
-    def test_should_provide_memo_expired_regions_when_base_provider_failed(self):
-        pass
+    @pytest.mark.parametrize(
+        'cached_regions_provider',
+        [
+            {
+                'persist_path': os.path.join(tempfile.gettempdir(), 'test-base-provider.jsonl')
+            }
+        ],
+        indirect=True
+    )
+    def test_should_provide_memo_expired_regions_when_base_provider_failed(
+        self,
+        cached_regions_provider,
+        bad_regions_provider
+    ):
+        expired_region = Region.from_region_id('z0')
+        expired_region.create_time = datetime.datetime.fromtimestamp(0)
+        expired_region.ttl = 1
+        cached_regions_provider.set_regions([expired_region])
+        cached_regions_provider.base_regions_provider = bad_regions_provider
+        regions = list(cached_regions_provider)
+        assert len(regions) > 0
+        assert not regions[0].is_live
 
-    def test_should_provide_file_expired_regions_when_base_provider_failed(self):
-        pass
+    @pytest.mark.parametrize(
+        'cached_regions_provider',
+        [
+            {
+                'persist_path': os.path.join(tempfile.gettempdir(), 'test-base-provider.jsonl')
+            }
+        ],
+        indirect=True
+    )
+    def test_should_provide_file_expired_regions_when_base_provider_failed(
+        self,
+        cached_regions_provider,
+        bad_regions_provider
+    ):
+        expired_region = Region.from_region_id('z0')
+        expired_region.create_time = datetime.datetime.fromtimestamp(0)
+        expired_region.ttl = 1
+        cached_regions_provider.set_regions([expired_region])
+        cached_regions_provider._cache_scope.memo_cache.clear()
+        cached_regions_provider.base_regions_provider = bad_regions_provider
+        regions = list(cached_regions_provider)
+        assert len(regions) > 0
+        assert not regions[0].is_live
 
-    def test_shrink_normally(self):
-        pass
+    @pytest.mark.parametrize(
+        'cached_regions_provider',
+        [
+            {
+                'should_shrink_expired_regions': True
+            }
+        ],
+        indirect=True
+    )
+    def test_shrink_with_expired_regions(self, cached_regions_provider):
+        expired_region = Region.from_region_id('z0')
+        expired_region.create_time = datetime.datetime.fromtimestamp(0)
+        expired_region.ttl = 1
+        origin_cache_key = cached_regions_provider.cache_key
+        cached_regions_provider.set_regions([expired_region])
+        cached_regions_provider.cache_key = 'another-cache-key'
+        list(cached_regions_provider)  # trigger __shrink_cache()
+        assert len(cached_regions_provider._cache_scope.memo_cache[origin_cache_key]) == 0
 
-    def test_shrink_with_ignore_expired_regions(self):
-        pass
+    def test_shrink_with_ignore_expired_regions(self, cached_regions_provider):
+        expired_region = Region.from_region_id('z0')
+        expired_region.create_time = datetime.datetime.fromtimestamp(0)
+        expired_region.ttl = 1
+        origin_cache_key = cached_regions_provider.cache_key
+        cached_regions_provider.set_regions([expired_region])
+        cached_regions_provider.cache_key = 'another-cache-key'
+        list(cached_regions_provider)  # trigger __shrink_cache()
+        assert len(cached_regions_provider._cache_scope.memo_cache[origin_cache_key]) > 0
