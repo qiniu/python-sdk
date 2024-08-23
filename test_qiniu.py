@@ -434,18 +434,6 @@ class DownloadTestCase(unittest.TestCase):
         assert r.status_code == 200
 
 
-class MediaTestCase(unittest.TestCase):
-    def test_pfop(self):
-        q = Auth(access_key, secret_key)
-        pfop = PersistentFop(q, 'testres', 'sdktest')
-        op = op_save('avthumb/m3u8/segtime/10/vcodec/libx264/s/320x240', 'pythonsdk', 'pfoptest')
-        ops = []
-        ops.append(op)
-        ret, info = pfop.execute('sintel_trailer.mp4', ops, 1)
-        print(info)
-        assert ret['persistentId'] is not None
-
-
 class EtagTestCase(unittest.TestCase):
     def test_zero_size(self):
         open("x", 'a').close()

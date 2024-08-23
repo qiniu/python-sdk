@@ -1,3 +1,8 @@
+import os
+from collections import namedtuple
+from hashlib import new as hashlib_new
+import tempfile
+
 import pytest
 
 import requests
@@ -92,3 +97,44 @@ def regions_with_fake_endpoints(regions_with_real_endpoints):
 
     yield regions
 
+
+TempFile = namedtuple(
+    'TempFile',
+    [
+        'path',
+        'md5',
+        'name',
+        'size'
+    ]
+)
+
+
+@pytest.fixture(scope='function')
+def temp_file(request):
+    size = 4 * 1024
+    if hasattr(request, 'param'):
+        size = request.param
+
+    tmp_file_path = tempfile.mktemp()
+    chunk_size = 4 * 1024
+
+    md5_hasher = hashlib_new('md5')
+    with open(tmp_file_path, 'wb') as f:
+        remaining_bytes = size
+        while remaining_bytes > 0:
+            chunk = os.urandom(min(chunk_size, remaining_bytes))
+            f.write(chunk)
+            md5_hasher.update(chunk)
+            remaining_bytes -= len(chunk)
+
+    yield TempFile(
+        path=tmp_file_path,
+        md5=md5_hasher.hexdigest(),
+        name=os.path.basename(tmp_file_path),
+        size=size
+    )
+
+    try:
+        os.remove(tmp_file_path)
+    except Exception:
+        pass
