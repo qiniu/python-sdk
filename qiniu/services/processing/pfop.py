@@ -24,17 +24,25 @@ class PersistentFop(object):
         self.pipeline = pipeline
         self.notify_url = notify_url
 
-    def execute(self, key, fops, force=None):
-        """执行持久化处理:
+    def execute(self, key, fops, force=None, persistent_type=None):
+        """
+        执行持久化处理
 
-        Args:
-            key:    待处理的源文件
-            fops:   处理详细操作，规格详见 https://developer.qiniu.com/dora/manual/1291/persistent-data-processing-pfop
-            force:  强制执行持久化处理开关
-
-        Returns:
-            一个dict变量，返回持久化处理的persistentId，类似{"persistentId": 5476bedf7823de4068253bae};
-            一个ResponseInfo对象
+        Parameters
+        ----------
+        key: str
+            待处理的源文件
+        fops: list[str]
+            处理详细操作，规格详见 https://developer.qiniu.com/dora/manual/1291/persistent-data-processing-pfop
+        force: int or str, optional
+            强制执行持久化处理开关
+        persistent_type: int or str, optional
+            持久化处理类型，为 '1' 时开启闲时任务
+        Returns
+        -------
+        ret: dict
+            持久化处理的 persistentId，类似 {"persistentId": 5476bedf7823de4068253bae};
+        resp: ResponseInfo
         """
         ops = ';'.join(fops)
         data = {'bucket': self.bucket, 'key': key, 'fops': ops}
@@ -42,8 +50,30 @@ class PersistentFop(object):
             data['pipeline'] = self.pipeline
         if self.notify_url:
             data['notifyURL'] = self.notify_url
-        if force == 1:
-            data['force'] = 1
+        if force == 1 or force == '1':
+            data['force'] = str(force)
+        if persistent_type and type(int(persistent_type)) is int:
+            data['type'] = str(persistent_type)
 
         url = '{0}/pfop'.format(config.get_default('default_api_host'))
         return http._post_with_auth(url, data, self.auth)
+
+    def get_status(self, persistent_id):
+        """
+        获取持久化处理状态
+
+        Parameters
+        ----------
+        persistent_id: str
+
+        Returns
+        -------
+        ret: dict
+            持久化处理的状态，详见 https://developer.qiniu.com/dora/1294/persistent-processing-status-query-prefop
+        resp: ResponseInfo
+        """
+        url = '{0}/status/get/prefop'.format(config.get_default('default_api_host'))
+        data = {
+            'id': persistent_id
+        }
+        return http._get_with_auth(url, data, self.auth)

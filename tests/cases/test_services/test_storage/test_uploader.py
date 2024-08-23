@@ -1,8 +1,5 @@
-import os
 from collections import namedtuple
-from hashlib import new as hashlib_new
 
-import tempfile
 import pytest
 
 from qiniu.compat import json, is_py2
@@ -16,7 +13,7 @@ from qiniu import (
     build_batch_delete
 )
 from qiniu.http.endpoint import Endpoint
-from qiniu.http.region import Region, ServiceName
+from qiniu.http.region import ServiceName
 from qiniu.services.storage.uploader import _form_put
 
 KB = 1024
@@ -110,48 +107,6 @@ def set_default_up_host_zone(request, valid_up_host):
     yield
     set_default(default_zone=Zone())
     qn_config._is_customized_default['default_zone'] = False
-
-
-TempFile = namedtuple(
-    'TempFile',
-    [
-        'path',
-        'md5',
-        'name',
-        'size'
-    ]
-)
-
-
-@pytest.fixture(scope='function')
-def temp_file(request):
-    size = 4 * KB
-    if hasattr(request, 'param'):
-        size = request.param
-
-    tmp_file_path = tempfile.mktemp()
-    chunk_size = 4 * KB
-
-    md5_hasher = hashlib_new('md5')
-    with open(tmp_file_path, 'wb') as f:
-        remaining_bytes = size
-        while remaining_bytes > 0:
-            chunk = os.urandom(min(chunk_size, remaining_bytes))
-            f.write(chunk)
-            md5_hasher.update(chunk)
-            remaining_bytes -= len(chunk)
-
-    yield TempFile(
-        path=tmp_file_path,
-        md5=md5_hasher.hexdigest(),
-        name=os.path.basename(tmp_file_path),
-        size=size
-    )
-
-    try:
-        os.remove(tmp_file_path)
-    except Exception:
-        pass
 
 
 class TestUploadFuncs:
