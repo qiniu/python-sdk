@@ -17,7 +17,6 @@ class ServiceName(Enum):
     RS = 'rs'
     RSF = 'rsf'
     API = 'api'
-    S3 = 's3'
 
 
 class Region:
@@ -77,34 +76,25 @@ class Region:
         services_hosts = {
             ServiceName.UC: ['uc.qiniuapi.com'],
             ServiceName.UP: [
-                # TODO(lihs): backend seems mark qbox.me to old
-                'up-{0}.qiniup.com'.format(region_id),
-                'up-{0}.qbox.me'.format(region_id)
+                'upload-{0}.qiniup.com'.format(region_id),
+                'up-{0}.qiniup.com'.format(region_id)
             ] if not is_z0 else [
-                'up.qiniup.com',
-                'up.qbox.me'
+                'upload.qiniup.com',
+                'up.qiniup.com'
             ],
             ServiceName.IO: [
                 'iovip-{0}.qiniuio.com'.format(region_id),
-                'iovip-{0}.qbox.me'.format(region_id)
             ] if not is_z0 else [
                 'iovip.qiniuio.com',
-                'iovip.qbox.me'
             ],
             ServiceName.RS: [
                 'rs-{0}.qiniuapi.com'.format(region_id),
-                'rs-{0}.qbox.me'.format(region_id)
             ],
             ServiceName.RSF: [
                 'rsf-{0}.qiniuapi.com'.format(region_id),
-                'rsf-{0}.qbox.me'.format(region_id)
             ],
             ServiceName.API: [
                 'api-{0}.qiniuapi.com'.format(region_id),
-                'api-{0}.qbox.me'.format(region_id)
-            ],
-            ServiceName.S3: [
-                's3.{0}.qiniucs.com'.format(region_id),
             ]
         }
         services = {
