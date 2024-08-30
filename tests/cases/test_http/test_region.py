@@ -48,25 +48,21 @@ class TestRegion:
                 'https://uc.qiniuapi.com'
             ],
             ServiceName.UP: [
-                'https://up.qiniup.com',
-                'https://up.qbox.me'
+                'https://upload.qiniup.com',
+                'https://up.qiniup.com'
             ],
             ServiceName.UP_ACC: [],
             ServiceName.IO: [
                 'https://iovip.qiniuio.com',
-                'https://iovip.qbox.me'
             ],
             ServiceName.RS: [
                 'https://rs-z0.qiniuapi.com',
-                'https://rs-z0.qbox.me'
             ],
             ServiceName.RSF: [
                 'https://rsf-z0.qiniuapi.com',
-                'https://rsf-z0.qbox.me'
             ],
             ServiceName.API: [
                 'https://api-z0.qiniuapi.com',
-                'https://api-z0.qbox.me'
             ],
             ServiceName.S3: [
                 'https://s3.z0.qiniucs.com'
@@ -109,25 +105,21 @@ class TestRegion:
                 preferred_scheme + '://uc.qiniuapi.com'
             ],
             ServiceName.UP: [
-                preferred_scheme + '://up-z1.qiniup.com',
-                preferred_scheme + '://up-z1.qbox.me'
+                preferred_scheme + '://upload-z1.qiniup.com',
+                preferred_scheme + '://up-z1.qiniup.com'
             ],
             ServiceName.UP_ACC: [],
             ServiceName.IO: [
                 preferred_scheme + '://iovip-z1.qiniuio.com',
-                preferred_scheme + '://iovip-z1.qbox.me'
             ],
             ServiceName.RS: [
                 preferred_scheme + '://rs-z1.qiniuapi.com',
-                preferred_scheme + '://rs-z1.qbox.me'
             ],
             ServiceName.RSF: [
                 preferred_scheme + '://rsf-z1.qiniuapi.com',
-                preferred_scheme + '://rsf-z1.qbox.me'
             ],
             ServiceName.API: [
                 preferred_scheme + '://api-z1.qiniuapi.com',
-                preferred_scheme + '://api-z1.qbox.me'
             ],
             ServiceName.S3: [
                 preferred_scheme + '://s3.z1.qiniucs.com'
@@ -156,7 +148,7 @@ class TestRegion:
         cloned_region.region_id = 'another'
         cloned_region.services[ServiceName.UP][0].host = 'another-uc.qiniuapi.com'
         assert region.region_id == 'z0'
-        assert region.services[ServiceName.UP][0].get_value() == 'https://up.qiniup.com'
+        assert region.services[ServiceName.UP][0].get_value() == 'https://upload.qiniup.com'
         assert cloned_region.services[ServiceName.UP][0].get_value() == 'https://another-uc.qiniuapi.com'
 
     def test_merge(self):
