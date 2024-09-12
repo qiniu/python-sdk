@@ -279,7 +279,7 @@ class QiniuMacAuth(object):
         __access_key
         __secret_key
 
-    http://kirk-docs.qiniu.com/apidocs/#TOC_325b437b89e8465e62e958cccc25c63f
+    https://developer.qiniu.com/kodo/1201/access-token
     """
 
     def __init__(self, access_key, secret_key, disable_qiniu_timestamp_signature=None):
