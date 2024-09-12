@@ -185,6 +185,7 @@ def get_default_retrier(
     """
     retry_policies = []
     upload_service_names = [ServiceName.UP]
+    handle_change_region = None
 
     if accelerate_uploading:
         retry_policies.append(AccUnavailableRetryPolicy())
@@ -197,13 +198,16 @@ def get_default_retrier(
             record_exists_handler=progress_record.exists
         ))
 
+        def handle_change_region(_):
+            progress_record.delete()
+
     retry_policies += [
         EndpointsRetryPolicy(skip_init_context=True),
         RegionsRetryPolicy(
             regions_provider=regions_provider,
             service_names=upload_service_names,
             preferred_endpoints_provider=preferred_endpoints_provider,
-            on_change_region=lambda _: progress_record.delete()
+            on_change_region=handle_change_region
         )
     ]
 

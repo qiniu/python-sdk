@@ -346,6 +346,28 @@ class TestUploadFuncs:
         assert ret['x-qn-meta']['name'] == 'qiniu'
         assert ret['x-qn-meta']['age'] == '18'
 
+    @pytest.mark.parametrize('temp_file', [64 * KB, 10 * MB], indirect=True)
+    def test_put_file_with_regions_retry(
+        self,
+        qn_auth,
+        bucket_name,
+        temp_file,
+        regions_with_fake_endpoints,
+        get_remote_object_headers_and_md5,
+        get_key
+    ):
+        key = get_key('test_file_with_form_regions_retry')
+        token = qn_auth.upload_token(bucket_name, key)
+        ret, info = put_file(
+            token,
+            key,
+            temp_file.path,
+            regions=regions_with_fake_endpoints
+        )
+        _, actual_md5 = get_remote_object_headers_and_md5(key=key)
+        assert ret['key'] == key
+        assert actual_md5 == temp_file.md5
+
     def test_put_data_with_callback(
         self,
         qn_auth,
