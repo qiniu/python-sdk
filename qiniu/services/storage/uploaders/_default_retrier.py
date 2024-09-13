@@ -198,8 +198,10 @@ def get_default_retrier(
             record_exists_handler=progress_record.exists
         ))
 
-        def handle_change_region(_):
+        def _handle_change_region(_):
             progress_record.delete()
+
+        handle_change_region = _handle_change_region
 
     retry_policies += [
         EndpointsRetryPolicy(skip_init_context=True),
