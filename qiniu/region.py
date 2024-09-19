@@ -17,7 +17,7 @@ def _legacy_default_get(key):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             if hasattr(self, key) and getattr(self, key):
-                return self.rs_host
+                return getattr(self, key)
             if is_customized_default('default_' + key):
                 return get_default('default_' + key)
             return func(self, *args, **kwargs)
@@ -196,6 +196,19 @@ class LegacyRegion(_HTTPRegion, object):
         return bucket_hosts
 
     def get_bucket_hosts_to_cache(self, key, home_dir):
+        """
+        .. deprecated::
+            The cache has been replaced by CachedRegionsProvider
+
+        Parameters
+        ----------
+        key: str
+        home_dir: str
+
+        Returns
+        -------
+        dict
+        """
         ret = {}
         if len(self.host_cache) == 0:
             self.host_cache_from_file(home_dir)
@@ -209,11 +222,29 @@ class LegacyRegion(_HTTPRegion, object):
         return ret
 
     def set_bucket_hosts_to_cache(self, key, val, home_dir):
+        """
+        .. deprecated::
+            The cache has been replaced by CachedRegionsProvider
+
+        Parameters
+        ----------
+        key: str
+        val: dict
+        home_dir: str
+        """
         self.host_cache[key] = val
         self.host_cache_to_file(home_dir)
         return
 
     def host_cache_from_file(self, home_dir):
+        """
+        .. deprecated::
+            The cache has been replaced by CachedRegionsProvider
+
+        Parameters
+        ----------
+        home_dir: str
+        """
         if home_dir is not None:
             self.home_dir = home_dir
         path = self.host_cache_file_path()
@@ -229,9 +260,26 @@ class LegacyRegion(_HTTPRegion, object):
         return
 
     def host_cache_file_path(self):
+        """
+        .. deprecated::
+            The cache has been replaced by CachedRegionsProvider
+
+        Returns
+        -------
+        str
+        """
         return os.path.join(self.home_dir, ".qiniu_pythonsdk_hostscache.json")
 
     def host_cache_to_file(self, home_dir):
+        """
+        .. deprecated::
+            The cache has been replaced by CachedRegionsProvider
+
+        Parameters
+        ----------
+        home_dir: str
+
+        """
         path = self.host_cache_file_path()
         with open(path, 'w') as f:
             json.dump(self.host_cache, f)

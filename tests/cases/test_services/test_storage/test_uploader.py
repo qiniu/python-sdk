@@ -15,6 +15,7 @@ from qiniu import (
 from qiniu.http.endpoint import Endpoint
 from qiniu.http.region import ServiceName
 from qiniu.services.storage.uploader import _form_put
+from qiniu.services.storage.uploaders.abc import UploaderBase
 
 KB = 1024
 MB = 1024 * KB
@@ -885,3 +886,24 @@ class TestResumableUploader:
         )
 
         assert ret['key'] == key, resp
+
+    def test_uploader_base_compatible(self, qn_auth, bucket_name):
+        if is_py2:
+            class MockUploader(UploaderBase):
+                def upload(
+                    self,
+                    **kwargs
+                ):
+                    pass
+            uploader = MockUploader(
+                bucket_name=bucket_name,
+                auth=qn_auth
+            )
+        else:
+            uploader = UploaderBase(
+                bucket_name=bucket_name,
+                auth=qn_auth
+            )
+
+        up_hosts = uploader._get_up_hosts()
+        assert len(up_hosts) > 0
