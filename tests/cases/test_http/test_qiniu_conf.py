@@ -44,7 +44,7 @@ def reset_session():
     yield
 
 
-class TestQiniuConf:
+class TestQiniuConfWithHTTP:
     @pytest.mark.usefixtures('reset_session')
     @pytest.mark.parametrize(
         'set_conf_default',

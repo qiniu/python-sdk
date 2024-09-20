@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
-from qiniu import Auth, put_file, etag, urlsafe_base64_encode
+from qiniu import Auth, put_file, urlsafe_base64_encode
 
 access_key = '...'
 secret_key = '...'
@@ -36,4 +36,3 @@ localfile = './python_video.flv'
 ret, info = put_file(token, key, localfile)
 print(info)
 assert ret['key'] == key
-assert ret['hash'] == etag(localfile)

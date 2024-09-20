@@ -45,11 +45,6 @@ bucket_name = os.getenv('QINIU_TEST_BUCKET')
 hostscache_dir = None
 
 
-dummy_access_key = 'abcdefghklmnopq'
-dummy_secret_key = '1234567890'
-dummy_auth = Auth(dummy_access_key, dummy_secret_key)
-
-
 def rand_string(length):
     lib = string.ascii_uppercase
     return ''.join([random.choice(lib) for i in range(0, length)])
@@ -193,172 +188,6 @@ class UtilsTest(unittest.TestCase):
             assert key == c.get('expect').get('key'), c.get('msg')
 
 
-class AuthTestCase(unittest.TestCase):
-    def test_token(self):
-        token = dummy_auth.token('test')
-        assert token == 'abcdefghklmnopq:mSNBTR7uS2crJsyFr2Amwv1LaYg='
-
-    def test_token_with_data(self):
-        token = dummy_auth.token_with_data('test')
-        assert token == 'abcdefghklmnopq:-jP8eEV9v48MkYiBGs81aDxl60E=:dGVzdA=='
-
-    def test_noKey(self):
-        with pytest.raises(ValueError):
-            Auth(None, None).token('nokey')
-        with pytest.raises(ValueError):
-            Auth('', '').token('nokey')
-
-    def test_token_of_request(self):
-        token = dummy_auth.token_of_request('https://www.qiniu.com?go=1', 'test', '')
-        assert token == 'abcdefghklmnopq:cFyRVoWrE3IugPIMP5YJFTO-O-Y='
-        token = dummy_auth.token_of_request('https://www.qiniu.com?go=1', 'test', 'application/x-www-form-urlencoded')
-        assert token == 'abcdefghklmnopq:svWRNcacOE-YMsc70nuIYdaa1e4='
-
-    def test_QiniuMacRequestsAuth(self):
-        auth = QiniuMacAuth("ak", "sk")
-        test_cases = [
-            {
-                "method": "GET",
-                "host": None,
-                "url": "",
-                "qheaders": {
-                    "X-Qiniu-": "a",
-                    "X-Qiniu": "b",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                "content_type": "application/x-www-form-urlencoded",
-                "body": "{\"name\": \"test\"}",
-                "except_sign_token": "ak:0i1vKClRDWFyNkcTFzwcE7PzX74=",
-            },
-            {
-                "method": "GET",
-                "host": None,
-                "url": "",
-                "qheaders": {
-                    "Content-Type": "application/json",
-                },
-                "content_type": "application/json",
-                "body": "{\"name\": \"test\"}",
-                "except_sign_token": "ak:K1DI0goT05yhGizDFE5FiPJxAj4=",
-            },
-            {
-                "method": "POST",
-                "host": None,
-                "url": "",
-                "qheaders": {
-                    "Content-Type": "application/json",
-                    "X-Qiniu": "b",
-                },
-                "content_type": "application/json",
-                "body": "{\"name\": \"test\"}",
-                "except_sign_token": "ak:0ujEjW_vLRZxebsveBgqa3JyQ-w=",
-            },
-            {
-                "method": "GET",
-                "host": "upload.qiniup.com",
-                "url": "http://upload.qiniup.com",
-                "qheaders": {
-                    "X-Qiniu-": "a",
-                    "X-Qiniu": "b",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                "content_type": "application/x-www-form-urlencoded",
-                "body": "{\"name\": \"test\"}",
-                "except_sign_token": "ak:GShw5NitGmd5TLoo38nDkGUofRw=",
-            },
-            {
-                "method": "GET",
-                "host": "upload.qiniup.com",
-                "url": "http://upload.qiniup.com",
-                "qheaders": {
-                    "Content-Type": "application/json",
-                    "X-Qiniu-Bbb": "BBB",
-                    "X-Qiniu-Aaa": "DDD",
-                    "X-Qiniu-": "a",
-                    "X-Qiniu": "b",
-                },
-                "content_type": "application/json",
-                "body": "{\"name\": \"test\"}",
-                "except_sign_token": "ak:DhNA1UCaBqSHCsQjMOLRfVn63GQ=",
-            },
-            {
-                "method": "GET",
-                "host": "upload.qiniup.com",
-                "url": "http://upload.qiniup.com",
-                "qheaders": {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Qiniu-Bbb": "BBB",
-                    "X-Qiniu-Aaa": "DDD",
-                    "X-Qiniu-": "a",
-                    "X-Qiniu": "b",
-                },
-                "content_type": "application/x-www-form-urlencoded",
-                "body": "name=test&language=go",
-                "except_sign_token": "ak:KUAhrYh32P9bv0COD8ugZjDCmII=",
-            },
-            {
-                "method": "GET",
-                "host": "upload.qiniup.com",
-                "url": "http://upload.qiniup.com",
-                "qheaders": {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Qiniu-Bbb": "BBB",
-                    "X-Qiniu-Aaa": "DDD",
-                },
-                "content_type": "application/x-www-form-urlencoded",
-                "body": "name=test&language=go",
-                "except_sign_token": "ak:KUAhrYh32P9bv0COD8ugZjDCmII=",
-            },
-            {
-                "method": "GET",
-                "host": "upload.qiniup.com",
-                "url": "http://upload.qiniup.com/mkfile/sdf.jpg",
-                "qheaders": {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Qiniu-Bbb": "BBB",
-                    "X-Qiniu-Aaa": "DDD",
-                    "X-Qiniu-": "a",
-                    "X-Qiniu": "b",
-                },
-                "content_type": "application/x-www-form-urlencoded",
-                "body": "name=test&language=go",
-                "except_sign_token": "ak:fkRck5_LeyfwdkyyLk-hyNwGKac=",
-            },
-            {
-                "method": "GET",
-                "host": "upload.qiniup.com",
-                "url": "http://upload.qiniup.com/mkfile/sdf.jpg?s=er3&df",
-                "qheaders": {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Qiniu-Bbb": "BBB",
-                    "X-Qiniu-Aaa": "DDD",
-                    "X-Qiniu-": "a",
-                    "X-Qiniu": "b",
-                },
-                "content_type": "application/x-www-form-urlencoded",
-                "body": "name=test&language=go",
-                "except_sign_token": "ak:PUFPWsEUIpk_dzUvvxTTmwhp3p4=",
-            },
-        ]
-
-        for test_case in test_cases:
-            sign_token = auth.token_of_request(
-                method=test_case["method"],
-                host=test_case["host"],
-                url=test_case["url"],
-                qheaders=auth.qiniu_headers(test_case["qheaders"]),
-                content_type=test_case["content_type"],
-                body=test_case["body"],
-            )
-            assert sign_token == test_case["except_sign_token"]
-
-    def test_verify_callback(self):
-        body = 'name=sunflower.jpg&hash=Fn6qeQi4VDLQ347NiRm-RlQx_4O2&location=Shanghai&price=1500.00&uid=123'
-        url = 'test.qiniu.com/callback'
-        ok = dummy_auth.verify_callback('QBox abcdefghklmnopq:ZWyeM5ljWMRFwuPTPOwQ4RwSto4=', url, body)
-        assert ok
-
-
 class BucketTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
     bucket = BucketManager(q)
@@ -368,8 +197,7 @@ class BucketTestCase(unittest.TestCase):
         assert eof is False
         assert len(ret.get('items')) == 4
         ret, eof, info = self.bucket.list(bucket_name, limit=1000)
-        print(ret, eof, info)
-        assert info.status_code == 200
+        assert info.status_code == 200, info
 
     def test_buckets(self):
         ret, info = self.bucket.buckets()
@@ -606,18 +434,6 @@ class DownloadTestCase(unittest.TestCase):
         assert r.status_code == 200
 
 
-class MediaTestCase(unittest.TestCase):
-    def test_pfop(self):
-        q = Auth(access_key, secret_key)
-        pfop = PersistentFop(q, 'testres', 'sdktest')
-        op = op_save('avthumb/m3u8/segtime/10/vcodec/libx264/s/320x240', 'pythonsdk', 'pfoptest')
-        ops = []
-        ops.append(op)
-        ret, info = pfop.execute('sintel_trailer.mp4', ops, 1)
-        print(info)
-        assert ret['persistentId'] is not None
-
-
 class EtagTestCase(unittest.TestCase):
     def test_zero_size(self):
         open("x", 'a').close()
@@ -646,80 +462,6 @@ class CdnTestCase(unittest.TestCase):
         ret, info = self.domain_manager.get_domain('pythonsdk.qiniu.io')
         print(info)
         assert info.status_code == 200
-
-
-class RegionTestCase(unittest.TestCase):
-    test_rs_host = 'test.region.compatible.config.rs'
-    test_rsf_host = 'test.region.compatible.config.rsf'
-
-    @staticmethod
-    def restore_hosts():
-        set_default(
-            default_rs_host=qiniu.config.RS_HOST,
-            default_rsf_host=qiniu.config.RSF_HOST,
-            default_uc_host=qiniu.config.UC_HOST,
-            default_query_region_host=qiniu.config.QUERY_REGION_HOST,
-            default_query_region_backup_hosts=[
-                'uc.qbox.me',
-                'api.qiniu.com'
-            ]
-        )
-        qiniu.config._is_customized_default['default_rs_host'] = False
-        qiniu.config._is_customized_default['default_rsf_host'] = False
-        qiniu.config._is_customized_default['default_uc_host'] = False
-        qiniu.config._is_customized_default['default_query_region_host'] = False
-        qiniu.config._is_customized_default['default_query_region_backup_hosts'] = False
-
-    def test_config_compatible(self):
-        try:
-            set_default(default_rs_host=self.test_rs_host)
-            set_default(default_rsf_host=self.test_rsf_host)
-            zone = Zone()
-            assert zone.get_rs_host("mock_ak", "mock_bucket") == self.test_rs_host
-            assert zone.get_rsf_host("mock_ak", "mock_bucket") == self.test_rsf_host
-        finally:
-            RegionTestCase.restore_hosts()
-
-    def test_query_region_with_custom_domain(self):
-        try:
-            set_default(
-                default_query_region_host='https://fake-uc.phpsdk.qiniu.com'
-            )
-            zone = Zone()
-            data = zone.bucket_hosts(access_key, bucket_name)
-            assert data != 'null'
-        finally:
-            RegionTestCase.restore_hosts()
-
-    def test_query_region_with_backup_domains(self):
-        try:
-            set_default(
-                default_query_region_host='https://fake-uc.phpsdk.qiniu.com',
-                default_query_region_backup_hosts=[
-                    'unavailable-uc.phpsdk.qiniu.com',
-                    'uc.qbox.me'
-                ]
-            )
-            zone = Zone()
-            data = zone.bucket_hosts(access_key, bucket_name)
-            assert data != 'null'
-        finally:
-            RegionTestCase.restore_hosts()
-
-    def test_query_region_with_uc_and_backup_domains(self):
-        try:
-            set_default(
-                default_uc_host='https://fake-uc.phpsdk.qiniu.com',
-                default_query_region_backup_hosts=[
-                    'unavailable-uc.phpsdk.qiniu.com',
-                    'uc.qbox.me'
-                ]
-            )
-            zone = Zone()
-            data = zone.bucket_hosts(access_key, bucket_name)
-            assert data != 'null'
-        finally:
-            RegionTestCase.restore_hosts()
 
 
 class ReadWithoutSeek(object):

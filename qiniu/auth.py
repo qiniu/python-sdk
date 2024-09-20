@@ -37,6 +37,8 @@ _policy_fields = {
     str('persistentOps'),  # 持久化处理操作
     str('persistentNotifyUrl'),  # 持久化处理结果通知URL
     str('persistentPipeline'),  # 持久化处理独享队列
+    str('persistentType'),  # 为 `1` 时，开启闲时任务，必须是 int 类型
+
     str('deleteAfterDays'),  # 文件多少天后自动删除
     str('fileType'),  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储，4为归档直读存储
     str('isPrefixalScope'),  # 指定上传文件必须使用的前缀
@@ -194,22 +196,56 @@ class Auth(object):
         return self.token_with_data(data)
 
     def verify_callback(
-            self,
-            origin_authorization,
-            url,
-            body,
-            content_type='application/x-www-form-urlencoded'):
-        """回调验证
-
-        Args:
-            origin_authorization: 回调时请求Header中的Authorization字段
-            url:                  回调请求的url
-            body:                 回调请求的body
-            content_type:         回调请求body的Content-Type
-
-        Returns:
-            返回true表示验证成功，返回false表示验证失败
+        self,
+        origin_authorization,
+        url,
+        body,
+        content_type='application/x-www-form-urlencoded',
+        method='GET',
+        headers=None
+    ):
         """
+        Qbox 回调验证
+
+        Parameters
+        ----------
+        origin_authorization: str
+            回调时请求 Header 中的 Authorization 字段
+        url: str
+            回调请求的 url
+        body: str
+            回调请求的 body
+        content_type: str
+            回调请求的 Content-Type
+        method: str
+            回调请求的 method，Qiniu 签名必须传入，默认 GET
+        headers: dict
+            回调请求的 headers，Qiniu 签名必须传入，默认为空字典
+
+        Returns
+        -------
+        bool
+            返回 True 表示验证成功，返回 False 表示验证失败
+        """
+        if headers is None:
+            headers = {}
+
+        # 兼容 Qiniu 签名
+        if origin_authorization.startswith("Qiniu"):
+            qn_auth = QiniuMacAuth(
+                access_key=self.__access_key,
+                secret_key=self.__secret_key,
+                disable_qiniu_timestamp_signature=True
+            )
+            return qn_auth.verify_callback(
+                origin_authorization,
+                url=url,
+                body=body,
+                content_type=content_type,
+                method=method,
+                headers=headers
+            )
+
         token = self.token_of_request(url, body, content_type)
         authorization = 'QBox {0}'.format(token)
         return origin_authorization == authorization
@@ -243,7 +279,7 @@ class QiniuMacAuth(object):
         __access_key
         __secret_key
 
-    http://kirk-docs.qiniu.com/apidocs/#TOC_325b437b89e8465e62e958cccc25c63f
+    https://developer.qiniu.com/kodo/1201/access-token
     """
 
     def __init__(self, access_key, secret_key, disable_qiniu_timestamp_signature=None):
@@ -325,6 +361,50 @@ class QiniuMacAuth(object):
         return '\n'.join([
             '%s: %s' % (canonical_mime_header_key(key), headers.get(key)) for key in sorted(qiniu_fields)
         ])
+
+    def verify_callback(
+        self,
+        origin_authorization,
+        url,
+        body,
+        content_type='application/x-www-form-urlencoded',
+        method='GET',
+        headers=None
+    ):
+        """
+        Qiniu 回调验证
+
+        Parameters
+        ----------
+        origin_authorization: str
+            回调时请求 Header 中的 Authorization 字段
+        url: str
+            回调请求的 url
+        body: str
+            回调请求的 body
+        content_type: str
+            回调请求的 Content-Type
+        method: str
+            回调请求的 Method
+        headers: dict
+            回调请求的 headers
+
+        Returns
+        -------
+
+        """
+        if headers is None:
+            headers = {}
+        token = self.token_of_request(
+            method=method,
+            host=headers.get('Host', None),
+            url=url,
+            qheaders=self.qiniu_headers(headers),
+            content_type=content_type,
+            body=body
+        )
+        authorization = 'Qiniu {0}'.format(token)
+        return origin_authorization == authorization
 
     @staticmethod
     def __checkKey(access_key, secret_key):

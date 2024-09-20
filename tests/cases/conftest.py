@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
+import random
+import string
 
 import pytest
 
 from qiniu import config as qn_config
-from qiniu import region
 from qiniu import Auth
 
 
@@ -21,6 +22,16 @@ def secret_key():
 @pytest.fixture(scope='session')
 def bucket_name():
     yield os.getenv('QINIU_TEST_BUCKET')
+
+
+@pytest.fixture(scope='session')
+def no_acc_bucket_name():
+    yield os.getenv('QINIU_TEST_NO_ACC_BUCKET')
+
+
+@pytest.fixture(scope='session')
+def download_domain():
+    yield os.getenv('QINIU_TEST_DOMAIN')
 
 
 @pytest.fixture(scope='session')
@@ -48,11 +59,12 @@ def set_conf_default(request):
         qn_config.set_default(**request.param)
     yield
     qn_config._config = {
-        'default_zone': region.Region(),
+        'default_zone': None,
         'default_rs_host': qn_config.RS_HOST,
         'default_rsf_host': qn_config.RSF_HOST,
         'default_api_host': qn_config.API_HOST,
         'default_uc_host': qn_config.UC_HOST,
+        'default_uc_backup_hosts': qn_config.UC_BACKUP_HOSTS,
         'default_query_region_host': qn_config.QUERY_REGION_HOST,
         'default_query_region_backup_hosts': [
             'uc.qbox.me',
@@ -79,3 +91,30 @@ def set_conf_default(request):
         'connection_pool': False,
         'default_upload_threshold': False
     }
+
+
+@pytest.fixture(scope='session')
+def rand_string():
+    def _rand_string(length):
+        # use random.choices when min version of python >= 3.6
+        return ''.join(
+            random.choice(string.ascii_letters + string.digits)
+            for _ in range(length)
+        )
+    yield _rand_string
+
+
+class Ref:
+    """
+    python2 not support nonlocal keyword
+    """
+    def __init__(self, value=None):
+        self.value = value
+
+
+@pytest.fixture(scope='session')
+def use_ref():
+    def _use_ref(value):
+        return Ref(value)
+
+    yield _use_ref

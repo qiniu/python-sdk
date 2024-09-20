@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 
-from qiniu import Auth, put_file, etag, urlsafe_base64_encode
+from qiniu import Auth, put_file, urlsafe_base64_encode
 import qiniu.config
 from qiniu import Zone, set_default
 
@@ -37,4 +37,3 @@ set_default(default_zone=zone)
 ret, info = put_file(token, key, localfile)
 print(info)
 assert ret['key'] == key
-assert ret['hash'] == etag(localfile)

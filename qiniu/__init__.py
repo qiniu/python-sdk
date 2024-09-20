@@ -9,16 +9,16 @@ For detailed document, please see:
 
 # flake8: noqa
 
-__version__ = '7.13.2'
+__version__ = '7.14.0'
 
 from .auth import Auth, QiniuMacAuth
 
 from .config import set_default
 from .zone import Zone
-from .region import Region
+from .region import LegacyRegion as Region
 
 from .services.storage.bucket import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, \
-    build_batch_stat, build_batch_delete, build_batch_restoreAr
+    build_batch_stat, build_batch_delete, build_batch_restoreAr, build_batch_restore_ar
 from .services.storage.uploader import put_data, put_file, put_stream
 from .services.storage.upload_progress_recorder import UploadProgressRecorder
 from .services.cdn.manager import CdnManager, create_timestamp_anti_leech_url, DomainManager

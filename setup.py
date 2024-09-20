@@ -56,7 +56,8 @@ setup(
     install_requires=[
         'requests; python_version >= "3.7"',
         'requests<2.28; python_version < "3.7"',
-        'futures; python_version == "2.7"'
+        'futures; python_version == "2.7"',
+        'enum34; python_version == "2.7"'
     ],
     extras_require={
         'dev': [

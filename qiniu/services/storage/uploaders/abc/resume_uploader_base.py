@@ -205,7 +205,7 @@ class ResumeUploaderBase(UploaderBase):
         up_token: str
         data_size: int
         context: any
-        kwargs: dictr
+        kwargs: dict
 
         Returns
         -------

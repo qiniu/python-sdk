@@ -55,6 +55,7 @@ jobs:
           QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
           QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
           QINIU_TEST_BUCKET: ${{ secrets.QINIU_TEST_BUCKET }}
+          QINIU_TEST_NO_ACC_BUCKET: ${{ secrets.QINIU_TEST_NO_ACC_BUCKET }}
           QINIU_TEST_DOMAIN: ${{ secrets.QINIU_TEST_DOMAIN }}
           QINIU_UPLOAD_CALLBACK_URL: ${{secrets.QINIU_UPLOAD_CALLBACK_URL}}
           QINIU_TEST_ENV: "travis"

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from qiniu.region import Region
+from qiniu.region import LegacyRegion
 
 
-class Zone(Region):
+class Zone(LegacyRegion):
     pass
