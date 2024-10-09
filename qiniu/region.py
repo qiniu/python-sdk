@@ -6,7 +6,7 @@ import time
 
 
 from .compat import json, s as str_from_bytes
-from .utils import urlsafe_base64_decode
+from .utils import urlsafe_base64_decode, dt2ts
 from .config import UC_HOST, is_customized_default, get_default
 from .http.endpoint import Endpoint as _HTTPEndpoint
 from .http.regions_provider import Region as _HTTPRegion, ServiceName, get_default_regions_provider
@@ -190,7 +190,7 @@ class LegacyRegion(_HTTPRegion, object):
 
         ttl = region.ttl if region.ttl > 0 else 24 * 3600  # 1 day
         # use datetime.datetime.timestamp() when min version of python >= 3
-        create_time = int(float(region.create_time.strftime('%s.%f')) * 1000)
+        create_time = dt2ts(region.create_time)
         bucket_hosts['deadline'] = create_time + ttl
 
         return bucket_hosts

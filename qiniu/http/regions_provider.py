@@ -5,9 +5,10 @@ from collections import namedtuple
 import logging
 import tempfile
 import os
+import shutil
 
 from qiniu.compat import json, b as to_bytes
-from qiniu.utils import io_md5
+from qiniu.utils import io_md5, dt2ts
 
 from .endpoint import Endpoint
 from .region import Region, ServiceName
@@ -264,7 +265,7 @@ def _persist_region(region):
         },
         ttl=region.ttl,
         # use datetime.datetime.timestamp() when min version of python >= 3
-        createTime=int(float(region.create_time.strftime('%s.%f')) * 1000)
+        createTime=dt2ts(region.create_time)
     )._asdict()
 
 
@@ -338,8 +339,10 @@ def _walk_persist_cache_file(persist_path, ignore_parse_error=False):
 
     with open(persist_path, 'r') as f:
         for line in f:
+            if not line.strip():
+                continue
             try:
-                cache_key, regions = _parse_persisted_regions(line)
+                cache_key, regions = _parse_persisted_regions(line.strip())
                 yield cache_key, regions
             except Exception as err:
                 if not ignore_parse_error:
@@ -655,7 +658,7 @@ class CachedRegionsProvider(MutableRegionsProvider):
                         )
 
                 # rename file
-                os.rename(shrink_file_path, self._cache_scope.persist_path)
+                shutil.move(shrink_file_path, self._cache_scope.persist_path)
         except FileAlreadyLocked:
             pass
         finally:
