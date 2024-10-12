@@ -186,8 +186,10 @@ class TestCachedQueryRegionsProvider:
         assert list(cached_regions_provider) == regions
         line_num = 0
         with open(cached_regions_provider.persist_path, 'r') as f:
-            for _ in f:
-                line_num += 1
+            for l in f:
+                # ignore empty line
+                if l.strip():
+                    line_num += 1
         assert line_num == 1
 
     @pytest.mark.parametrize(

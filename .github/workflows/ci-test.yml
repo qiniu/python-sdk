@@ -135,13 +135,14 @@ jobs:
           python --version
           $processOptions = @{
             FilePath="python"
-            ArgumentList="tests/mock_server/main.py", "--port", "9000"
+            ArgumentList="tests\mock_server\main.py", "--port", "9000"
             PassThru=$true
             RedirectStandardOutput="py-mock-server.log"
           }
           $mocksrvp = Start-Process @processOptions
           $mocksrvp.Id | Out-File -FilePath "mock-server.pid"
           conda deactivate
+          Sleep 3
           Write-Host "======== Running Test ========="
           python --version
           python -m pytest ./test_qiniu.py tests --cov qiniu --cov-report=xml
@@ -158,7 +159,7 @@ jobs:
       - name: Print mock server log
         if: ${{ failure() }}
         run: |
-          Get-Content -Path "py-mock-server.log"
+          Get-Content -Path "py-mock-server.log" | Write-Host
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v4
         with:
