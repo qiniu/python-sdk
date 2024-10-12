@@ -285,7 +285,11 @@ class BucketTestCase(unittest.TestCase):
     def test_invalid_x_qiniu_date_env(self):
         os.environ['DISABLE_QINIU_TIMESTAMP_SIGNATURE'] = 'True'
         ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
-        os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        if hasattr(os, 'unsetenv'):
+            os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        else:
+            # fix unsetenv not exists in earlier python on windows
+            os.environ['DISABLE_QINIU_TIMESTAMP_SIGNATURE'] = ''
         assert 'hash' in ret
 
     @freeze_time("1970-01-01")
@@ -294,7 +298,11 @@ class BucketTestCase(unittest.TestCase):
         q = Auth(access_key, secret_key, disable_qiniu_timestamp_signature=False)
         bucket = BucketManager(q)
         ret, info = bucket.stat(bucket_name, 'python-sdk.html')
-        os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        if hasattr(os, 'unsetenv'):
+            os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        else:
+            # fix unsetenv not exists in earlier python on windows
+            os.environ['DISABLE_QINIU_TIMESTAMP_SIGNATURE'] = ''
         assert ret is None
         assert info.status_code == 403
 
