@@ -34,10 +34,11 @@ _policy_fields = {
     str('fsizeMin'),  # 上传文件最少字节数
     str('keylimit'),  # 设置允许上传的key列表，字符串数组类型，数组长度不可超过20个，如果设置了这个字段，上传时必须提供key
 
-    str('persistentOps'),  # 持久化处理操作
+    str('persistentOps'),  # 持久化处理操作，与 persistentWorkflowTemplateID 二选一
     str('persistentNotifyUrl'),  # 持久化处理结果通知URL
     str('persistentPipeline'),  # 持久化处理独享队列
     str('persistentType'),  # 为 `1` 时，开启闲时任务，必须是 int 类型
+    str('persistentWorkflowTemplateID'),  # 工作流模板 ID，与 persistentOps 二选一
 
     str('deleteAfterDays'),  # 文件多少天后自动删除
     str('fileType'),  # 文件的存储类型，0为标准存储，1为低频存储，2为归档存储，3为深度归档存储，4为归档直读存储
