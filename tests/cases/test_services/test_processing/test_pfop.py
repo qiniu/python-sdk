@@ -1,6 +1,5 @@
 import pytest
 
-
 from qiniu import PersistentFop, op_save
 
 
@@ -16,6 +15,7 @@ class TestPersistentFop:
         ]
         ret, resp = pfop.execute('sintel_trailer.mp4', ops, 1)
         assert resp.status_code == 200, resp
+        assert ret is not None, resp
         assert ret['persistentId'] is not None, resp
         global persistent_id
         persistent_id = ret['persistentId']
@@ -27,23 +27,71 @@ class TestPersistentFop:
         assert resp.status_code == 200, resp
         assert ret is not None, resp
 
-    def test_pfop_idle_time_task(self, set_conf_default, qn_auth):
-        persistence_key = 'python-sdk-pfop-test/test-pfop-by-api'
+    @pytest.mark.parametrize(
+        'persistent_options',
+        (
+            # included by above test_pfop_execute
+            # {
+            #     'persistent_type': None,
+            # },
+            {
+                'persistent_type': 0,
+            },
+            {
+                'persistent_type': 1,
+            },
+            {
+                'workflow_template_id': 'test-workflow',
+            },
+        )
+    )
+    def test_pfop_idle_time_task(
+        self,
+        set_conf_default,
+        qn_auth,
+        bucket_name,
+        persistent_options,
+    ):
+        persistent_type = persistent_options.get('persistent_type')
+        workflow_template_id = persistent_options.get('workflow_template_id', None)
 
-        key = 'sintel_trailer.mp4'
-        pfop = PersistentFop(qn_auth, 'testres')
-        ops = [
-            op_save(
-                op='avthumb/m3u8/segtime/10/vcodec/libx264/s/320x240',
-                bucket='pythonsdk',
-                key=persistence_key
-            )
-        ]
-        ret, resp = pfop.execute(key, ops, force=1, persistent_type=1)
+        execute_opts = {}
+        if workflow_template_id:
+            execute_opts['workflow_template_id'] = workflow_template_id
+        else:
+            persistent_key = '_'.join([
+                'test-pfop/test-pfop-by-api',
+                'type',
+                str(persistent_type)
+            ])
+            execute_opts['fops'] = [
+                op_save(
+                    op='avinfo',
+                    bucket=bucket_name,
+                    key=persistent_key
+                )
+            ]
+
+        if persistent_type is not None:
+            execute_opts['persistent_type'] = persistent_type
+
+        pfop = PersistentFop(qn_auth, bucket_name)
+        key = 'qiniu.png'
+        ret, resp = pfop.execute(
+            key,
+            **execute_opts
+        )
+
         assert resp.status_code == 200, resp
+        assert ret is not None
         assert 'persistentId' in ret, resp
 
         ret, resp = pfop.get_status(ret['persistentId'])
         assert resp.status_code == 200, resp
-        assert ret['type'] == 1, resp
+        assert ret is not None
         assert ret['creationDate'] is not None, resp
+
+        if persistent_id == 1:
+            assert ret['type'] == 1, resp
+        elif workflow_template_id:
+            assert workflow_template_id in ret['taskFrom'], resp

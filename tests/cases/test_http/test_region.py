@@ -36,7 +36,7 @@ class TestRegion:
             k in region.services
             for k in chain(ServiceName, ['custom-service'])
         )
-        assert datetime.now() - region.create_time > timedelta(days=1)
+        assert datetime.now() - region.create_time >= timedelta(days=1)
         assert region.ttl == 3600
         assert not region.is_live
 

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from hashlib import sha1, new as hashlib_new
 from base64 import urlsafe_b64encode, urlsafe_b64decode
-from datetime import datetime
+from datetime import datetime, tzinfo, timedelta
+
 from .compat import b, s
 
 try:
@@ -236,3 +237,30 @@ def canonical_mime_header_key(field_name):
             result += ch
         upper = ch == "-"
     return result
+
+
+class _UTC_TZINFO(tzinfo):
+    def utcoffset(self, dt):
+        return timedelta(hours=0)
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return timedelta(0)
+
+
+def dt2ts(dt):
+    """
+    converte datetime to timestamp
+
+    Parameters
+    ----------
+    dt: datetime.datetime
+    """
+    if not dt.tzinfo:
+        st = (dt - datetime(1970, 1, 1)).total_seconds()
+    else:
+        st = (dt - datetime(1970, 1, 1, tzinfo=_UTC_TZINFO())).total_seconds()
+
+    return int(st)

@@ -65,129 +65,6 @@ def remove_temp_file(file):
     except OSError:
         pass
 
-
-class UtilsTest(unittest.TestCase):
-    def test_urlsafe(self):
-        a = 'hello\x96'
-        u = urlsafe_base64_encode(a)
-        assert b(a) == urlsafe_base64_decode(u)
-
-    def test_canonical_mime_header_key(self):
-        field_names = [
-            ":status",
-            ":x-test-1",
-            ":x-Test-2",
-            "content-type",
-            "CONTENT-LENGTH",
-            "oRiGin",
-            "ReFer",
-            "Last-Modified",
-            "acCePt-ChArsEt",
-            "x-test-3",
-            "cache-control",
-        ]
-        expect_canonical_field_names = [
-            ":status",
-            ":x-test-1",
-            ":x-Test-2",
-            "Content-Type",
-            "Content-Length",
-            "Origin",
-            "Refer",
-            "Last-Modified",
-            "Accept-Charset",
-            "X-Test-3",
-            "Cache-Control",
-        ]
-        assert len(field_names) == len(expect_canonical_field_names)
-        for i in range(len(field_names)):
-            assert canonical_mime_header_key(field_names[i]) == expect_canonical_field_names[i]
-
-    def test_entry(self):
-        case_list = [
-            {
-                'msg': 'normal',
-                'bucket': 'qiniuphotos',
-                'key': 'gogopher.jpg',
-                'expect': 'cWluaXVwaG90b3M6Z29nb3BoZXIuanBn'
-            },
-            {
-                'msg': 'key empty',
-                'bucket': 'qiniuphotos',
-                'key': '',
-                'expect': 'cWluaXVwaG90b3M6'
-            },
-            {
-                'msg': 'key undefined',
-                'bucket': 'qiniuphotos',
-                'key': None,
-                'expect': 'cWluaXVwaG90b3M='
-            },
-            {
-                'msg': 'key need replace plus symbol',
-                'bucket': 'qiniuphotos',
-                'key': '012ts>a',
-                'expect': 'cWluaXVwaG90b3M6MDEydHM-YQ=='
-            },
-            {
-                'msg': 'key need replace slash symbol',
-                'bucket': 'qiniuphotos',
-                'key': '012ts?a',
-                'expect': 'cWluaXVwaG90b3M6MDEydHM_YQ=='
-            }
-        ]
-        for c in case_list:
-            assert c.get('expect') == entry(c.get('bucket'), c.get('key')), c.get('msg')
-
-    def test_decode_entry(self):
-        case_list = [
-            {
-                'msg': 'normal',
-                'expect': {
-                    'bucket': 'qiniuphotos',
-                    'key': 'gogopher.jpg'
-                },
-                'entry': 'cWluaXVwaG90b3M6Z29nb3BoZXIuanBn'
-            },
-            {
-                'msg': 'key empty',
-                'expect': {
-                    'bucket': 'qiniuphotos',
-                    'key': ''
-                },
-                'entry': 'cWluaXVwaG90b3M6'
-            },
-            {
-                'msg': 'key undefined',
-                'expect': {
-                    'bucket': 'qiniuphotos',
-                    'key': None
-                },
-                'entry': 'cWluaXVwaG90b3M='
-            },
-            {
-                'msg': 'key need replace plus symbol',
-                'expect': {
-                    'bucket': 'qiniuphotos',
-                    'key': '012ts>a'
-                },
-                'entry': 'cWluaXVwaG90b3M6MDEydHM-YQ=='
-            },
-            {
-                'msg': 'key need replace slash symbol',
-                'expect': {
-                    'bucket': 'qiniuphotos',
-                    'key': '012ts?a'
-                },
-                'entry': 'cWluaXVwaG90b3M6MDEydHM_YQ=='
-            }
-        ]
-        for c in case_list:
-            bucket, key = decode_entry(c.get('entry'))
-            assert bucket == c.get('expect').get('bucket'), c.get('msg')
-            assert key == c.get('expect').get('key'), c.get('msg')
-
-
 class BucketTestCase(unittest.TestCase):
     q = Auth(access_key, secret_key)
     bucket = BucketManager(q)
@@ -408,7 +285,11 @@ class BucketTestCase(unittest.TestCase):
     def test_invalid_x_qiniu_date_env(self):
         os.environ['DISABLE_QINIU_TIMESTAMP_SIGNATURE'] = 'True'
         ret, info = self.bucket.stat(bucket_name, 'python-sdk.html')
-        os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        if hasattr(os, 'unsetenv'):
+            os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        else:
+            # fix unsetenv not exists in earlier python on windows
+            os.environ['DISABLE_QINIU_TIMESTAMP_SIGNATURE'] = ''
         assert 'hash' in ret
 
     @freeze_time("1970-01-01")
@@ -417,7 +298,11 @@ class BucketTestCase(unittest.TestCase):
         q = Auth(access_key, secret_key, disable_qiniu_timestamp_signature=False)
         bucket = BucketManager(q)
         ret, info = bucket.stat(bucket_name, 'python-sdk.html')
-        os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        if hasattr(os, 'unsetenv'):
+            os.unsetenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE')
+        else:
+            # fix unsetenv not exists in earlier python on windows
+            os.environ['DISABLE_QINIU_TIMESTAMP_SIGNATURE'] = ''
         assert ret is None
         assert info.status_code == 403
 

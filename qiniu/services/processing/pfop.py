@@ -24,7 +24,7 @@ class PersistentFop(object):
         self.pipeline = pipeline
         self.notify_url = notify_url
 
-    def execute(self, key, fops, force=None, persistent_type=None):
+    def execute(self, key, fops=None, force=None, persistent_type=None, workflow_template_id=None):
         """
         执行持久化处理
 
@@ -32,28 +32,39 @@ class PersistentFop(object):
         ----------
         key: str
             待处理的源文件
-        fops: list[str]
+        fops: list[str], optional
             处理详细操作，规格详见 https://developer.qiniu.com/dora/manual/1291/persistent-data-processing-pfop
+            与 template_id 二选一
         force: int or str, optional
             强制执行持久化处理开关
         persistent_type: int or str, optional
             持久化处理类型，为 '1' 时开启闲时任务
+        template_id: str, optional
+            与 fops 二选一
         Returns
         -------
         ret: dict
             持久化处理的 persistentId，类似 {"persistentId": 5476bedf7823de4068253bae};
         resp: ResponseInfo
         """
-        ops = ';'.join(fops)
-        data = {'bucket': self.bucket, 'key': key, 'fops': ops}
+        if not fops and not workflow_template_id:
+            raise ValueError('Must provide one of fops or template_id')
+        data = {
+            'bucket': self.bucket,
+            'key': key,
+        }
         if self.pipeline:
             data['pipeline'] = self.pipeline
         if self.notify_url:
             data['notifyURL'] = self.notify_url
+        if fops:
+            data['fops'] = ';'.join(fops)
         if force == 1 or force == '1':
             data['force'] = str(force)
         if persistent_type and type(int(persistent_type)) is int:
             data['type'] = str(persistent_type)
+        if workflow_template_id:
+            data['workflowTemplateID'] = workflow_template_id
 
         url = '{0}/pfop'.format(config.get_default('default_api_host'))
         return http._post_with_auth(url, data, self.auth)
