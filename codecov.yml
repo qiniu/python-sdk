@@ -1,14 +1,14 @@
 codecov:
   ci:
-    - prow.qiniu.io       # prow 里面运行需添加，其他 CI 不要
-  require_ci_to_pass: no  # 改为 no，否则 codecov 会等待其他 GitHub 上所有 CI 通过才会留言。
+    - prow.qiniu.io       # prow need this. seems useless
+  require_ci_to_pass: no  # `no` means the bot will comment on the PR even before all ci passed
 
-github_checks:              #关闭github checks
+github_checks:              # close github checks
   annotations: false
 
 comment:
   layout: "reach, diff, flags, files"
-  behavior: new           # 默认是更新旧留言，改为 new，删除旧的，增加新的。
+  behavior: new           # `new` means the bot will comment a new message instead of edit the old one
   require_changes: false  # if true: only post the comment if coverage changes
   require_base: no        # [yes :: must have a base report to post]
   require_head: yes       # [yes :: must have a head report to post]
@@ -16,13 +16,13 @@ comment:
       - "master"
 
 coverage:
-  status:                                 # 评判 pr 通过的标准
+  status:                                 # check coverage status to pass or fail
       patch: off
-      project:                            # project 统计所有代码x
+      project:                            # project analyze all code in the project
           default:
             # basic
-            target: 73.5%                  # 总体通过标准
-            threshold: 3%                 # 允许单次下降的幅度
+            target: 73.5%                 # the minimum coverage ratio that the commit must meet
+            threshold: 3%                 # allow the coverage to drop
             base: auto
             if_not_found: success
             if_ci_failed: error
