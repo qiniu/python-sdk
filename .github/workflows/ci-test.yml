@@ -164,3 +164,68 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+  test-win-self-hosted:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        # only 3.4, 3.10 is supported on this machine
+        python_version: ['3.4']
+    runs-on: [self-hosted, Windows10, X64]
+    needs: test-win
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.ref }}
+      - name: Setup Python
+        run: |
+          python${{ matrix.python_version }} -m venv .venv
+      - name: Install dependencies
+        run: |
+          .venv\Scripts\Activate.ps1
+          python -m pip install --upgrade pip
+          python -m pip install -I -e ".[dev]"
+      - name: Run cases
+        env:
+          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
+          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
+          QINIU_TEST_BUCKET: ${{ secrets.QINIU_TEST_BUCKET }}
+          QINIU_TEST_NO_ACC_BUCKET: ${{ secrets.QINIU_TEST_NO_ACC_BUCKET }}
+          QINIU_TEST_DOMAIN: ${{ secrets.QINIU_TEST_DOMAIN }}
+          QINIU_UPLOAD_CALLBACK_URL: ${{secrets.QINIU_UPLOAD_CALLBACK_URL}}
+          QINIU_TEST_ENV: "github"
+          MOCK_SERVER_ADDRESS: "http://127.0.0.1:9000"
+        run: |
+          Write-Host "======== Setup Mock Server ========="
+          $processOptions = @{
+            FilePath="python3.10"
+            ArgumentList="tests\mock_server\main.py", "--port", "9000"
+            PassThru=$true
+            RedirectStandardOutput="py-mock-server.log"
+          }
+          $mocksrvp = Start-Process @processOptions
+          $mocksrvp.Id | Out-File -FilePath "mock-server.pid"
+          Sleep 3
+          Write-Host "======== Running Test ========="
+          .venv\Scripts\Activate.ps1
+          python --version
+          python -m pytest test_qiniu.py tests --cov qiniu --cov-report=xml
+      - name: Post Setup mock server
+        if: ${{ always() }}
+        run: |
+          Try {
+            $mocksrvpid = Get-Content -Path "mock-server.pid"
+            Stop-Process -Id $mocksrvpid
+            Remove-Item -Path "mock-server.pid"
+          } Catch {
+            Write-Host -Object $_
+          }
+      - name: Print mock server log
+        if: ${{ failure() }}
+        run: |
+          Get-Content -Path "py-mock-server.log" | Write-Host
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
