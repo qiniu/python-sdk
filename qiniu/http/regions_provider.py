@@ -142,13 +142,19 @@ class _FileLocker:
         self._origin_file = origin_file
 
     def __enter__(self):
-        if os.access(self.lock_file_path, os.R_OK | os.W_OK):
+        try:
+            # Atomic file creation
+            open_flags = os.O_EXCL | os.O_RDWR | os.O_CREAT
+            fd = os.open(self.lock_file_path, open_flags)
+            os.close(fd)
+        except FileExistsError:
             raise FileAlreadyLocked('File {0} already locked'.format(self._origin_file))
-        with open(self.lock_file_path, 'w'):
-            pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        os.remove(self.lock_file_path)
+        try:
+            os.remove(self.lock_file_path)
+        except FileNotFoundError:
+            pass  # Lock file might have been removed
 
     @property
     def lock_file_path(self):
