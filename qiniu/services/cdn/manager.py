@@ -5,9 +5,17 @@ import json
 
 from qiniu.compat import is_py2
 from qiniu.compat import is_py3
+from enum import Enum
 
 import hashlib
 
+class DataType(Enum):
+    BANDWIDTH = 'bandwidth'
+    X302BANDWIDTH = '302bandwidth'
+    X302MBANDWIDTH = '302mbandwidth'
+    FLOW = 'flow'
+    X302FLOW = '302flow'
+    X302MFLOW = '302mflow'
 
 def urlencode(str):
     if is_py2:
@@ -60,7 +68,7 @@ class CdnManager(object):
         Returns:
            一个dict变量和一个ResponseInfo对象
            参考代码 examples/cdn_manager.py
-       """
+        """
         req = {}
         if urls is not None and len(urls) > 0:
             req.update({"urls": urls})
@@ -89,7 +97,7 @@ class CdnManager(object):
         url = '{0}/v2/tune/prefetch'.format(self.server)
         return self.__post(url, body)
 
-    def get_bandwidth_data(self, domains, start_date, end_date, granularity):
+    def get_bandwidth_data(self, domains, start_date, end_date, granularity, data_type=None):
         """
         查询带宽数据，文档 https://developer.qiniu.com/fusion/api/traffic-bandwidth
 
@@ -98,6 +106,7 @@ class CdnManager(object):
            start_date:  起始日期
            end_date:    结束日期
            granularity: 数据间隔
+           data_type:   计量数据类型, see class DataType.XXXBANDWIDTH
 
         Returns:
            一个dict变量和一个ResponseInfo对象
@@ -108,12 +117,14 @@ class CdnManager(object):
         req.update({"startDate": start_date})
         req.update({"endDate": end_date})
         req.update({"granularity": granularity})
+        if data_type is not None:
+            req.update({'type': data_type.value}) # should be one of 'bandwidth', '302bandwidth', '302mbandwidth'
 
         body = json.dumps(req)
         url = '{0}/v2/tune/bandwidth'.format(self.server)
         return self.__post(url, body)
 
-    def get_flux_data(self, domains, start_date, end_date, granularity):
+    def get_flux_data(self, domains, start_date, end_date, granularity, data_type=None):
         """
         查询流量数据，文档 https://developer.qiniu.com/fusion/api/traffic-bandwidth
 
@@ -122,6 +133,7 @@ class CdnManager(object):
            start_date:  起始日期
            end_date:    结束日期
            granularity: 数据间隔
+           data_type:   计量数据类型, see class DataType.XXXFLOW
 
         Returns:
            一个dict变量和一个ResponseInfo对象
@@ -132,6 +144,8 @@ class CdnManager(object):
         req.update({"startDate": start_date})
         req.update({"endDate": end_date})
         req.update({"granularity": granularity})
+        if data_type is not None:
+            req.update({'type': data_type.value}) # should be one of 'flow', '302flow', '302mflow'
 
         body = json.dumps(req)
         url = '{0}/v2/tune/flux'.format(self.server)
