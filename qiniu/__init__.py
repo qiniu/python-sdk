@@ -21,7 +21,7 @@ from .services.storage.bucket import BucketManager, build_batch_copy, build_batc
     build_batch_stat, build_batch_delete, build_batch_restoreAr, build_batch_restore_ar
 from .services.storage.uploader import put_data, put_file, put_stream
 from .services.storage.upload_progress_recorder import UploadProgressRecorder
-from .services.cdn.manager import CdnManager, create_timestamp_anti_leech_url, DomainManager
+from .services.cdn.manager import CdnManager, DataType, create_timestamp_anti_leech_url, DomainManager
 from .services.processing.pfop import PersistentFop
 from .services.processing.cmd import build_op, pipe_cmd, op_save
 from .services.compute.app import AccountClient
