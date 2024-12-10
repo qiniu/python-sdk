@@ -15,6 +15,7 @@ from .endpoint import Endpoint
 from .region import Region, ServiceName
 from .default_client import qn_http_client
 from .middleware import RetryDomainsMiddleware
+from .single_flight import SingleFlight
 
 
 class RegionsProvider:
@@ -70,6 +71,9 @@ def _get_region_from_query(data, **kwargs):
     )
 
 
+_query_regions_single_flight = SingleFlight()
+
+
 class QueryRegionsProvider(RegionsProvider):
     def __init__(
         self,
@@ -95,7 +99,15 @@ class QueryRegionsProvider(RegionsProvider):
         self.max_retry_times_per_endpoint = max_retry_times_per_endpoint
 
     def __iter__(self):
-        regions = self.__fetch_regions()
+        endpoints_md5 = io_md5([
+            to_bytes(e.host) for e in self.endpoints_provider
+        ])
+        flight_key = ':'.join([
+            endpoints_md5,
+            self.access_key,
+            self.bucket_name
+        ])
+        regions = _query_regions_single_flight.do(flight_key, self.__fetch_regions)
         # change to `yield from` when min version of python update to >= 3.3
         for r in regions:
             yield r
