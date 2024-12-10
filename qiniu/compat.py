@@ -14,6 +14,13 @@ except (ImportError, SyntaxError):
     # because of u'...' Unicode literals.
     import json  # noqa
 
+# -------
+# Platform
+# -------
+
+is_windows = sys.platform == 'win32'
+is_linux = sys.platform == 'linux'
+is_macos = sys.platform == 'darwin'
 
 # -------
 # Pythons

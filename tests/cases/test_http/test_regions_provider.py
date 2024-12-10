@@ -1,7 +1,9 @@
 import os
 import datetime
 import tempfile
+import time
 import json
+from multiprocessing.pool import ThreadPool
 
 import pytest
 
@@ -9,7 +11,15 @@ from qiniu.compat import urlparse
 from qiniu.config import QUERY_REGION_HOST, QUERY_REGION_BACKUP_HOSTS
 from qiniu.http.endpoint import Endpoint
 from qiniu.http.region import Region
-from qiniu.http.regions_provider import QueryRegionsProvider, CachedRegionsProvider, _global_cache_scope, _persist_region
+from qiniu.http.regions_provider import (
+    CachedRegionsProvider,
+    FileAlreadyLocked,
+    QueryRegionsProvider,
+    _FileThreadingLocker,
+    _FileLocker,
+    _global_cache_scope,
+    _persist_region,
+)
 
 
 @pytest.fixture(scope='session')
@@ -30,6 +40,16 @@ def query_regions_provider(access_key, bucket_name, query_regions_endpoints_prov
         endpoints_provider=query_regions_endpoints_provider
     )
     yield query_regions_provider
+
+
+@pytest.fixture(scope='function')
+def temp_file_path(rand_string):
+    p = os.path.join(tempfile.gettempdir(), rand_string(16))
+    yield p
+    try:
+        os.remove(p)
+    except FileNotFoundError:
+        pass
 
 
 class TestQueryRegionsProvider:
@@ -267,3 +287,22 @@ class TestCachedQueryRegionsProvider:
         cached_regions_provider.cache_key = 'another-cache-key'
         list(cached_regions_provider)  # trigger __shrink_cache()
         assert len(cached_regions_provider._cache_scope.memo_cache[origin_cache_key]) > 0
+
+    def test_file_locker(self, temp_file_path):
+        handled_cnt = 0
+        skipped_cnt = 0
+
+
+        def process_file(_n):
+            nonlocal handled_cnt, skipped_cnt
+            try:
+                with open(temp_file_path, 'w') as f, _FileThreadingLocker(f), _FileLocker(f):
+                    time.sleep(1)
+                    handled_cnt += 1
+            except FileAlreadyLocked:
+                skipped_cnt += 1
+
+
+        ThreadPool(4).map(process_file, range(20))
+        assert handled_cnt + skipped_cnt == 20
+        assert 0 < handled_cnt <= 4
