@@ -524,7 +524,8 @@ class CachedRegionsProvider(MutableRegionsProvider):
             self.__get_regions_from_base_provider
         ]
 
-        regions = []
+        # set the fallback to None for raise errors when failed
+        regions = None
         for get_regions in get_regions_fns:
             regions = get_regions(fallback=regions)
             if regions and all(r.is_live for r in regions):

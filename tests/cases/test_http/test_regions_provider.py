@@ -275,7 +275,13 @@ class TestCachedQueryRegionsProvider:
         origin_cache_key = cached_regions_provider.cache_key
         cached_regions_provider.set_regions([expired_region])
         cached_regions_provider.cache_key = 'another-cache-key'
-        list(cached_regions_provider)  # trigger __shrink_cache()
+
+        # trigger __shrink_cache()
+        cached_regions_provider._cache_scope = cached_regions_provider._cache_scope._replace(
+            last_shrink_at=datetime.datetime.fromtimestamp(0)
+        )
+        list(cached_regions_provider)
+
         assert len(cached_regions_provider._cache_scope.memo_cache[origin_cache_key]) == 0
 
     def test_shrink_with_ignore_expired_regions(self, cached_regions_provider):
