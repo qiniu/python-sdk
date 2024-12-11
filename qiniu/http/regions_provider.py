@@ -205,7 +205,6 @@ if is_linux or is_macos:
 elif is_windows:
     import msvcrt
 
-
     class _FileLocker:
         def __init__(self, fd):
             self._fd = fd
@@ -235,13 +234,13 @@ else:
                 open_flags = os.O_EXCL | os.O_RDWR | os.O_CREAT
                 fd = os.open(self.lock_file_path, open_flags)
                 os.close(fd)
-            except FileExistsError:
+            except IOError:
                 raise FileAlreadyLocked('File {0} already locked'.format(self._file_path))
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             try:
                 os.remove(self.lock_file_path)
-            except FileNotFoundError:
+            except IOError:
                 pass
 
         @property

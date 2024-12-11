@@ -294,21 +294,20 @@ class TestCachedQueryRegionsProvider:
         list(cached_regions_provider)  # trigger __shrink_cache()
         assert len(cached_regions_provider._cache_scope.memo_cache[origin_cache_key]) > 0
 
-    def test_file_locker(self, temp_file_path):
-        handled_cnt = 0
-        skipped_cnt = 0
+    def test_file_locker(self, temp_file_path, use_ref):
+        handled_cnt = use_ref(0)
+        skipped_cnt = use_ref(0)
 
 
         def process_file(_n):
-            nonlocal handled_cnt, skipped_cnt
             try:
                 with open(temp_file_path, 'w') as f, _FileThreadingLocker(f), _FileLocker(f):
                     time.sleep(1)
-                    handled_cnt += 1
+                    handled_cnt.value += 1
             except FileAlreadyLocked:
-                skipped_cnt += 1
+                skipped_cnt.value += 1
 
 
         ThreadPool(4).map(process_file, range(20))
-        assert handled_cnt + skipped_cnt == 20
-        assert 0 < handled_cnt <= 4
+        assert handled_cnt.value + skipped_cnt.value == 20
+        assert 0 < handled_cnt.value <= 4
