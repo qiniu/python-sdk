@@ -9,6 +9,7 @@ from enum import Enum
 
 import hashlib
 
+
 class DataType(Enum):
     BANDWIDTH = 'bandwidth'
     X302BANDWIDTH = '302bandwidth'
@@ -16,6 +17,7 @@ class DataType(Enum):
     FLOW = 'flow'
     X302FLOW = '302flow'
     X302MFLOW = '302mflow'
+
 
 def urlencode(str):
     if is_py2:
@@ -118,7 +120,7 @@ class CdnManager(object):
         req.update({"endDate": end_date})
         req.update({"granularity": granularity})
         if data_type is not None:
-            req.update({'type': data_type.value}) # should be one of 'bandwidth', '302bandwidth', '302mbandwidth'
+            req.update({'type': data_type.value})  # should be one of 'bandwidth', '302bandwidth', '302mbandwidth'
 
         body = json.dumps(req)
         url = '{0}/v2/tune/bandwidth'.format(self.server)
@@ -145,7 +147,7 @@ class CdnManager(object):
         req.update({"endDate": end_date})
         req.update({"granularity": granularity})
         if data_type is not None:
-            req.update({'type': data_type.value}) # should be one of 'flow', '302flow', '302mflow'
+            req.update({'type': data_type.value})  # should be one of 'flow', '302flow', '302mflow'
 
         body = json.dumps(req)
         url = '{0}/v2/tune/flux'.format(self.server)
