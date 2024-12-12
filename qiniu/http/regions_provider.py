@@ -211,13 +211,12 @@ elif is_windows:
 
         def __enter__(self):
             try:
-                # TODO(lihs): set `_nbyte` bigger?
-                msvcrt.locking(self._fd, msvcrt.LK_LOCK | msvcrt.LK_NBLCK, 1)
+                msvcrt.locking(self._fd.fileno(), msvcrt.LK_LOCK | msvcrt.LK_NBLCK, 1)
             except OSError:
                 raise FileAlreadyLocked('File {0} already locked'.format(self._file_path))
 
         def __exit__(self, exc_type, exc_val, exc_tb):
-            msvcrt.locking(self._fd, msvcrt.LK_UNLCK, 1)
+            msvcrt.locking(self._fd.fileno(), msvcrt.LK_UNLCK, 1)
 
         @property
         def _file_path(self):
