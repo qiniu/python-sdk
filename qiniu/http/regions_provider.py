@@ -208,38 +208,64 @@ elif is_windows:
     class _FileLocker:
         def __init__(self, fd):
             self._fd = fd
+            self._lock_fd = None
+            self._already_locked = False
 
         def __enter__(self):
             try:
-                msvcrt.locking(self._fd.fileno(), msvcrt.LK_LOCK | msvcrt.LK_NBLCK, 1)
+                self._lock_fd = open(self._lock_file_path, 'w')
+                msvcrt.locking(self._lock_fd.fileno(), msvcrt.LK_LOCK | msvcrt.LK_NBLCK, 1)
             except OSError:
+                self._already_locked = True
                 raise FileAlreadyLocked('File {0} already locked'.format(self._file_path))
 
         def __exit__(self, exc_type, exc_val, exc_tb):
-            msvcrt.locking(self._fd.fileno(), msvcrt.LK_UNLCK, 1)
+            if self._already_locked:
+                if self._lock_fd:
+                    self._lock_fd.close()
+                return
+
+            try:
+                msvcrt.locking(self._lock_fd.fileno(), msvcrt.LK_UNLCK, 1)
+            finally:
+                self._lock_fd.close()
+                os.remove(self._lock_file_path)
 
         @property
         def _file_path(self):
             return self._fd.name
 
+        @property
+        def _lock_file_path(self):
+            """
+            Returns
+            -------
+            str
+            """
+            return self._file_path + '.lock'
+
 else:
     class _FileLocker:
         def __init__(self, fd):
             self._fd = fd
+            self._already_locked = False
 
         def __enter__(self):
             try:
                 # Atomic file creation
                 open_flags = os.O_EXCL | os.O_RDWR | os.O_CREAT
-                fd = os.open(self.lock_file_path, open_flags)
+                fd = os.open(self._lock_file_path, open_flags)
                 os.close(fd)
-            except IOError:
+            except OSError:
+                self._already_locked = True
                 raise FileAlreadyLocked('File {0} already locked'.format(self._file_path))
 
         def __exit__(self, exc_type, exc_val, exc_tb):
+            if self._already_locked:
+                return
             try:
-                os.remove(self.lock_file_path)
-            except IOError:
+                os.remove(self._lock_file_path)
+            except OSError:
                 pass
 
         @property
@@ -247,7 +273,7 @@ else:
             return self._fd.name
 
         @property
-        def lock_file_path(self):
+        def _lock_file_path(self):
             """
             Returns
             -------
@@ -770,6 +796,10 @@ class CachedRegionsProvider(MutableRegionsProvider):
                     os.chmod(shrink_file_path, 0o666)
 
                 # rename file
+                if is_windows:
+                    # windows must close first, or will raise permission error
+                    # be careful to do something with the file after this
+                    f.close()
                 shutil.move(shrink_file_path, self._cache_scope.persist_path)
 
                 # update last shrink time
