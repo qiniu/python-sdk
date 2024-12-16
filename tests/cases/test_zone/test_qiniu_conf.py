@@ -51,7 +51,7 @@ class TestQiniuConfWithZone:
         'set_conf_default',
         [
             {
-                'default_query_region_host': 'https://fake-uc.phpsdk.qiniu.com'
+                'default_query_region_host': 'https://fake-uc.pysdk.qiniu.com'
             }
         ],
         indirect=True
@@ -66,9 +66,9 @@ class TestQiniuConfWithZone:
         'set_conf_default',
         [
             {
-                'default_query_region_host': 'https://fake-uc.phpsdk.qiniu.com',
+                'default_query_region_host': 'https://fake-uc.pysdk.qiniu.com',
                 'default_query_region_backup_hosts': [
-                    'unavailable-uc.phpsdk.qiniu.com',
+                    'unavailable-uc.pysdk.qiniu.com',
                     'uc.qbox.me'
                 ]
             }
@@ -78,13 +78,13 @@ class TestQiniuConfWithZone:
     def test_query_region_with_backup_domains(self, access_key, bucket_name, set_conf_default):
         zone = Zone()
         data = zone.bucket_hosts(access_key, bucket_name)
-        assert data != 'null'
+        assert data != 'null' and len(data) > 0
 
     @pytest.mark.parametrize(
         'set_conf_default',
         [
             {
-                'default_uc_host': 'https://fake-uc.phpsdk.qiniu.com',
+                'default_uc_host': 'https://fake-uc.pysdk.qiniu.com',
                 'default_query_region_backup_hosts': [
                     'unavailable-uc.phpsdk.qiniu.com',
                     'uc.qbox.me'

@@ -57,6 +57,7 @@ class ResponseInfo(object):
         ]):
             return False
         # https://developer.qiniu.com/fusion/kb/1352/the-http-request-return-a-status-code
+        # https://developer.qiniu.com/kodo/3928/error-responses
         if self.status_code in [
             501, 509, 573, 579, 608, 612, 614, 616, 618, 630, 631, 632, 640, 701
         ]:
