@@ -540,7 +540,10 @@ class CachedRegionsProvider(MutableRegionsProvider):
 
     def __iter__(self):
         if self.__should_shrink:
-            self.__shrink_cache()
+            try:
+                self.__shrink_cache()
+            except Exception as err:
+                logging.warning('failed to shrink cache', err)
 
         get_regions_fns = [
             self.__get_regions_from_memo,
