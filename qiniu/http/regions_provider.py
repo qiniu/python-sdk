@@ -543,7 +543,7 @@ class CachedRegionsProvider(MutableRegionsProvider):
             try:
                 self.__shrink_cache()
             except Exception as err:
-                logging.warning('failed to shrink cache', err)
+                logging.warning('failed to shrink cache. error: %s', err)
 
         get_regions_fns = [
             self.__get_regions_from_memo,
@@ -581,7 +581,7 @@ class CachedRegionsProvider(MutableRegionsProvider):
                     'regions': [_persist_region(r) for r in regions]
                 }) + os.linesep)
         except Exception as err:
-            logging.warning('failed to cache regions result to file', err)
+            logging.warning('failed to cache regions result to file. error: %s', err)
 
     @property
     def persist_path(self):
