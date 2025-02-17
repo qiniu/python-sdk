@@ -1,5 +1,6 @@
 import abc
 import datetime
+import errno
 import itertools
 from collections import namedtuple
 import logging
@@ -300,7 +301,8 @@ _global_cache_scope = CacheScope(
     memo_cache={},
     persist_path=os.path.join(
         tempfile.gettempdir(),
-        'qn-py-sdk-regions-cache.jsonl'
+        'qn-py-sdk',
+        'regions-cache.jsonl'
     ),
     last_shrink_at=datetime.datetime.fromtimestamp(0),
     shrink_interval=datetime.timedelta(days=1),
@@ -520,8 +522,24 @@ class CachedRegionsProvider(MutableRegionsProvider):
         persist_path = kwargs.get('persist_path', None)
         last_shrink_at = datetime.datetime.fromtimestamp(0)
         if persist_path is None:
-            persist_path = _global_cache_scope.persist_path
-            last_shrink_at = _global_cache_scope.last_shrink_at
+            cache_dir = os.path.dirname(_global_cache_scope.persist_path)
+            try:
+                # make sure the cache dir is available for all users.
+                # we can not use the '/tmp' dir directly on linux,
+                # because the permission is 0o1777
+                if not os.path.exists(cache_dir):
+                    # os.makedirs have no exists_ok parameter in python 2.7
+                    os.makedirs(cache_dir)
+                    os.chmod(cache_dir, 0o777)
+                persist_path = _global_cache_scope.persist_path
+                last_shrink_at = _global_cache_scope.last_shrink_at
+            except Exception as err:
+                if isinstance(err, OSError) and err.errno == errno.EEXIST:
+                    persist_path = _global_cache_scope.persist_path
+                    last_shrink_at = _global_cache_scope.last_shrink_at
+                else:
+                    logging.warning(
+                        'failed to create cache dir %s. error: %s', cache_dir, err)
 
         shrink_interval = kwargs.get('shrink_interval', None)
         if shrink_interval is None:
