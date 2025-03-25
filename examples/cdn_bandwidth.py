@@ -5,7 +5,7 @@
 查询指定域名指定时间段内的带宽
 """
 import qiniu
-from qiniu import CdnManager
+from qiniu import CdnManager, DataType
 
 
 # 账户ak，sk
@@ -28,6 +28,12 @@ urls = [
 
 ret, info = cdn_manager.get_bandwidth_data(
     urls, startDate, endDate, granularity)
+
+print(ret)
+print(info)
+
+ret, info = cdn_manager.get_bandwidth_data(
+    urls, startDate, endDate, granularity, data_type=DataType.BANDWIDTH)
 
 print(ret)
 print(info)

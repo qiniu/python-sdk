@@ -1,19 +1,22 @@
 import abc
 import datetime
+import errno
 import itertools
 from collections import namedtuple
 import logging
 import tempfile
 import os
 import shutil
+import threading
 
-from qiniu.compat import json, b as to_bytes
+from qiniu.compat import json, b as to_bytes, is_windows, is_linux, is_macos
 from qiniu.utils import io_md5, dt2ts
 
 from .endpoint import Endpoint
 from .region import Region, ServiceName
 from .default_client import qn_http_client
 from .middleware import RetryDomainsMiddleware
+from .single_flight import SingleFlight
 
 
 class RegionsProvider:
@@ -24,7 +27,7 @@ class RegionsProvider:
         """
         Returns
         -------
-        list[Region]
+        Generator[Region, None, None]
         """
 
 
@@ -69,6 +72,9 @@ def _get_region_from_query(data, **kwargs):
     )
 
 
+_query_regions_single_flight = SingleFlight()
+
+
 class QueryRegionsProvider(RegionsProvider):
     def __init__(
         self,
@@ -94,7 +100,15 @@ class QueryRegionsProvider(RegionsProvider):
         self.max_retry_times_per_endpoint = max_retry_times_per_endpoint
 
     def __iter__(self):
-        regions = self.__fetch_regions()
+        endpoints_md5 = io_md5([
+            to_bytes(e.host) for e in self.endpoints_provider
+        ])
+        flight_key = ':'.join([
+            endpoints_md5,
+            self.access_key,
+            self.bucket_name
+        ])
+        regions = _query_regions_single_flight.do(flight_key, self.__fetch_regions)
         # change to `yield from` when min version of python update to >= 3.3
         for r in regions:
             yield r
@@ -137,27 +151,136 @@ class FileAlreadyLocked(RuntimeError):
         super(FileAlreadyLocked, self).__init__(message)
 
 
-class _FileLocker:
-    def __init__(self, origin_file):
-        self._origin_file = origin_file
+_file_threading_lockers_lock = threading.Lock()
+_file_threading_lockers = {}
+
+
+class _FileThreadingLocker:
+    def __init__(self, fd):
+        self._fd = fd
 
     def __enter__(self):
-        if os.access(self.lock_file_path, os.R_OK | os.W_OK):
-            raise FileAlreadyLocked('File {0} already locked'.format(self._origin_file))
-        with open(self.lock_file_path, 'w'):
-            pass
+        with _file_threading_lockers_lock:
+            global _file_threading_lockers
+            threading_lock = _file_threading_lockers.get(self._file_path, threading.Lock())
+            # Could use keyword style `acquire(blocking=False)` when min version of python update to >= 3
+            if not threading_lock.acquire(False):
+                raise FileAlreadyLocked('File {0} already locked'.format(self._file_path))
+            _file_threading_lockers[self._file_path] = threading_lock
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        os.remove(self.lock_file_path)
+        with _file_threading_lockers_lock:
+            global _file_threading_lockers
+            threading_lock = _file_threading_lockers.get(self._file_path)
+            if threading_lock and threading_lock.locked():
+                threading_lock.release()
+                del _file_threading_lockers[self._file_path]
 
     @property
-    def lock_file_path(self):
-        """
-        Returns
-        -------
-        str
-        """
-        return self._origin_file + '.lock'
+    def _file_path(self):
+        return self._fd.name
+
+
+if is_linux or is_macos:
+    import fcntl
+
+    # Use subclass of _FileThreadingLocker when min version of python update to >= 3
+    class _FileLocker:
+        def __init__(self, fd):
+            self._fd = fd
+
+        def __enter__(self):
+            try:
+                fcntl.lockf(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except IOError:
+                # Use `raise ... from ...` when min version of python update to >= 3
+                raise FileAlreadyLocked('File {0} already locked'.format(self._file_path))
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            fcntl.lockf(self._fd, fcntl.LOCK_UN)
+
+        @property
+        def _file_path(self):
+            return self._fd.name
+
+elif is_windows:
+    import msvcrt
+
+    class _FileLocker:
+        def __init__(self, fd):
+            self._fd = fd
+            self._lock_fd = None
+            self._already_locked = False
+
+        def __enter__(self):
+            try:
+                self._lock_fd = open(self._lock_file_path, 'w')
+                msvcrt.locking(self._lock_fd.fileno(), msvcrt.LK_LOCK | msvcrt.LK_NBLCK, 1)
+            except OSError:
+                self._already_locked = True
+                raise FileAlreadyLocked('File {0} already locked'.format(self._file_path))
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if self._already_locked:
+                if self._lock_fd:
+                    self._lock_fd.close()
+                return
+
+            try:
+                msvcrt.locking(self._lock_fd.fileno(), msvcrt.LK_UNLCK, 1)
+            finally:
+                self._lock_fd.close()
+                os.remove(self._lock_file_path)
+
+        @property
+        def _file_path(self):
+            return self._fd.name
+
+        @property
+        def _lock_file_path(self):
+            """
+            Returns
+            -------
+            str
+            """
+            return self._file_path + '.lock'
+
+else:
+    class _FileLocker:
+        def __init__(self, fd):
+            self._fd = fd
+            self._already_locked = False
+
+        def __enter__(self):
+            try:
+                # Atomic file creation
+                open_flags = os.O_EXCL | os.O_RDWR | os.O_CREAT
+                fd = os.open(self._lock_file_path, open_flags)
+                os.close(fd)
+            except OSError:
+                self._already_locked = True
+                raise FileAlreadyLocked('File {0} already locked'.format(self._file_path))
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if self._already_locked:
+                return
+            try:
+                os.remove(self._lock_file_path)
+            except OSError:
+                pass
+
+        @property
+        def _file_path(self):
+            return self._fd.name
+
+        @property
+        def _lock_file_path(self):
+            """
+            Returns
+            -------
+            str
+            """
+            return self._file_path + '.lock'
 
 
 # use dataclass instead namedtuple if min version of python update to 3.7
@@ -168,7 +291,8 @@ CacheScope = namedtuple(
         'persist_path',
         'last_shrink_at',
         'shrink_interval',
-        'should_shrink_expired_regions'
+        'should_shrink_expired_regions',
+        'memo_cache_lock'
     ]
 )
 
@@ -177,11 +301,13 @@ _global_cache_scope = CacheScope(
     memo_cache={},
     persist_path=os.path.join(
         tempfile.gettempdir(),
-        'qn-regions-cache.jsonl'
+        'qn-py-sdk',
+        'regions-cache.jsonl'
     ),
     last_shrink_at=datetime.datetime.fromtimestamp(0),
-    shrink_interval=datetime.timedelta(-1),  # useless for now
-    should_shrink_expired_regions=False
+    shrink_interval=datetime.timedelta(days=1),
+    should_shrink_expired_regions=False,
+    memo_cache_lock=threading.Lock()
 )
 
 
@@ -323,7 +449,7 @@ def _parse_persisted_regions(persisted_data):
     return parsed_data.get('cacheKey'), regions
 
 
-def _walk_persist_cache_file(persist_path, ignore_parse_error=False):
+def _walk_persist_cache_file(persist_path, ignore_parse_error=True):
     """
     Parameters
     ----------
@@ -394,28 +520,48 @@ class CachedRegionsProvider(MutableRegionsProvider):
         self.base_regions_provider = base_regions_provider
 
         persist_path = kwargs.get('persist_path', None)
+        last_shrink_at = datetime.datetime.fromtimestamp(0)
         if persist_path is None:
-            persist_path = _global_cache_scope.persist_path
+            cache_dir = os.path.dirname(_global_cache_scope.persist_path)
+            try:
+                # make sure the cache dir is available for all users.
+                # we can not use the '/tmp' dir directly on linux,
+                # because the permission is 0o1777
+                if not os.path.exists(cache_dir):
+                    # os.makedirs have no exists_ok parameter in python 2.7
+                    os.makedirs(cache_dir)
+                    os.chmod(cache_dir, 0o777)
+                persist_path = _global_cache_scope.persist_path
+                last_shrink_at = _global_cache_scope.last_shrink_at
+            except Exception as err:
+                if isinstance(err, OSError) and err.errno == errno.EEXIST:
+                    persist_path = _global_cache_scope.persist_path
+                    last_shrink_at = _global_cache_scope.last_shrink_at
+                else:
+                    logging.warning(
+                        'failed to create cache dir %s. error: %s', cache_dir, err)
 
         shrink_interval = kwargs.get('shrink_interval', None)
         if shrink_interval is None:
-            shrink_interval = datetime.timedelta(days=1)
+            shrink_interval = _global_cache_scope.shrink_interval
 
         should_shrink_expired_regions = kwargs.get('should_shrink_expired_regions', None)
         if should_shrink_expired_regions is None:
-            should_shrink_expired_regions = False
+            should_shrink_expired_regions = _global_cache_scope.should_shrink_expired_regions
 
-        self._cache_scope = CacheScope(
-            memo_cache=_global_cache_scope.memo_cache,
+        self._cache_scope = _global_cache_scope._replace(
             persist_path=persist_path,
-            last_shrink_at=datetime.datetime.fromtimestamp(0),
+            last_shrink_at=last_shrink_at,
             shrink_interval=shrink_interval,
-            should_shrink_expired_regions=should_shrink_expired_regions,
+            should_shrink_expired_regions=should_shrink_expired_regions
         )
 
     def __iter__(self):
         if self.__should_shrink:
-            self.__shrink_cache()
+            try:
+                self.__shrink_cache()
+            except Exception as err:
+                logging.warning('failed to shrink cache. error: %s', err)
 
         get_regions_fns = [
             self.__get_regions_from_memo,
@@ -423,6 +569,7 @@ class CachedRegionsProvider(MutableRegionsProvider):
             self.__get_regions_from_base_provider
         ]
 
+        # set the fallback to None for raise errors when failed
         regions = None
         for get_regions in get_regions_fns:
             regions = get_regions(fallback=regions)
@@ -439,7 +586,8 @@ class CachedRegionsProvider(MutableRegionsProvider):
         ----------
         regions: list[Region]
         """
-        self._cache_scope.memo_cache[self.cache_key] = regions
+        with self._cache_scope.memo_cache_lock:
+            self._cache_scope.memo_cache[self.cache_key] = regions
 
         if not self._cache_scope.persist_path:
             return
@@ -451,7 +599,7 @@ class CachedRegionsProvider(MutableRegionsProvider):
                     'regions': [_persist_region(r) for r in regions]
                 }) + os.linesep)
         except Exception as err:
-            logging.warning('failed to cache regions result to file', err)
+            logging.warning('failed to cache regions result to file. error: %s', err)
 
     @property
     def persist_path(self):
@@ -469,8 +617,11 @@ class CachedRegionsProvider(MutableRegionsProvider):
         ----------
         value: str
         """
+        if value == self._cache_scope.persist_path:
+            return
         self._cache_scope = self._cache_scope._replace(
-            persist_path=value
+            persist_path=value,
+            last_shrink_at=datetime.datetime.fromtimestamp(0)
         )
 
     @property
@@ -586,7 +737,6 @@ class CachedRegionsProvider(MutableRegionsProvider):
     def __flush_file_cache_to_memo(self):
         for cache_key, regions in _walk_persist_cache_file(
             persist_path=self._cache_scope.persist_path
-            # ignore_parse_error=True
         ):
             if cache_key not in self._cache_scope.memo_cache:
                 self._cache_scope.memo_cache[cache_key] = regions
@@ -609,12 +759,18 @@ class CachedRegionsProvider(MutableRegionsProvider):
     def __shrink_cache(self):
         # shrink memory cache
         if self._cache_scope.should_shrink_expired_regions:
-            kept_memo_cache = {}
-            for k, regions in self._cache_scope.memo_cache.items():
-                live_regions = [r for r in regions if r.is_live]
-                if live_regions:
-                    kept_memo_cache[k] = live_regions
-            self._cache_scope = self._cache_scope._replace(memo_cache=kept_memo_cache)
+            memo_cache_old = self._cache_scope.memo_cache.copy()
+            # Could use keyword style `acquire(blocking=False)` when min version of python update to >= 3
+            if self._cache_scope.memo_cache_lock.acquire(False):
+                try:
+                    for k, regions in memo_cache_old.items():
+                        live_regions = [r for r in regions if r.is_live]
+                        if live_regions:
+                            self._cache_scope.memo_cache[k] = live_regions
+                        else:
+                            del self._cache_scope.memo_cache[k]
+                finally:
+                    self._cache_scope.memo_cache_lock.release()
 
         # shrink file cache
         if not self._cache_scope.persist_path:
@@ -625,7 +781,7 @@ class CachedRegionsProvider(MutableRegionsProvider):
 
         shrink_file_path = self._cache_scope.persist_path + '.shrink'
         try:
-            with _FileLocker(shrink_file_path):
+            with open(shrink_file_path, 'a') as f, _FileThreadingLocker(f), _FileLocker(f):
                 # filter data
                 shrunk_cache = {}
                 for cache_key, regions in _walk_persist_cache_file(
@@ -646,25 +802,40 @@ class CachedRegionsProvider(MutableRegionsProvider):
                         )
 
                 # write data
-                with open(shrink_file_path, 'a') as f:
-                    for cache_key, regions in shrunk_cache.items():
-                        f.write(
-                            json.dumps(
-                                {
-                                    'cacheKey': cache_key,
-                                    'regions': [_persist_region(r) for r in regions]
-                                }
-                            ) + os.linesep
-                        )
+                for cache_key, regions in shrunk_cache.items():
+                    f.write(
+                        json.dumps(
+                            {
+                                'cacheKey': cache_key,
+                                'regions': [_persist_region(r) for r in regions]
+                            }
+                        ) + os.linesep
+                    )
+
+                # make the cache file available for all users
+                if is_linux or is_macos:
+                    os.chmod(shrink_file_path, 0o666)
 
                 # rename file
+                if is_windows:
+                    # windows must close first, or will raise permission error
+                    # be careful to do something with the file after this
+                    f.close()
                 shutil.move(shrink_file_path, self._cache_scope.persist_path)
+
+                # update last shrink time
+                self._cache_scope = self._cache_scope._replace(
+                    last_shrink_at=datetime.datetime.now()
+                )
+                global _global_cache_scope
+                if _global_cache_scope.persist_path == self._cache_scope.persist_path:
+                    _global_cache_scope = _global_cache_scope._replace(
+                        last_shrink_at=self._cache_scope.last_shrink_at
+                    )
+
         except FileAlreadyLocked:
+            # skip file shrink by another running
             pass
-        finally:
-            self._cache_scope = self._cache_scope._replace(
-                last_shrink_at=datetime.datetime.now()
-            )
 
 
 def get_default_regions_provider(
