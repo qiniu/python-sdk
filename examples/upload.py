@@ -2,7 +2,7 @@
 # flake8: noqa
 # import hashlib
 
-from qiniu import Auth, put_file, urlsafe_base64_encode
+from qiniu import Auth, put_file_v2, urlsafe_base64_encode
 import qiniu.config
 from qiniu.compat import is_py2, is_py3
 
@@ -37,7 +37,7 @@ localfile = '/Users/jemy/Documents/qiniu.png'
 #     'x-qn-meta-md5': hasher.hexdigest()
 # }
 
-ret, info = put_file(
+ret, info = put_file_v2(
     token,
     key,
     localfile

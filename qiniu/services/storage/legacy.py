@@ -3,6 +3,8 @@ import hashlib
 import os
 import time
 
+from typing_extensions import deprecated
+
 from qiniu import config, http
 from qiniu.auth import Auth
 from qiniu.compat import json
@@ -10,7 +12,7 @@ from qiniu.utils import _file_iter, crc32, rfc_from_timestamp, urlsafe_base64_en
 
 from qiniu.services.storage.upload_progress_recorder import UploadProgressRecorder
 
-
+@deprecated("use uploader instead")
 class _Resume(object):
     """deprecated 断点续上传类
 
