@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 
-from typing_extensions import deprecated
-
 from qiniu.config import _BLOCK_SIZE, get_default
 
 from qiniu.auth import Auth
-from qiniu.utils import crc32, file_crc32, rfc_from_timestamp
+from qiniu.utils import crc32, file_crc32, rfc_from_timestamp, deprecated
 
 from qiniu.services.storage.uploaders import FormUploader, ResumeUploaderV1, ResumeUploaderV2
 from qiniu.services.storage.upload_progress_recorder import UploadProgressRecorder
