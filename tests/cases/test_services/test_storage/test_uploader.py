@@ -14,7 +14,7 @@ from qiniu import (
 )
 from qiniu.http.endpoint import Endpoint
 from qiniu.http.region import ServiceName
-from qiniu.services.storage.uploader import _form_put
+from qiniu.services.storage.uploader import _form_put, put_file_v2, put_stream_v2
 from qiniu.services.storage.uploaders.abc import UploaderBase
 
 KB = 1024
@@ -141,6 +141,33 @@ class TestUploadFuncs:
 
         token = qn_auth.upload_token(bucket_name, key)
         ret, info = put_file(
+            token,
+            key,
+            temp_file.path,
+            mime_type=commonly_options.mime_type,
+            check_crc=True
+        )
+
+        _, actual_md5 = get_remote_object_headers_and_md5(key=key)
+
+        assert ret is not None, info
+        assert ret['key'] == key, info
+        assert actual_md5 == temp_file.md5
+
+    @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
+    def test_put_file_v2(
+            self,
+            qn_auth,
+            bucket_name,
+            temp_file,
+            commonly_options,
+            get_remote_object_headers_and_md5,
+            get_key
+    ):
+        key = get_key('test_file')
+
+        token = qn_auth.upload_token(bucket_name, key)
+        ret, info = put_file_v2(
             token,
             key,
             temp_file.path,
@@ -408,6 +435,26 @@ class TestResumableUploader:
         with open(temp_file.path, 'rb') as input_stream:
             token = qn_auth.upload_token(bucket_name, key)
             ret, info = put_stream(
+                token,
+                key,
+                input_stream,
+                temp_file.name,
+                temp_file.size,
+                None,
+                commonly_options.params,
+                commonly_options.mime_type,
+                part_size=None,
+                version=None,
+                bucket_name=None
+            )
+            assert ret['key'] == key
+
+    @pytest.mark.parametrize('temp_file', [64 * KB], indirect=True)
+    def test_put_stream_v2(self, qn_auth, bucket_name, temp_file, commonly_options, get_key):
+        key = get_key('test_file_r')
+        with open(temp_file.path, 'rb') as input_stream:
+            token = qn_auth.upload_token(bucket_name, key)
+            ret, info = put_stream_v2(
                 token,
                 key,
                 input_stream,

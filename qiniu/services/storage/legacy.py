@@ -6,11 +6,12 @@ import time
 from qiniu import config, http
 from qiniu.auth import Auth
 from qiniu.compat import json
-from qiniu.utils import _file_iter, crc32, rfc_from_timestamp, urlsafe_base64_encode
+from qiniu.utils import _file_iter, crc32, rfc_from_timestamp, urlsafe_base64_encode, deprecated
 
 from qiniu.services.storage.upload_progress_recorder import UploadProgressRecorder
 
 
+@deprecated("use uploader instead")
 class _Resume(object):
     """deprecated 断点续上传类
 
@@ -85,7 +86,7 @@ class _Resume(object):
                 return 0, None, None
         try:
             if not record['modify_time'] or record['size'] != self.size or \
-                   record['modify_time'] != self.modify_time:
+                    record['modify_time'] != self.modify_time:
                 if self.version == 'v1':
                     return 0
                 elif self.version == 'v2':
@@ -106,8 +107,8 @@ class _Resume(object):
             return record['offset']
         elif self.version == 'v2':
             if not record.__contains__('etags') or len(record['etags']) == 0 or \
-               not record.__contains__('expired_at') or float(record['expired_at']) < time.time() or \
-               not record.__contains__('upload_id'):
+                    not record.__contains__('expired_at') or float(record['expired_at']) < time.time() or \
+                    not record.__contains__('upload_id'):
                 return 0, None, None
             self.blockStatus = record['etags']
             return record['offset'], record['upload_id'], record['expired_at']
@@ -178,7 +179,7 @@ class _Resume(object):
         offset, self.uploadId, self.expiredAt = self.recovery_from_record()
         is_resumed = False
         if offset > 0 and self.blockStatus != [] and self.uploadId is not None \
-           and self.expiredAt is not None:
+                and self.expiredAt is not None:
             self.recovery_index = self.blockStatus[-1]['partNumber'] + 1
             is_resumed = True
         else:
@@ -201,7 +202,7 @@ class _Resume(object):
                 if config.get_default('default_zone').up_host_backup:
                     host = config.get_default('default_zone').up_host_backup
                 else:
-                    host = config.get_default('default_zone')\
+                    host = config.get_default('default_zone') \
                         .get_up_host_backup_by_token(self.up_token, self.hostscache_dir)
 
             if info.need_retry():

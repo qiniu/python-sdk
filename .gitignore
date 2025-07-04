@@ -4,6 +4,7 @@
 
 *.py[cod]
 
+tests/cases/env
 my-test-env.sh
 
 ##

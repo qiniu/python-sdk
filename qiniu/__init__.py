@@ -9,7 +9,7 @@ For detailed document, please see:
 
 # flake8: noqa
 
-__version__ = '7.16.0'
+__version__ = '7.17.0'
 
 from .auth import Auth, QiniuMacAuth
 
@@ -19,7 +19,7 @@ from .region import LegacyRegion as Region
 
 from .services.storage.bucket import BucketManager, build_batch_copy, build_batch_rename, build_batch_move, \
     build_batch_stat, build_batch_delete, build_batch_restoreAr, build_batch_restore_ar
-from .services.storage.uploader import put_data, put_file, put_stream
+from .services.storage.uploader import put_data, put_file, put_file_v2, put_stream, put_stream_v2
 from .services.storage.upload_progress_recorder import UploadProgressRecorder
 from .services.cdn.manager import CdnManager, DataType, create_timestamp_anti_leech_url, DomainManager
 from .services.processing.pfop import PersistentFop

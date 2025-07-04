@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import warnings
+from functools import wraps
 from hashlib import sha1, new as hashlib_new
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 from datetime import datetime, tzinfo, timedelta
@@ -264,3 +266,17 @@ def dt2ts(dt):
         st = (dt - datetime(1970, 1, 1, tzinfo=_UTC_TZINFO())).total_seconds()
 
     return int(st)
+
+
+def deprecated(reason):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            warnings.warn(
+                "DEPRECATED: {} - {}".format(func.__name__, reason),
+                DeprecationWarning,
+                stacklevel=2
+            )
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator

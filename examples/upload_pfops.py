@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
-from qiniu import Auth, put_file, urlsafe_base64_encode
+from qiniu import Auth, urlsafe_base64_encode, put_file_v2
 
 access_key = '...'
 secret_key = '...'
@@ -33,6 +33,6 @@ token = q.upload_token(bucket_name, key, 3600, policy)
 
 localfile = './python_video.flv'
 
-ret, info = put_file(token, key, localfile)
+ret, info = put_file_v2(token, key, localfile)
 print(info)
 assert ret['key'] == key

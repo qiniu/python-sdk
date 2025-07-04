@@ -69,7 +69,7 @@ class TestBucketManager:
         pass
 
     def test_list_bucket(self, bucket_manager, bucket_name):
-        ret, resp = bucket_manager.list_bucket('na0')
+        ret, resp = bucket_manager.list_bucket('z0')
         assert resp.ok(), resp
         assert any(b.get('tbl') == bucket_name for b in ret)
 
