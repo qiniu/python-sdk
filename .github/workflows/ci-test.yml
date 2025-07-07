@@ -1,4 +1,6 @@
-on: [push]
+on:
+  - push
+  - pull_request
 name: Run Test Cases
 jobs:
   test:
@@ -7,7 +9,7 @@ jobs:
       max-parallel: 1
       matrix:
         python_version: ['2.7', '3.4', '3.5', '3.6', '3.7', '3.8', '3.9']
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
