@@ -161,7 +161,6 @@ class _FileThreadingLocker:
 
     def __enter__(self):
         with _file_threading_lockers_lock:
-            global _file_threading_lockers
             threading_lock = _file_threading_lockers.get(self._file_path, threading.Lock())
             # Could use keyword style `acquire(blocking=False)` when min version of python update to >= 3
             if not threading_lock.acquire(False):
@@ -170,7 +169,6 @@ class _FileThreadingLocker:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         with _file_threading_lockers_lock:
-            global _file_threading_lockers
             threading_lock = _file_threading_lockers.get(self._file_path)
             if threading_lock and threading_lock.locked():
                 threading_lock.release()
