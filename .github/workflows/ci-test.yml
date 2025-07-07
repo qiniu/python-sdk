@@ -84,7 +84,7 @@ jobs:
       max-parallel: 1
       matrix:
         python_version: ['2.7', '3.5', '3.9']
-    runs-on: windows-2019
+    runs-on: windows-2022
     # make sure only one test running,
     # remove this when cases could run in parallel.
     needs: test
