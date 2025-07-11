@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 
-from qiniu import Auth, put_file
+from qiniu import Auth, put_file_v2
 
 access_key = '...'
 secret_key = '...'
@@ -22,6 +22,6 @@ token = q.upload_token(bucket_name, key, 3600, policy)
 
 localfile = './sync/bbb.jpg'
 
-ret, info = put_file(token, key, localfile)
+ret, info = put_file_v2(token, key, localfile)
 print(info)
 assert ret['key'] == key

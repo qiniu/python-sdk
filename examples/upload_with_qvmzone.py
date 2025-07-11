@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 
-from qiniu import Auth, put_file, urlsafe_base64_encode
+from qiniu import Auth, put_file_v2
 import qiniu.config
 from qiniu import Zone, set_default
 
@@ -34,6 +34,6 @@ zone = Zone(
     scheme='http')
 set_default(default_zone=zone)
 
-ret, info = put_file(token, key, localfile)
+ret, info = put_file_v2(token, key, localfile)
 print(info)
 assert ret['key'] == key

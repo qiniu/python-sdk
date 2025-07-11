@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 
-from qiniu import Auth, put_file
+from qiniu import Auth, put_file_v2
 from qiniu import Zone, set_default
 
 # 需要填写你的 Access Key 和 Secret Key
@@ -38,5 +38,5 @@ zone = Zone(
     scheme='https')
 set_default(default_zone=zone)
 
-ret, info = put_file(token, key, localfile)
+ret, info = put_file_v2(token, key, localfile)
 print(info)
