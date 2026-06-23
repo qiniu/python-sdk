@@ -51,12 +51,16 @@ class _ConnectDescriptor(object):
 
 class SandboxPaginator(object):
     def __init__(self, client=None, **opts):
-        self.client = client or SandboxClient(**opts)
-        self.opts = dict(opts)
-        self.opts.pop('client', None)
-        self.next_token = opts.get('nextToken') or opts.get('next_token')
-        self.opts.pop('nextToken', None)
-        self.opts.pop('next_token', None)
+        opts = dict(opts)
+        client_opts = {}
+        for key in ('endpoint', 'api_url', 'api_key', 'access_token',
+                    'mac', 'access_key', 'secret_key', 'session', 'timeout'):
+            if key in opts:
+                client_opts[key] = opts.pop(key)
+        self.client = client or SandboxClient(**client_opts)
+        self.opts = opts
+        self.next_token = opts.pop('nextToken', None) or opts.pop(
+            'next_token', None)
         self._has_next = True
 
     @property

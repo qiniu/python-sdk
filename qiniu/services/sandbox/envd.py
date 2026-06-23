@@ -24,6 +24,8 @@ def envd_headers(sandbox, user=None, extra=None):
 
 
 def connect_rpc(sandbox, procedure, body=None, user=None, timeout=None):
+    if timeout is None:
+        timeout = sandbox.client.timeout
     url = sandbox.envd_url() + procedure
     headers = envd_headers(sandbox, user, {'Content-Type': 'application/json'})
     try:
@@ -144,6 +146,8 @@ def iter_connect_envelopes(chunks, response=None):
 
 def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
                        stream=False):
+    if timeout is None:
+        timeout = sandbox.client.timeout
     url = sandbox.envd_url() + procedure
     headers = envd_headers(sandbox, user, {
         'Content-Type': 'application/connect+json',
@@ -192,6 +196,8 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
 
 
 def raw_envd_request(sandbox, method, url, **kwargs):
+    if kwargs.get('timeout') is None:
+        kwargs['timeout'] = sandbox.client.timeout
     try:
         response = sandbox.client.session.request(method, url, **kwargs)
     except requests.RequestException as err:

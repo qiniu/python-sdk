@@ -2,7 +2,7 @@
 import base64
 import binascii
 
-from qiniu.compat import basestring
+from qiniu.compat import basestring, bytes as bytes_type
 
 from .envd import connect_rpc, connect_stream_rpc
 from .errors import CommandExitError, SandboxError
@@ -53,16 +53,14 @@ def _decode_bytes(value):
         return ''
     if isinstance(value, list):
         return bytearray(value).decode('utf-8', 'replace')
-    if isinstance(value, (bytes, basestring)):
+    if isinstance(value, bytes_type):
+        return value.decode('utf-8', 'replace')
+    if isinstance(value, basestring):
         try:
             decoded = base64.b64decode(value).decode('utf-8', 'replace')
         except (binascii.Error, TypeError):
-            if isinstance(value, bytes):
-                return value.decode('utf-8', 'replace')
             return value
         if u'\ufffd' in decoded:
-            if isinstance(value, bytes):
-                return value.decode('utf-8', 'replace')
             return value
         return decoded
     return str(value)

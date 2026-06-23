@@ -399,7 +399,7 @@ class Git(object):
         operation_error = None
         try:
             result = operation(auth_opts)
-        except Exception as err:
+        except BaseException as err:
             operation_error = err
             result = None
         finally:

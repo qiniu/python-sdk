@@ -520,6 +520,21 @@ def test_sandbox_paginator_does_not_reuse_initial_next_token():
     assert client.calls[1]['nextToken'] == 'next-page'
 
 
+def test_sandbox_paginator_does_not_send_client_credentials_as_filters():
+    client = RecordingSandboxListClient()
+    paginator = SandboxPaginator(
+        client=client,
+        api_key='api-key',
+        access_token='access-token',
+        endpoint='https://sandbox.example.test',
+        metadata={'app': 'tests'},
+    )
+
+    paginator.next_items()
+
+    assert client.calls[0] == {'metadata': {'app': 'tests'}}
+
+
 def test_is_running_matches_e2b_health_check_semantics():
     running_session = RecordingSession([DummyResponse(200, {})])
     running = Sandbox(client=SandboxClient(

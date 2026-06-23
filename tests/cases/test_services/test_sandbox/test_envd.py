@@ -223,7 +223,7 @@ def test_command_event_decode_handles_bytes_values():
         }},
     }])
 
-    assert result.stdout == 'abc'
+    assert result.stdout == 'YWJj'
     assert result.stderr == 'plain bytes'
 
 
@@ -322,6 +322,7 @@ def test_commands_run_posts_process_start_and_decodes_events():
     )
     assert session.posts[0]['headers']['Authorization'] == 'Basic dXNlcjo='
     assert session.posts[0]['headers']['X-Access-Token'] == 'token'
+    assert session.posts[0]['timeout'] == 30
     assert session.posts[0]['data']['process'] == {
         'cmd': '/bin/bash',
         'args': ['-l', '-c', 'echo hello'],
@@ -338,6 +339,7 @@ def test_commands_connect_returns_handle_for_running_process():
 
     assert result.pid == 12
     assert result.stdout == 'connected\n'
+    assert session.posts[0]['timeout'] == 30
     assert session.posts[0]['url'].endswith('/process.Process/Connect')
     assert session.posts[0]['data'] == {
         'process': {'selector': {'pid': 12}},
