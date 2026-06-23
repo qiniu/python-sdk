@@ -55,11 +55,16 @@ def _decode_bytes(value):
         return bytearray(value).decode('utf-8', 'replace')
     if isinstance(value, (bytes, basestring)):
         try:
-            return base64.b64decode(value).decode('utf-8', 'replace')
+            decoded = base64.b64decode(value).decode('utf-8', 'replace')
         except (binascii.Error, TypeError):
             if isinstance(value, bytes):
                 return value.decode('utf-8', 'replace')
             return value
+        if u'\ufffd' in decoded:
+            if isinstance(value, bytes):
+                return value.decode('utf-8', 'replace')
+            return value
+        return decoded
     return str(value)
 
 

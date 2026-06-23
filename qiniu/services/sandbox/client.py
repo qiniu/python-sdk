@@ -143,6 +143,8 @@ class SandboxClient(object):
     def __init__(self, endpoint=None, api_url=None, api_key=None,
                  access_token=None, mac=None, access_key=None,
                  secret_key=None, session=None, timeout=None, **opts):
+        access_key = access_key or os.getenv('QINIU_SANDBOX_ACCESS_KEY')
+        secret_key = secret_key or os.getenv('QINIU_SANDBOX_SECRET_KEY')
         if (access_key and not secret_key) or (secret_key and not access_key):
             raise SandboxError(
                 'Both access_key and secret_key must be provided')
@@ -215,6 +217,8 @@ class SandboxClient(object):
                     dict) and response_data.get('message'):
                 message += ': {0}'.format(response_data.get('message'))
             elif isinstance(response_data, basestring) and response_data:
+                if len(response_data) > 200:
+                    response_data = response_data[:200] + '...'
                 message += ': {0}'.format(response_data)
             raise SandboxError(message, response, response_data)
         if empty:
@@ -356,7 +360,7 @@ class SandboxClient(object):
                 'sandbox_ids') or sandbox_ids.get('sandboxIDs')
         if values is None:
             raise SandboxError('At least one sandbox ID must be provided')
-        if not isinstance(values, (list, tuple)):
+        if not isinstance(values, (list, tuple, set)):
             values = [values]
         ids = []
         for value in values:

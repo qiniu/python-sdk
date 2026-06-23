@@ -137,6 +137,17 @@ def test_client_reads_documented_api_key_env_fallbacks(monkeypatch):
         'sandbox-api-key')
 
 
+def test_client_reads_qiniu_mac_credentials_from_env(monkeypatch):
+    monkeypatch.delenv('QINIU_SANDBOX_ACCESS_KEY', raising=False)
+    monkeypatch.delenv('QINIU_SANDBOX_SECRET_KEY', raising=False)
+    monkeypatch.setenv('QINIU_SANDBOX_ACCESS_KEY', 'ak')
+    monkeypatch.setenv('QINIU_SANDBOX_SECRET_KEY', 'sk')
+
+    client = SandboxClient(session=RecordingSession())
+
+    assert client.mac is not None
+
+
 def test_util_helpers_encode_unicode_values_safely():
     assert encode_path(u'目录/文件.txt')
     assert file_signature(
@@ -277,6 +288,23 @@ def test_client_wraps_request_exceptions_in_sandbox_error():
 
     assert 'Sandbox API request failed' in str(err.value)
     assert 'timed out' in str(err.value)
+
+
+def test_client_truncates_long_text_error_responses():
+    class TextErrorResponse(ErrorResponse):
+        def json(self):
+            raise ValueError('not json')
+
+    client = SandboxClient(
+        api_key='api-key',
+        session=RecordingSession([TextErrorResponse(502)]))
+    client.session.responses[0].text = '<html>' + ('x' * 300) + '</html>'
+
+    with pytest.raises(SandboxError) as err:
+        client.list_sandboxes()
+
+    assert len(str(err.value)) < 260
+    assert str(err.value).endswith('...')
 
 
 def test_sandbox_instance_lifecycle_methods_call_control_plane():
@@ -529,6 +557,16 @@ def test_get_sandboxes_metrics_serializes_ids_as_comma_string():
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['sandbox_ids'] == ['sbx1,sbx2']
+
+
+def test_get_sandboxes_metrics_accepts_set_values():
+    session = RecordingSession([DummyResponse(200, {'metrics': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.get_sandboxes_metrics(set(['sbx1', 'sbx2']))
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert set(query['sandbox_ids'][0].split(',')) == set(['sbx1', 'sbx2'])
 
 
 def test_get_sandboxes_metrics_rejects_empty_dict_values():
