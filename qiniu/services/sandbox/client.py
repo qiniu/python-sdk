@@ -124,7 +124,7 @@ class SandboxClient(object):
         if self.mac is None and access_key and secret_key:
             self.mac = QiniuMacAuth(access_key, secret_key)
         self.session = session or requests.Session()
-        self.timeout = timeout
+        self.timeout = timeout if timeout is not None else 30
 
     def _headers(self, auth_type=None):
         headers = {'Content-Type': 'application/json'}

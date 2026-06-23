@@ -2,6 +2,8 @@
 import base64
 import binascii
 
+from qiniu.compat import basestring
+
 from .envd import connect_rpc, connect_stream_rpc
 from .errors import CommandExitError, SandboxError
 
@@ -50,11 +52,11 @@ def _decode_bytes(value):
     if value is None:
         return ''
     if isinstance(value, list):
-        return bytearray(value).decode('utf-8')
-    if isinstance(value, str):
+        return bytearray(value).decode('utf-8', 'replace')
+    if isinstance(value, basestring):
         try:
-            return base64.b64decode(value).decode('utf-8')
-        except (binascii.Error, TypeError, ValueError):
+            return base64.b64decode(value).decode('utf-8', 'replace')
+        except (binascii.Error, TypeError):
             return value
     return str(value)
 

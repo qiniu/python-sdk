@@ -2,6 +2,8 @@
 import time
 from io import IOBase, TextIOBase
 
+from qiniu.compat import basestring
+
 from .errors import InvalidArgumentException, SandboxError
 from .envd import connect_rpc, envd_headers, raw_envd_request
 
@@ -137,7 +139,7 @@ def normalize_entry(entry, extended=False):
 def to_upload_body(data, encoding='utf-8'):
     if isinstance(data, bytes):
         return data
-    if isinstance(data, str):
+    if isinstance(data, basestring):
         return data.encode(encoding)
     if isinstance(data, TextIOBase):
         return data.read().encode(encoding)

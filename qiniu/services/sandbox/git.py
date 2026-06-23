@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import time
+
 try:
     from urllib.parse import quote, urlparse, urlunparse
 except ImportError:
@@ -9,6 +11,7 @@ from .errors import (
     GitAuthException,
     GitUpstreamException,
     InvalidArgumentException,
+    SandboxError,
 )
 from .util import shell_quote
 
@@ -334,6 +337,7 @@ class Git(object):
 
         operation_error = None
         result = None
+        restore_result = None
         try:
             result = operation()
         except Exception as err:
@@ -345,10 +349,21 @@ class Git(object):
                 shell_quote(remote),
                 shell_quote(original_url),
             ], **opts)
+        if getattr(restore_result, 'exit_code', 0):
+            message = (
+                'Failed to restore original remote URL. Credentials may be '
+                'leaked in .git/config: {0}'
+            ).format(
+                getattr(restore_result, 'stderr', '') or
+                getattr(restore_result, 'stdout', '') or
+                getattr(restore_result, 'error', '')
+            )
+            if operation_error:
+                message += '; original operation error: {0}'.format(
+                    operation_error)
+            raise SandboxError(message)
         if operation_error:
             raise operation_error
-        if getattr(restore_result, 'exit_code', 0):
-            return restore_result
         return result
 
     def _raise_known_result_error(self, result, operation):
@@ -516,11 +531,30 @@ class Git(object):
             'username={2}\n'
             'password={3}\n\n'
         ).format(protocol, host, username, password)
-        return self.commands.run(
-            "printf '%s' {0} | git credential approve".format(
-                shell_quote(credential)),
+        sandbox = getattr(self.commands, 'sandbox', None)
+        filesystem = getattr(sandbox, 'files', None)
+        if filesystem is not None:
+            path = '/tmp/qiniu-git-credential-{0}'.format(
+                int(time.time() * 1000))
+            filesystem.write(path, credential)
+            quoted_path = shell_quote(path)
+            script = (
+                'trap "rm -f {0}" EXIT; '
+                'git credential approve < {0}'
+            ).format(quoted_path)
+            return self.commands.run(
+                'sh -c {0}'.format(shell_quote(script)),
+                **opts
+            )
+        handle = self.commands.run(
+            'git credential approve',
+            stdin=True,
+            background=True,
             **opts
         )
+        self.commands.send_stdin(handle.pid, credential)
+        self.commands.close_stdin(handle.pid)
+        return handle.wait()
 
     dangerouslyAuthenticate = dangerously_authenticate
 

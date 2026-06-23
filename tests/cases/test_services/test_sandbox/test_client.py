@@ -175,6 +175,18 @@ def test_sandbox_create_signature_matches_e2b_style():
     assert body_of(session.requests[0])['templateID'] == 'python'
 
 
+def test_client_uses_default_http_timeout():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+    custom = SandboxClient(
+        api_key='api-key',
+        session=RecordingSession(),
+        timeout=12,
+    )
+
+    assert client.timeout == 30
+    assert custom.timeout == 12
+
+
 def test_sandbox_instance_lifecycle_methods_call_control_plane():
     session = RecordingSession([
         DummyResponse(204, None),
@@ -401,6 +413,7 @@ class RecordingCommands(object):
         self.calls.append((cmd, opts))
         result = self.results.pop(0) if self.results else type(
             'Result', (object,), {
+                'pid': 12,
                 'exit_code': 0,
                 'stdout': 'origin https://github.com/qiniu/repo.git\n',
                 'stderr': '',
@@ -409,7 +422,20 @@ class RecordingCommands(object):
         if result.exit_code and opts.get('throw_on_error'):
             from qiniu.services.sandbox import CommandExitError
             raise CommandExitError(result)
+        if opts.get('background'):
+            return type('Handle', (object,), {
+                'pid': getattr(result, 'pid', 12),
+                'wait': lambda self: result,
+            })()
         return result
+
+    def send_stdin(self, pid, data):
+        self.calls.append(('send_stdin', {'pid': pid, 'data': data}))
+        return None
+
+    def close_stdin(self, pid):
+        self.calls.append(('close_stdin', {'pid': pid}))
+        return None
 
 
 def test_git_helpers_align_with_e2b_method_names():
@@ -454,11 +480,48 @@ def test_git_dangerously_authenticate_aligns_with_e2b():
 
     assert commands.calls[0][0] == (
         'git config --global credential.helper store')
-    assert commands.calls[1][0] == (
-        "printf '%s' 'protocol=https\nhost=github.com\n"
-        "username=git-user\npassword=secret-token\n\n' | "
-        'git credential approve'
+    assert commands.calls[1][0] == 'git credential approve'
+    assert commands.calls[1][1]['stdin'] is True
+    assert commands.calls[1][1]['background'] is True
+    assert commands.calls[2] == ('send_stdin', {
+        'pid': 12,
+        'data': (
+            'protocol=https\nhost=github.com\n'
+            'username=git-user\npassword=secret-token\n\n'
+        ),
+    })
+    assert commands.calls[3] == ('close_stdin', {'pid': 12})
+
+
+def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
+    class FakeFiles(object):
+        def __init__(self):
+            self.writes = []
+
+        def write(self, path, data, **opts):
+            self.writes.append((path, data, opts))
+            return None
+
+    commands = RecordingCommands()
+    files = FakeFiles()
+    commands.sandbox = type('Sandbox', (object,), {'files': files})()
+    git = Git(commands)
+
+    git.dangerously_authenticate(
+        username='git-user',
+        password='secret-%-token',
+        host='github.com',
+        protocol='https',
     )
+
+    assert files.writes[0][1] == (
+        'protocol=https\nhost=github.com\n'
+        'username=git-user\npassword=secret-%-token\n\n'
+    )
+    assert files.writes[0][2] == {}
+    assert commands.calls[1][0].startswith('sh -c ')
+    assert 'git credential approve' in commands.calls[1][0]
+    assert 'secret-%-token' not in commands.calls[1][0]
 
 
 def test_git_status_and_branches_return_structured_e2b_types():
@@ -663,6 +726,48 @@ def test_git_push_with_credentials_restores_remote_on_auth_failure():
     assert commands.calls[-1][0] == (
         'git remote set-url origin https://github.com/qiniu/repo.git'
     )
+
+
+def test_git_push_reports_restore_failure_after_credentials_are_injected():
+    commands = RecordingCommands()
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 128,
+            'stdout': '',
+            'stderr': 'fatal: Authentication failed',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 1,
+            'stdout': '',
+            'stderr': 'config locked',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    with pytest.raises(SandboxError) as err:
+        git.push(
+            '/repo',
+            remote='origin',
+            username='git-user',
+            password='bad-token',
+        )
+
+    assert 'Credentials may be leaked' in str(err.value)
+    assert 'config locked' in str(err.value)
 
 
 def test_git_helpers_accept_e2b_style_signatures():

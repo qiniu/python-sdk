@@ -153,12 +153,24 @@ def test_iter_connect_envelopes_decodes_chunked_stream_frames():
     ]
 
 
-def test_command_event_decode_keeps_non_utf8_base64_text():
+def test_command_event_decode_handles_base64_and_non_utf8_output():
     result = command_result_from_events([{
-        'event': {'data': {'stdout': '////'}},
+        'event': {'data': {
+            'stdout': base64.b64encode(b'YWJj').decode('ascii'),
+            'stderr': '////',
+        }},
     }])
 
-    assert result.stdout == '////'
+    assert result.stdout == 'YWJj'
+    assert result.stderr == u'\ufffd\ufffd\ufffd'
+
+
+def test_filesystem_write_accepts_unicode_text():
+    sandbox, session = sandbox_with_envd_session()
+
+    sandbox.files.write('/tmp/unicode.txt', u'你好')
+
+    assert u'你好'.encode('utf-8') in session.requests[0]['kwargs']['data']
 
 
 def test_commands_run_posts_process_start_and_decodes_events():
