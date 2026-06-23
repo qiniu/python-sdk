@@ -419,21 +419,16 @@ class Git(object):
         })
         auth_opts['envs'] = envs
 
-        operation_error = None
         try:
             result = operation(auth_opts)
-            if opts.get('background') and hasattr(result, 'wait'):
-                result.wait = _cleanup_after_wait(
-                    result.wait, filesystem, askpass_path)
-                askpass_path = None
         except BaseException as err:
-            operation_error = err
-            result = None
-        finally:
-            if askpass_path:
-                _remove_credential_file(filesystem, askpass_path)
-        if operation_error is not None:
-            raise operation_error
+            _remove_credential_file(filesystem, askpass_path)
+            raise err
+        if opts.get('background') and hasattr(result, 'wait'):
+            result.wait = _cleanup_after_wait(
+                result.wait, filesystem, askpass_path)
+        else:
+            _remove_credential_file(filesystem, askpass_path)
         return result
 
     def _raise_known_result_error(
