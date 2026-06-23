@@ -4,6 +4,9 @@ from io import BytesIO
 import json
 import struct
 
+import pytest
+import requests
+
 from qiniu.services.sandbox import (
     EntryInfo,
     FileType,
@@ -47,8 +50,12 @@ class EnvdSession(object):
         self.posts = []
         self.requests = []
         self.empty_stream_paths = set()
+        self.post_exception = None
+        self.request_exception = None
 
     def post(self, url, data=None, headers=None, timeout=None, stream=False):
+        if self.post_exception is not None:
+            raise self.post_exception
         if headers.get('Content-Type') == 'application/connect+json':
             decoded = decode_connect_envelopes(data)[0]
         else:
@@ -118,6 +125,8 @@ class EnvdSession(object):
         return DummyResponse(body={'result': {}})
 
     def request(self, method, url, **kwargs):
+        if self.request_exception is not None:
+            raise self.request_exception
         self.requests.append({'method': method, 'url': url, 'kwargs': kwargs})
         if method == 'GET':
             response = DummyResponse(raw=b'hello')
@@ -226,6 +235,39 @@ def test_connect_error_envelopes_raise_default_sandbox_error():
         assert False, 'expected SandboxError'
     except SandboxError as err:
         assert str(err) == 'Sandbox envd stream failed'
+
+
+def test_connect_rpc_wraps_transport_errors():
+    sandbox, session = sandbox_with_envd_session()
+    session.post_exception = requests.Timeout('timed out')
+
+    with pytest.raises(SandboxError) as err:
+        sandbox.commands.run('echo hello')
+
+    assert 'Sandbox envd request failed' in str(err.value)
+    assert 'timed out' in str(err.value)
+
+
+def test_connect_stream_rpc_wraps_transport_errors():
+    sandbox, session = sandbox_with_envd_session()
+    session.post_exception = requests.ConnectionError('connection reset')
+
+    with pytest.raises(SandboxError) as err:
+        sandbox.commands.connect(12)
+
+    assert 'Sandbox envd request failed' in str(err.value)
+    assert 'connection reset' in str(err.value)
+
+
+def test_raw_envd_request_wraps_transport_errors():
+    sandbox, session = sandbox_with_envd_session()
+    session.request_exception = requests.Timeout('timed out')
+
+    with pytest.raises(SandboxError) as err:
+        sandbox.files.read_text('/tmp/hello.txt')
+
+    assert 'Sandbox envd request failed' in str(err.value)
+    assert 'timed out' in str(err.value)
 
 
 def test_filesystem_write_accepts_unicode_text():

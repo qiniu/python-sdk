@@ -6,6 +6,7 @@ from qiniu.services.sandbox import (
     KodoResource,
     SandboxError,
 )
+from qiniu.services.sandbox.util import shell_quote
 from sandbox_common import (
     cleanup_sandbox,
     create_sandbox,
@@ -58,7 +59,7 @@ def run_git_resource_example():
     try:
         print('Git resource sandbox:', sandbox.sandbox_id)
         print(sandbox.commands.run('ls -la {0} | head -20'.format(
-            mount_path
+            shell_quote(mount_path)
         )).stdout)
     finally:
         cleanup_sandbox(sandbox)
@@ -90,11 +91,15 @@ def run_kodo_resource_example():
     try:
         print('Kodo resource sandbox:', sandbox.sandbox_id)
         print(sandbox.commands.run('ls -la {0} | head -20'.format(
-            mount_path
+            shell_quote(mount_path)
         )).stdout)
         test_path = mount_path + '/qiniu-python-sdk-resource-test.txt'
         result = sandbox.commands.run(
-            'sh -c "echo qiniu-python-sdk > {0} && cat {0}"'.format(test_path)
+            'sh -c {0}'.format(shell_quote(
+                'echo qiniu-python-sdk > {0} && cat {0}'.format(
+                    shell_quote(test_path)
+                )
+            ))
         )
         if result.exit_code != 0:
             raise RuntimeError(result.stderr or result.stdout)

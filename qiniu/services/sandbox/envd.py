@@ -2,6 +2,8 @@
 import json
 import struct
 
+import requests
+
 from .constants import DEFAULT_USER
 from .errors import SandboxError
 from .util import basic_auth
@@ -24,12 +26,15 @@ def envd_headers(sandbox, user=None, extra=None):
 def connect_rpc(sandbox, procedure, body=None, user=None, timeout=None):
     url = sandbox.envd_url() + procedure
     headers = envd_headers(sandbox, user, {'Content-Type': 'application/json'})
-    response = sandbox.client.session.post(
-        url,
-        data=json.dumps(body or {}, separators=(',', ':')),
-        headers=headers,
-        timeout=timeout,
-    )
+    try:
+        response = sandbox.client.session.post(
+            url,
+            data=json.dumps(body or {}, separators=(',', ':')),
+            headers=headers,
+            timeout=timeout,
+        )
+    except requests.RequestException as err:
+        raise SandboxError('Sandbox envd request failed: {0}'.format(err))
     if response.status_code < 200 or response.status_code >= 300:
         raise SandboxError(
             'Sandbox envd request failed with status {0}'.format(
@@ -152,10 +157,13 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
     if stream:
         request_opts['stream'] = True
     try:
-        response = sandbox.client.session.post(url, **request_opts)
-    except TypeError:
-        request_opts.pop('stream', None)
-        response = sandbox.client.session.post(url, **request_opts)
+        try:
+            response = sandbox.client.session.post(url, **request_opts)
+        except TypeError:
+            request_opts.pop('stream', None)
+            response = sandbox.client.session.post(url, **request_opts)
+    except requests.RequestException as err:
+        raise SandboxError('Sandbox envd request failed: {0}'.format(err))
     if response.status_code < 200 or response.status_code >= 300:
         raise SandboxError(
             'Sandbox envd request failed with status {0}'.format(
@@ -184,7 +192,10 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
 
 
 def raw_envd_request(sandbox, method, url, **kwargs):
-    response = sandbox.client.session.request(method, url, **kwargs)
+    try:
+        response = sandbox.client.session.request(method, url, **kwargs)
+    except requests.RequestException as err:
+        raise SandboxError('Sandbox envd request failed: {0}'.format(err))
     if response.status_code < 200 or response.status_code >= 300:
         raise SandboxError(
             'Sandbox envd request failed with status {0}'.format(
