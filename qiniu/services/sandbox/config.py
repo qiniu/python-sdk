@@ -30,8 +30,8 @@ def load_dotenv_if_present(*paths):
                     value[0] in ('"', "'")
                 ):
                     value = value[1:-1]
+                key, value = _native_env_pair(key, value)
                 if key and key not in os.environ:
-                    key, value = _native_env_pair(key, value)
                     os.environ[key] = value
 
 

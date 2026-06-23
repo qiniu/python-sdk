@@ -514,7 +514,10 @@ def test_wait_for_ready_caps_request_timeout_to_remaining_timeout():
 
 
 def test_wait_for_ready_caps_sleep_to_remaining_timeout(monkeypatch):
-    session = RecordingSession([DummyResponse(503, {})])
+    session = RecordingSession([
+        DummyResponse(503, {}),
+        DummyResponse(503, {}),
+    ])
     sandbox = Sandbox(client=SandboxClient(
         api_key='api-key',
         session=session,
@@ -522,7 +525,7 @@ def test_wait_for_ready_caps_sleep_to_remaining_timeout(monkeypatch):
         'sandboxID': 'sbx123',
         'domain': 'example.test',
     })
-    times = iter([0, 0, 2.5, 3])
+    times = iter([0, 2.5, 3])
     sleeps = []
     monkeypatch.setattr(
         sandbox_module, '_monotonic_time', lambda: next(times))
@@ -566,6 +569,7 @@ def test_wait_for_ready_raises_sandbox_error_on_timeout():
 
     with pytest.raises(SandboxError):
         sandbox.wait_for_ready(timeout=0, interval=0)
+    assert len(session.requests) == 1
 
 
 def test_update_info_refreshes_traffic_access_token():
@@ -1417,6 +1421,42 @@ def test_git_push_cleans_askpass_after_operation_exception():
         )
 
     assert 'rpc timed out' in str(err.value)
+    assert files.removes == [(files.writes[0][0], {})]
+
+
+def test_git_credentials_clean_askpass_when_chmod_raises():
+    class ChmodFailCommands(RecordingCommands):
+        def run(self, cmd, **opts):
+            if cmd.startswith('chmod 700 '):
+                raise SandboxError('chmod rpc failed')
+            return super(ChmodFailCommands, self).run(cmd, **opts)
+
+    commands = ChmodFailCommands()
+    files = attach_recording_files(commands)
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    with pytest.raises(SandboxError):
+        git.push(
+            '/repo',
+            remote='origin',
+            username='git-user',
+            password='secret-token',
+        )
+
     assert files.removes == [(files.writes[0][0], {})]
 
 

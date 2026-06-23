@@ -384,35 +384,35 @@ class Git(object):
             uuid.uuid4().hex,
         )
         filesystem.write(askpass_path, _askpass_script())
-        chmod_result = self.commands.run(
-            'chmod 700 {0}'.format(shell_quote(askpass_path)),
-            **setup_opts
-        )
-        if getattr(chmod_result, 'exit_code', 0):
-            _remove_credential_file(filesystem, askpass_path)
-            return chmod_result
-
-        auth_opts = dict(opts)
-        envs = dict(auth_opts.get('envs') or {})
-        envs.update({
-            'GIT_ASKPASS': askpass_path,
-            'GIT_TERMINAL_PROMPT': '0',
-            'GIT_USERNAME': username,
-            'GIT_PASSWORD': password,
-        })
-        auth_opts['envs'] = envs
-
         try:
+            chmod_result = self.commands.run(
+                'chmod 700 {0}'.format(shell_quote(askpass_path)),
+                **setup_opts
+            )
+            if getattr(chmod_result, 'exit_code', 0):
+                _remove_credential_file(filesystem, askpass_path)
+                return chmod_result
+
+            auth_opts = dict(opts)
+            envs = dict(auth_opts.get('envs') or {})
+            envs.update({
+                'GIT_ASKPASS': askpass_path,
+                'GIT_TERMINAL_PROMPT': '0',
+                'GIT_USERNAME': username,
+                'GIT_PASSWORD': password,
+            })
+            auth_opts['envs'] = envs
+
             result = operation(auth_opts)
+            if opts.get('background') and hasattr(result, 'wait'):
+                result.wait = _cleanup_after_wait(
+                    result.wait, filesystem, askpass_path)
+            else:
+                _remove_credential_file(filesystem, askpass_path)
+            return result
         except BaseException as err:
             _remove_credential_file(filesystem, askpass_path)
             raise err
-        if opts.get('background') and hasattr(result, 'wait'):
-            result.wait = _cleanup_after_wait(
-                result.wait, filesystem, askpass_path)
-        else:
-            _remove_credential_file(filesystem, askpass_path)
-        return result
 
     def _raise_known_result_error(
             self, result, operation, throw_on_error=False):

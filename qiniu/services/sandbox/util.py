@@ -86,7 +86,14 @@ def shell_quote(value):
         from shlex import quote
     except ImportError:
         from pipes import quote
-    return quote(str(value))
+    if is_py2:
+        if isinstance(value, text_type):
+            value = value.encode('utf-8')
+        else:
+            value = str(value)
+    else:
+        value = str(value)
+    return quote(value)
 
 
 def utc_timestamp_after(seconds):
