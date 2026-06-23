@@ -337,7 +337,7 @@ class SandboxClient(object):
             'GET',
             '/sandboxes/metrics',
             params={
-                'sandbox_ids': ids})
+                'sandbox_ids': ','.join(ids)})
 
     getSandboxesMetrics = get_sandboxes_metrics
 

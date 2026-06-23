@@ -16,6 +16,7 @@ from qiniu.services.sandbox.envd import (
     encode_connect_envelope,
     iter_connect_envelopes,
 )
+from qiniu.services.sandbox.commands import command_result_from_events
 
 
 class DummyResponse(object):
@@ -152,6 +153,14 @@ def test_iter_connect_envelopes_decodes_chunked_stream_frames():
     ]
 
 
+def test_command_event_decode_keeps_non_utf8_base64_text():
+    result = command_result_from_events([{
+        'event': {'data': {'stdout': '////'}},
+    }])
+
+    assert result.stdout == '////'
+
+
 def test_commands_run_posts_process_start_and_decodes_events():
     sandbox, session = sandbox_with_envd_session()
 
@@ -201,6 +210,15 @@ def test_commands_connect_handles_empty_event_stream():
     assert result.stdout == ''
 
 
+def test_commands_send_stdin_encodes_unicode_text():
+    sandbox, session = sandbox_with_envd_session()
+
+    sandbox.commands.send_stdin(12, u'你好')
+
+    raw = session.posts[0]['data']['input']['stdin']
+    assert base64.b64decode(raw).decode('utf-8') == u'你好'
+
+
 def test_commands_run_supports_e2b_callbacks_and_request_timeout():
     sandbox, session = sandbox_with_envd_session()
     stdout = []
@@ -235,7 +253,7 @@ def test_pty_create_send_resize_connect_and_kill_use_process_rpc():
     sandbox, session = sandbox_with_envd_session()
 
     handle = sandbox.pty.create(PtySize(rows=24, cols=80), cwd='/workspace')
-    sandbox.pty.send_stdin(handle.pid, 'ls\n')
+    sandbox.pty.send_stdin(handle.pid, u'你好\n')
     sandbox.pty.resize(handle.pid, {'rows': 30, 'cols': 100})
     connected = sandbox.pty.connect(handle.pid)
     assert sandbox.pty.kill(handle.pid) is True
@@ -252,6 +270,9 @@ def test_pty_create_send_resize_connect_and_kill_use_process_rpc():
     }
     assert session.posts[1]['url'].endswith('/process.Process/SendInput')
     assert session.posts[1]['data']['input']['pty']
+    assert base64.b64decode(
+        session.posts[1]['data']['input']['pty']
+    ).decode('utf-8') == u'你好\n'
     assert session.posts[2]['url'].endswith('/process.Process/Update')
     assert session.posts[2]['data']['pty'] == {
         'size': {'rows': 30, 'cols': 100},
@@ -314,6 +335,7 @@ def test_filesystem_returns_e2b_style_entry_objects_and_streams():
     assert info.type == FileType.FILE
     assert entries[0].name == 'hello.txt'
     assert entries[0].type == FileType.FILE
+    assert session.requests[0]['kwargs']['stream'] is True
     assert b'hello' in session.requests[1]['kwargs']['data']
 
 

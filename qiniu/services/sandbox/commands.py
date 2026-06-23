@@ -54,7 +54,7 @@ def _decode_bytes(value):
     if isinstance(value, str):
         try:
             return base64.b64decode(value).decode('utf-8')
-        except (binascii.Error, TypeError):
+        except (binascii.Error, TypeError, ValueError):
             return value
     return str(value)
 
@@ -255,7 +255,10 @@ class Commands(object):
 
     def send_stdin(self, pid, data, user=None, timeout=None):
         if not isinstance(data, bytes):
-            data = str(data).encode('utf-8')
+            if hasattr(data, 'encode'):
+                data = data.encode('utf-8')
+            else:
+                data = str(data).encode('utf-8')
         return connect_rpc(self.sandbox, '/process.Process/SendInput', {
             'process': {'selector': {'pid': pid}},
             'input': {'stdin': base64.b64encode(data).decode('ascii')},

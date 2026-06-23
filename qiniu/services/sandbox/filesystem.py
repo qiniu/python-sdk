@@ -199,12 +199,14 @@ class Filesystem(object):
 
     def read(self, path, user=None, format='text', **opts):
         url = self.sandbox.download_url(path, user=user)
+        stream_mode = format == 'stream'
         response = raw_envd_request(
             self.sandbox,
             'GET',
             url,
             headers=envd_headers(self.sandbox, user),
             timeout=self._request_timeout(opts),
+            stream=stream_mode,
         )
         if format == 'stream':
             if hasattr(response, 'iter_content'):

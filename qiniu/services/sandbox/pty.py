@@ -96,7 +96,10 @@ class Pty(object):
 
     def send_stdin(self, pid, data, user=None, timeout=None):
         if not isinstance(data, bytes):
-            data = str(data).encode('utf-8')
+            if hasattr(data, 'encode'):
+                data = data.encode('utf-8')
+            else:
+                data = str(data).encode('utf-8')
         return connect_rpc(self.sandbox, '/process.Process/SendInput', {
             'process': {'selector': {'pid': pid}},
             'input': {'pty': base64.b64encode(data).decode('ascii')},

@@ -336,6 +336,16 @@ def test_is_running_matches_e2b_health_check_semantics():
     assert stopped.is_running() is False
 
 
+def test_get_sandboxes_metrics_serializes_ids_as_comma_string():
+    session = RecordingSession([DummyResponse(200, {'metrics': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.get_sandboxes_metrics(['sbx1', 'sbx2'])
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['sandbox_ids'] == ['sbx1,sbx2']
+
+
 def test_template_builder_outputs_build_config():
     template = (
         Template()
@@ -445,7 +455,7 @@ def test_git_dangerously_authenticate_aligns_with_e2b():
     assert commands.calls[0][0] == (
         'git config --global credential.helper store')
     assert commands.calls[1][0] == (
-        "printf 'protocol=https\nhost=github.com\n"
+        "printf '%s' 'protocol=https\nhost=github.com\n"
         "username=git-user\npassword=secret-token\n\n' | "
         'git credential approve'
     )
@@ -511,7 +521,7 @@ def test_git_push_with_credentials_sets_remote_url_temporarily():
     commands.results = [
         type('Result', (object,), {
             'exit_code': 0,
-            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stdout': 'https://old:old-token@github.com/qiniu/repo.git\n',
             'stderr': '',
             'error': '',
         })(),
@@ -540,19 +550,20 @@ def test_git_push_with_credentials_sets_remote_url_temporarily():
         '/repo',
         remote='origin',
         branch='main',
-        username='git-user',
-        password='secret-token',
+        username='git:user',
+        password='secret:%@token',
         request_timeout=7,
     )
 
     assert commands.calls[0][0] == 'git remote get-url origin'
     assert commands.calls[1][0] == (
         'git remote set-url origin '
-        'https://git-user:secret-token@github.com/qiniu/repo.git'
+        'https://git%3Auser:secret%3A%25%40token@github.com/qiniu/repo.git'
     )
     assert commands.calls[2][0] == 'git push --set-upstream origin main'
     assert commands.calls[3][0] == (
-        'git remote set-url origin https://github.com/qiniu/repo.git'
+        'git remote set-url origin '
+        'https://old:old-token@github.com/qiniu/repo.git'
     )
     assert commands.calls[2][1]['request_timeout'] == 7
 

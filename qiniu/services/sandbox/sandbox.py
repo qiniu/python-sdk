@@ -317,6 +317,8 @@ class Sandbox(object):
     def wait_for_ready(self, timeout=60, interval=1):
         started = time.time()
         while True:
+            if timeout is not None and time.time() - started >= timeout:
+                raise SandboxError('Sandbox envd did not become ready')
             elapsed = time.time() - started
             remaining = None if timeout is None else max(timeout - elapsed, 0)
             request_timeout = interval
@@ -331,8 +333,6 @@ class Sandbox(object):
                     return self
             except requests.RequestException:
                 pass
-            if timeout is not None and time.time() - started >= timeout:
-                raise SandboxError('Sandbox envd did not become ready')
             time.sleep(interval)
 
     waitForReady = wait_for_ready

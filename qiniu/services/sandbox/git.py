@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 try:
-    from urllib.parse import urlparse, urlunparse
+    from urllib.parse import quote, urlparse, urlunparse
 except ImportError:
+    from urllib import quote
     from urlparse import urlparse, urlunparse
 
 from .errors import (
@@ -268,8 +269,17 @@ def _with_credentials(url, username, password):
     if parsed.scheme not in ('http', 'https'):
         raise InvalidArgumentException(
             'Only http(s) Git URLs support username/password credentials.')
+    host = parsed.hostname or ''
+    if ':' in host and not host.startswith('['):
+        host = '[{0}]'.format(host)
+    if parsed.port:
+        host = '{0}:{1}'.format(host, parsed.port)
     return urlunparse(parsed._replace(
-        netloc='{0}:{1}@{2}'.format(username, password, parsed.netloc)
+        netloc='{0}:{1}@{2}'.format(
+            quote(str(username), safe=''),
+            quote(str(password), safe=''),
+            host,
+        )
     ))
 
 
@@ -507,7 +517,7 @@ class Git(object):
             'password={3}\n\n'
         ).format(protocol, host, username, password)
         return self.commands.run(
-            'printf {0} | git credential approve'.format(
+            "printf '%s' {0} | git credential approve".format(
                 shell_quote(credential)),
             **opts
         )
