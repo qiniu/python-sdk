@@ -195,6 +195,22 @@ def test_create_with_saved_injection_rule_uses_qiniu_signature():
     }]
 
 
+def test_create_with_saved_injection_rule_accepts_snake_case_rule_id():
+    session = RecordingSession(
+        [DummyResponse(201, {'sandboxID': 'sbx123', 'templateID': 'base'})])
+    client = SandboxClient(access_key='ak', secret_key='sk', session=session)
+
+    client.create_sandbox(injections=[{
+        'type': 'id',
+        'rule_id': 'rule-1',
+    }])
+
+    assert body_of(session.requests[0])['injections'] == [{
+        'type': 'id',
+        'ruleID': 'rule-1',
+    }]
+
+
 def test_sandbox_create_signature_matches_e2b_style():
     session = RecordingSession([
         DummyResponse(201, {

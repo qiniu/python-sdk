@@ -196,6 +196,18 @@ def test_command_event_decode_handles_base64_and_non_utf8_output():
     assert result.stderr == u'\ufffd\ufffd\ufffd'
 
 
+def test_command_event_decode_handles_bytes_values():
+    result = command_result_from_events([{
+        'event': {'data': {
+            'stdout': base64.b64encode(b'abc'),
+            'stderr': b'plain bytes',
+        }},
+    }])
+
+    assert result.stdout == 'abc'
+    assert result.stderr == 'plain bytes'
+
+
 def test_connect_error_envelopes_raise_default_sandbox_error():
     empty_error = struct.pack('>BI', 2, 0)
     missing_message = (

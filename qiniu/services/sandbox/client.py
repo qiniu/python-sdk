@@ -45,6 +45,8 @@ def _normalize_injection(injection):
         data['base_url'] = data.pop('baseUrl')
     if 'ruleId' in data and 'ruleID' not in data:
         data['ruleID'] = data.pop('ruleId')
+    if 'rule_id' in data and 'ruleID' not in data:
+        data['ruleID'] = data.pop('rule_id')
     return data
 
 

@@ -53,10 +53,12 @@ def _decode_bytes(value):
         return ''
     if isinstance(value, list):
         return bytearray(value).decode('utf-8', 'replace')
-    if isinstance(value, basestring):
+    if isinstance(value, (bytes, basestring)):
         try:
             return base64.b64decode(value).decode('utf-8', 'replace')
         except (binascii.Error, TypeError):
+            if isinstance(value, bytes):
+                return value.decode('utf-8', 'replace')
             return value
     return str(value)
 
