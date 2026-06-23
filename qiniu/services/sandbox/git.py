@@ -383,8 +383,8 @@ class Git(object):
             temp_dir,
             uuid.uuid4().hex,
         )
-        filesystem.write(askpass_path, _askpass_script())
         try:
+            filesystem.write(askpass_path, _askpass_script())
             chmod_result = self.commands.run(
                 'chmod 700 {0}'.format(shell_quote(askpass_path)),
                 **setup_opts
@@ -760,7 +760,7 @@ class Git(object):
     def _normalize_set_config_args(self, key, value, scope, path, opts):
         global_config = opts.pop(
             'global_config', opts.pop('globalConfig', False))
-        if global_config or self._is_legacy_config_call(scope):
+        if global_config or self._is_legacy_config_call(key, scope):
             repo_path = key
             key = value
             value = scope
@@ -771,17 +771,21 @@ class Git(object):
     def _normalize_get_config_args(self, key, scope, path, opts):
         global_config = opts.pop(
             'global_config', opts.pop('globalConfig', False))
-        if global_config or self._is_legacy_config_call(scope):
+        if global_config or self._is_legacy_config_call(key, scope):
             repo_path = key
             key = scope
             scope = 'global' if global_config or repo_path is None else 'local'
             path = None if scope == 'global' else repo_path
         return key, scope, path
 
-    def _is_legacy_config_call(self, scope):
+    def _is_legacy_config_call(self, key, scope):
         if scope is None:
             return False
-        return str(scope).strip().lower() not in ('global', 'local', 'system')
+        scope_name = str(scope).strip().lower()
+        if scope_name not in ('global', 'local', 'system'):
+            return True
+        key_text = str(key or '')
+        return '/' in key_text or '\\' in key_text
 
     def _resolve_config_scope(self, scope=None, path=None):
         scope_name = (scope or 'global').strip().lower()

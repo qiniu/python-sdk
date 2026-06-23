@@ -205,16 +205,6 @@ def test_command_event_decode_handles_base64_and_non_utf8_output():
     assert result.stderr == u'\ufffd\ufffd\ufffd'
 
 
-def test_command_event_decode_keeps_invalid_base64_strings():
-    result = command_result_from_events([{
-        'event': {'data': {
-            'stderr': 'plain text!',
-        }},
-    }])
-
-    assert result.stderr == 'plain text!'
-
-
 def test_command_event_decode_expects_base64_encoded_strings():
     result = command_result_from_events([{
         'event': {'data': {

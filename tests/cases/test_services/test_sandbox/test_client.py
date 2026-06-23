@@ -1548,6 +1548,42 @@ def test_git_credentials_clean_askpass_when_chmod_raises():
     assert files.removes == [(files.writes[0][0], {})]
 
 
+def test_git_credentials_clean_askpass_when_write_raises():
+    class FailingWriteFiles(RecordingFiles):
+        def write(self, path, data, **opts):
+            super(FailingWriteFiles, self).write(path, data, **opts)
+            raise SandboxError('write rpc failed')
+
+    commands = RecordingCommands()
+    files = FailingWriteFiles()
+    commands.sandbox = type('Sandbox', (object,), {'files': files})()
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    with pytest.raises(SandboxError):
+        git.push(
+            '/repo',
+            remote='origin',
+            username='git-user',
+            password='secret-token',
+        )
+
+    assert files.removes == [(files.writes[0][0], {})]
+
+
 def test_git_helpers_accept_e2b_style_signatures():
     commands = RecordingCommands()
     git = Git(commands)
@@ -1580,6 +1616,7 @@ def test_git_config_helpers_accept_legacy_repo_path_signatures():
 
     git.set_config(None, 'http.version', 'HTTP/1.1', global_config=True)
     git.set_config('/repo', 'user.name', 'Sandbox Demo')
+    git.set_config('/repo', 'gitreview.username', 'global')
     git.get_config('/repo', 'user.name')
 
     assert commands.calls[0][0] == "git config --global http.version HTTP/1.1"
@@ -1587,5 +1624,8 @@ def test_git_config_helpers_accept_legacy_repo_path_signatures():
     assert commands.calls[1][0] == (
         "git config --local user.name 'Sandbox Demo'")
     assert commands.calls[1][1]['cwd'] == '/repo'
-    assert commands.calls[2][0] == 'git config --local --get user.name'
+    assert commands.calls[2][0] == (
+        'git config --local gitreview.username global')
     assert commands.calls[2][1]['cwd'] == '/repo'
+    assert commands.calls[3][0] == 'git config --local --get user.name'
+    assert commands.calls[3][1]['cwd'] == '/repo'

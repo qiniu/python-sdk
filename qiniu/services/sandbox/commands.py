@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import base64
-import binascii
 
 from qiniu.compat import basestring, bytes as bytes_type
 
@@ -56,10 +55,7 @@ def _decode_bytes(value):
     if isinstance(value, bytes_type):
         return value.decode('utf-8', 'replace')
     if isinstance(value, basestring):
-        try:
-            return base64.b64decode(value).decode('utf-8', 'replace')
-        except (binascii.Error, TypeError):
-            return value
+        return base64.b64decode(value).decode('utf-8', 'replace')
     return str(value)
 
 
