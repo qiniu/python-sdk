@@ -220,7 +220,10 @@ class SandboxClient(object):
             try:
                 response_data = response.json()
             except ValueError:
-                response_data = getattr(response, 'text', None)
+                try:
+                    response_data = response.text
+                except Exception:
+                    response_data = getattr(response, 'content', None)
             message = 'Sandbox API request failed with status {0}'.format(
                 response.status_code
             )

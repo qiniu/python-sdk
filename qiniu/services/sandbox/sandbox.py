@@ -349,7 +349,11 @@ class Sandbox(object):
                     return self
             except requests.RequestException:
                 pass
-            time.sleep(interval)
+            sleep_time = interval
+            if remaining is not None:
+                sleep_time = min(interval, remaining)
+            if sleep_time > 0:
+                time.sleep(sleep_time)
 
     waitForReady = wait_for_ready
 

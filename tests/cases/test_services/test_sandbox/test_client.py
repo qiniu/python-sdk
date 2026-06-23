@@ -3,6 +3,7 @@ import json
 
 import pytest
 import requests
+import qiniu.services.sandbox.sandbox as sandbox_module
 
 try:
     from urllib.parse import parse_qs, urlparse
@@ -323,6 +324,29 @@ def test_client_truncates_long_text_error_responses():
     assert str(err.value).endswith('...')
 
 
+def test_client_falls_back_to_content_when_error_text_fails():
+    class BrokenTextResponse(object):
+        status_code = 502
+        content = b'raw error bytes'
+        headers = {}
+
+        def json(self):
+            raise ValueError('not json')
+
+        @property
+        def text(self):
+            raise UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'bad')
+
+    client = SandboxClient(
+        api_key='api-key',
+        session=RecordingSession([BrokenTextResponse()]))
+
+    with pytest.raises(SandboxError) as err:
+        client.list_sandboxes()
+
+    assert err.value.data == b'raw error bytes'
+
+
 def test_client_includes_nested_error_message_in_api_errors():
     client = SandboxClient(
         api_key='api-key',
@@ -487,6 +511,27 @@ def test_wait_for_ready_caps_request_timeout_to_remaining_timeout():
     sandbox.wait_for_ready(timeout=3, interval=2)
 
     assert session.requests[0].kwargs['timeout'] <= 3
+
+
+def test_wait_for_ready_caps_sleep_to_remaining_timeout(monkeypatch):
+    session = RecordingSession([DummyResponse(503, {})])
+    sandbox = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=session,
+    ), info={
+        'sandboxID': 'sbx123',
+        'domain': 'example.test',
+    })
+    times = iter([0, 0, 2.5, 3])
+    sleeps = []
+    monkeypatch.setattr(
+        sandbox_module, '_monotonic_time', lambda: next(times))
+    monkeypatch.setattr(sandbox_module.time, 'sleep', sleeps.append)
+
+    with pytest.raises(SandboxError):
+        sandbox.wait_for_ready(timeout=3, interval=2)
+
+    assert sleeps == [0.5]
 
 
 def test_wait_for_ready_ignores_startup_request_errors_until_ready():
@@ -730,6 +775,7 @@ class RecordingCommands(object):
         if opts.get('background'):
             return type('Handle', (object,), {
                 'pid': getattr(result, 'pid', 12),
+                'exit_code': -1,
                 'wait': lambda self: result,
             })()
         return result
@@ -1215,6 +1261,58 @@ def test_git_credential_helpers_ignore_background_when_reading_remote():
     assert commands.calls[4][1]['background'] is True
     assert files.removes == []
     handle.wait()
+    assert files.removes == [(files.writes[0][0], {})]
+
+
+def test_git_background_throw_on_error_waits_before_raising():
+    commands = RecordingCommands()
+    files = attach_recording_files(commands)
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'origin\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 1,
+            'stdout': '',
+            'stderr': 'fatal: failed',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    handle = git.pull(
+        '/repo',
+        branch='main',
+        username='git-user',
+        password='secret-token',
+        background=True,
+        throw_on_error=True,
+    )
+
+    assert files.removes == []
+    with pytest.raises(CommandExitError):
+        handle.wait()
     assert files.removes == [(files.writes[0][0], {})]
 
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import time
+import uuid
 
 from qiniu.compat import basestring
 
@@ -390,20 +390,22 @@ class Git(object):
                 'Sandbox filesystem is required for credentialed Git '
                 'operations.')
         temp_dir = '/tmp/qiniu-git-auth'
+        setup_opts = dict(opts)
+        setup_opts.pop('background', None)
         prepare_result = self.commands.run(
             'install -d -m 700 {0}'.format(shell_quote(temp_dir)),
-            **opts
+            **setup_opts
         )
         if getattr(prepare_result, 'exit_code', 0):
             return prepare_result
         askpass_path = '{0}/qiniu-git-askpass-{1}'.format(
             temp_dir,
-            int(time.time() * 1000),
+            uuid.uuid4().hex,
         )
         filesystem.write(askpass_path, _askpass_script())
         chmod_result = self.commands.run(
             'chmod 700 {0}'.format(shell_quote(askpass_path)),
-            **opts
+            **setup_opts
         )
         if getattr(chmod_result, 'exit_code', 0):
             _remove_credential_file(filesystem, askpass_path)
@@ -433,6 +435,11 @@ class Git(object):
 
     def _raise_known_result_error(
             self, result, operation, throw_on_error=False):
+        if (getattr(result, 'exit_code', None) == -1 and
+                hasattr(result, 'wait')):
+            if throw_on_error:
+                result.wait = self._raise_after_wait(result.wait, operation)
+            return
         if not hasattr(result, 'exit_code'):
             return
         if result.exit_code:
@@ -446,6 +453,14 @@ class Git(object):
                     .format(operation))
             if throw_on_error:
                 raise CommandExitError(result)
+
+    def _raise_after_wait(self, wait, operation):
+        def wrapped_wait(*args, **kwargs):
+            result = wait(*args, **kwargs)
+            self._raise_known_result_error(
+                result, operation, throw_on_error=True)
+            return result
+        return wrapped_wait
 
     def clone(self, repo_url, path=None, branch=None, depth=None, **opts):
         args = ['clone']
@@ -625,7 +640,7 @@ class Git(object):
                 return prepare_result
             path = '{0}/qiniu-git-credential-{1}'.format(
                 temp_dir,
-                int(time.time() * 1000))
+                uuid.uuid4().hex)
             filesystem.write(path, credential)
             quoted_path = shell_quote(path)
             try:
