@@ -628,6 +628,7 @@ def test_sandbox_paginator_does_not_reuse_initial_next_token():
     paginator.next_items()
 
     assert client.calls[0]['nextToken'] == 'saved-page'
+    assert 'next_token' not in client.calls[0]
     assert client.calls[1]['nextToken'] == 'next-page'
 
 
@@ -753,6 +754,17 @@ def test_is_running_returns_false_for_envd_request_errors():
 
     assert sandbox.is_running(request_timeout=1) is False
     assert session.requests[0].kwargs['timeout'] == 1
+
+
+def test_is_running_returns_false_without_domain():
+    session = RecordingSession()
+    sandbox = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=session,
+    ), info={'sandboxID': 'sbx123'})
+
+    assert sandbox.is_running() is False
+    assert session.requests == []
 
 
 def test_get_sandboxes_metrics_serializes_ids_as_comma_string():

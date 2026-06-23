@@ -612,7 +612,8 @@ class SandboxClient(object):
                     return info
             except SandboxError as err:
                 if isinstance(err, TemplateBuildError) or (
-                        err.status_code is not None and err.status_code < 500):
+                        err.status_code is not None and
+                        err.status_code >= 400 and err.status_code < 500):
                     raise
             if _monotonic_time() - start >= timeout:
                 raise SandboxError('Sandbox template build polling timed out')

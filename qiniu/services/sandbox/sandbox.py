@@ -58,9 +58,9 @@ class SandboxPaginator(object):
             if key in opts:
                 client_opts[key] = opts.pop(key)
         self.client = client or SandboxClient(**client_opts)
-        self.opts = opts
         self.next_token = opts.pop('nextToken', None) or opts.pop(
             'next_token', None)
+        self.opts = opts
         self._has_next = True
 
     @property
@@ -360,6 +360,8 @@ class Sandbox(object):
     waitForReady = wait_for_ready
 
     def is_running(self, request_timeout=None):
+        if not self.domain:
+            return False
         try:
             response = self.client.session.get(
                 self.envd_url() + '/health',
