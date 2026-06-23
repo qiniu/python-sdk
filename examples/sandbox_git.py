@@ -137,7 +137,8 @@ def main():
             sandbox.git.commit(repo_path, 'feat: initial commit'),
         )
         assert_git_ok('git clone', sandbox.git.clone(repo_path, clone_path))
-        print(sandbox.git.status(clone_path).stdout)
+        status = sandbox.git.status(clone_path)
+        print('clone status clean:', status.is_clean)
         run_remote_push_demo(sandbox)
     finally:
         cleanup_sandbox(sandbox)

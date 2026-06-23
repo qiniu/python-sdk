@@ -12,12 +12,22 @@ except ImportError:
 from qiniu.services.sandbox import (
     DEFAULT_ENDPOINT,
     ENVD_PORT,
+    GitAuthException,
+    GitBranches,
+    GitStatus,
     Git,
+    EntryInfo,
     KodoResource,
+    ReadyCmd,
     Sandbox,
     SandboxClient,
     SandboxError,
     Template,
+    wait_for_file,
+    wait_for_port,
+    wait_for_process,
+    wait_for_timeout,
+    wait_for_url,
 )
 
 
@@ -33,6 +43,17 @@ class DummyResponse(object):
         if not self.content:
             return None
         return json.loads(self.content.decode('utf-8'))
+
+
+class ErrorResponse(object):
+    def __init__(self, status_code=502):
+        self.status_code = status_code
+        self.content = b''
+        self.text = ''
+        self.headers = {}
+
+    def json(self):
+        return None
 
 
 class RecordingSession(requests.Session):
@@ -225,6 +246,24 @@ def test_wait_for_ready_passes_request_timeout_to_health_check():
     assert session.requests[0].kwargs['timeout'] == 2
 
 
+def test_is_running_matches_e2b_health_check_semantics():
+    running_session = RecordingSession([DummyResponse(200, {})])
+    running = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=running_session,
+    ), info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+
+    stopped_session = RecordingSession([ErrorResponse(502)])
+    stopped = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=stopped_session,
+    ), info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+
+    assert running.is_running(request_timeout=3) is True
+    assert running_session.requests[0].kwargs['timeout'] == 3
+    assert stopped.is_running() is False
+
+
 def test_template_builder_outputs_build_config():
     template = (
         Template()
@@ -246,17 +285,49 @@ def test_template_builder_outputs_build_config():
     }
 
 
+def test_template_ready_cmd_helpers_align_with_e2b():
+    ready = wait_for_port(8000)
+    assert isinstance(ready, ReadyCmd)
+    assert ready.get_cmd() == 'ss -tuln | grep :8000'
+    assert wait_for_url(
+        'http://localhost:3000/health',
+        status_code=204,
+    ).get_cmd() == (
+        'curl -s -o /dev/null -w "%{http_code}" '
+        'http://localhost:3000/health | grep -q "204"'
+    )
+    assert wait_for_process('nginx').get_cmd() == 'pgrep nginx > /dev/null'
+    assert wait_for_file('/tmp/ready').get_cmd() == '[ -f /tmp/ready ]'
+    assert wait_for_timeout(500).get_cmd() == 'sleep 1'
+
+    template = (
+        Template()
+        .from_image('python:3.11')
+        .set_start_cmd('python app.py', wait_for_port(8000))
+    )
+
+    assert template.to_dict()['startCmd'] == 'python app.py'
+    assert template.to_dict()['readyCmd'] == 'ss -tuln | grep :8000'
+
+
 class RecordingCommands(object):
     def __init__(self):
         self.calls = []
+        self.results = []
 
     def run(self, cmd, **opts):
         self.calls.append((cmd, opts))
-        return type('Result', (object,), {
+        result = self.results.pop(0) if self.results else type(
+            'Result', (object,), {
             'exit_code': 0,
             'stdout': 'origin https://github.com/qiniu/repo.git\n',
             'stderr': '',
+            'error': '',
         })()
+        if result.exit_code and opts.get('throw_on_error'):
+            from qiniu.services.sandbox import CommandExitError
+            raise CommandExitError(result)
+        return result
 
 
 def test_git_helpers_align_with_e2b_method_names():
@@ -277,8 +348,9 @@ def test_git_helpers_align_with_e2b_method_names():
     assert commands.calls[0][0] == (
         'git remote add origin https://github.com/qiniu/repo.git')
     assert commands.calls[1][0] == 'git remote get-url origin'
-    assert commands.calls[2][0] == 'git branch --list'
-    assert commands.calls[3][0] == 'git branch feature'
+    assert commands.calls[2][0] == (
+        "git branch '--format=%(refname:short)\t%(HEAD)'")
+    assert commands.calls[3][0] == 'git checkout -b feature'
     assert commands.calls[4][0] == 'git checkout main'
     assert commands.calls[5][0] == 'git branch -D old'
     assert commands.calls[6][0] == "git reset --hard 'HEAD~1'"
@@ -304,3 +376,84 @@ def test_git_dangerously_authenticate_aligns_with_e2b():
         "username=git-user\npassword=secret-token\n\n' | "
         'git credential approve'
     )
+
+
+def test_git_status_and_branches_return_structured_e2b_types():
+    commands = RecordingCommands()
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': (
+                '## main...origin/main [ahead 2, behind 1]\n'
+                ' M changed.txt\n'
+                'A  staged.txt\n'
+                '?? new.txt\n'
+            ),
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'main\t*\nfeature\t\n',
+            'stderr': '',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    status = git.status('/repo')
+    branches = git.branches('/repo')
+
+    assert isinstance(status, GitStatus)
+    assert status.current_branch == 'main'
+    assert status.upstream == 'origin/main'
+    assert status.ahead == 2
+    assert status.behind == 1
+    assert status.has_changes is True
+    assert status.has_staged is True
+    assert status.has_untracked is True
+    assert status.file_status[0].name == 'changed.txt'
+    assert status.file_status[0].status == 'modified'
+    assert isinstance(branches, GitBranches)
+    assert branches.branches == ['main', 'feature']
+    assert branches.current_branch == 'main'
+
+
+def test_git_push_maps_auth_failure_to_e2b_exception():
+    commands = RecordingCommands()
+    commands.results = [type('Result', (object,), {
+        'exit_code': 128,
+        'stdout': '',
+        'stderr': 'fatal: Authentication failed',
+        'error': '',
+    })()]
+    git = Git(commands)
+
+    with pytest.raises(GitAuthException):
+        git.push('/repo')
+
+
+def test_git_helpers_accept_e2b_style_signatures():
+    commands = RecordingCommands()
+    git = Git(commands)
+
+    git.create_branch('/repo', 'feature')
+    git.commit(
+        '/repo',
+        'feat: demo',
+        author_name='Demo User',
+        author_email='demo@example.com',
+        allow_empty=True,
+    )
+    git.set_config('user.name', 'Demo User', scope='local', path='/repo')
+    git.get_config('user.name', scope='local', path='/repo')
+
+    assert commands.calls[0][0] == 'git checkout -b feature'
+    assert commands.calls[1][0] == (
+        "git -c 'user.name=Demo User' -c user.email=demo@example.com "
+        "commit -m 'feat: demo' --allow-empty"
+    )
+    assert commands.calls[2][0] == "git config --local user.name 'Demo User'"
+    assert commands.calls[2][1]['cwd'] == '/repo'
+    assert commands.calls[3][0] == 'git config --local --get user.name'
+    assert commands.calls[3][1]['cwd'] == '/repo'

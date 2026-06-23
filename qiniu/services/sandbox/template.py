@@ -2,6 +2,46 @@
 import json
 
 
+class ReadyCmd(object):
+    def __init__(self, cmd):
+        self._cmd = cmd
+
+    def get_cmd(self):
+        return self._cmd
+
+
+def wait_for_port(port):
+    return ReadyCmd('ss -tuln | grep :{0}'.format(port))
+
+
+def wait_for_url(url, status_code=200):
+    return ReadyCmd(
+        'curl -s -o /dev/null -w "%{{http_code}}" {0} | grep -q "{1}"'.format(
+            url,
+            status_code,
+        )
+    )
+
+
+def wait_for_process(process_name):
+    return ReadyCmd('pgrep {0} > /dev/null'.format(process_name))
+
+
+def wait_for_file(filename):
+    return ReadyCmd('[ -f {0} ]'.format(filename))
+
+
+def wait_for_timeout(timeout):
+    seconds = max(1, int(timeout) // 1000)
+    return ReadyCmd('sleep {0}'.format(seconds))
+
+
+def _ready_cmd_value(command):
+    if hasattr(command, 'get_cmd'):
+        return command.get_cmd()
+    return command
+
+
 class Template(object):
     def __init__(self):
         self.build_config = {'steps': []}
@@ -54,14 +94,16 @@ class Template(object):
 
     setEnv = set_env
 
-    def set_start_cmd(self, command):
+    def set_start_cmd(self, command, ready_cmd=None):
         self.build_config['startCmd'] = command
+        if ready_cmd is not None:
+            self.build_config['readyCmd'] = _ready_cmd_value(ready_cmd)
         return self
 
     setStartCmd = set_start_cmd
 
     def set_ready_cmd(self, command):
-        self.build_config['readyCmd'] = command
+        self.build_config['readyCmd'] = _ready_cmd_value(command)
         return self
 
     setReadyCmd = set_ready_cmd

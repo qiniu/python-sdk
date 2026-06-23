@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import base64
+from io import BytesIO
 import json
 
 from qiniu.services.sandbox import (
+    EntryInfo,
     FileType,
     FilesystemEventType,
     PtySize,
@@ -106,7 +108,11 @@ class EnvdSession(object):
         self.requests.append({'method': method, 'url': url, 'kwargs': kwargs})
         if method == 'GET':
             return DummyResponse(raw=b'hello')
-        return DummyResponse(body={'name': 'hello.txt', 'type': 'FILE'})
+        return DummyResponse(body=[{
+            'name': 'hello.txt',
+            'type': 'FILE',
+            'path': '/tmp/hello.txt',
+        }])
 
 
 def sandbox_with_envd_session():
@@ -254,6 +260,26 @@ def test_filesystem_uses_envd_rpc_and_signed_file_urls():
     assert b'name="file"' in session.requests[1]['kwargs']['data']
     assert session.posts[0]['url'].endswith('/filesystem.Filesystem/Stat')
     assert session.posts[1]['url'].endswith('/filesystem.Filesystem/ListDir')
+
+
+def test_filesystem_returns_e2b_style_entry_objects_and_streams():
+    sandbox, session = sandbox_with_envd_session()
+
+    stream = sandbox.files.read('/tmp/hello.txt', format='stream')
+    written = sandbox.files.write('/tmp/hello.txt', BytesIO(b'hello'))
+    info = sandbox.files.stat('/tmp/hello.txt')
+    entries = sandbox.files.list('/tmp')
+
+    assert b''.join(stream) == b'hello'
+    assert written.name == 'hello.txt'
+    assert written.path == '/tmp/hello.txt'
+    assert written.type == FileType.FILE
+    assert isinstance(info, EntryInfo)
+    assert info.name == 'hello.txt'
+    assert info.type == FileType.FILE
+    assert entries[0].name == 'hello.txt'
+    assert entries[0].type == FileType.FILE
+    assert b'hello' in session.requests[1]['kwargs']['data']
 
 
 def test_filesystem_write_files_accepts_e2b_style_file_list():

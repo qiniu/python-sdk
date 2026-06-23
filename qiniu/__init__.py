@@ -27,15 +27,29 @@ from .services.processing.cmd import build_op, pipe_cmd, op_save
 from .services.compute.app import AccountClient
 from .services.compute.qcos_api import QcosClient
 from .services.sandbox import (
+    EntryInfo,
     FileType,
+    GitAuthException,
+    GitBranches,
+    GitFileStatus,
     FilesystemEventType,
     GitRepositoryResource,
+    GitStatus,
+    GitUpstreamException,
     KodoResource,
     PtySize,
+    ReadyCmd,
     Sandbox,
     SandboxClient,
     Template,
     WatchHandle,
+    WriteEntry,
+    WriteInfo,
+    wait_for_file,
+    wait_for_port,
+    wait_for_process,
+    wait_for_timeout,
+    wait_for_url,
 )
 from .services.sms.sms import Sms
 from .services.pili.rtc_server_manager import RtcServer, get_room_token

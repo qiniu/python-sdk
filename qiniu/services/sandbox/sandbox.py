@@ -320,3 +320,16 @@ class Sandbox(object):
             time.sleep(interval)
 
     waitForReady = wait_for_ready
+
+    def is_running(self, request_timeout=None):
+        response = self.client.session.get(
+            self.envd_url() + '/health',
+            timeout=request_timeout,
+        )
+        if response.status_code == 502:
+            return False
+        if response.status_code >= 200 and response.status_code < 300:
+            return True
+        return False
+
+    isRunning = is_running

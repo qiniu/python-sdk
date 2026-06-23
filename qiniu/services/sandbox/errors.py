@@ -19,3 +19,19 @@ class CommandExitError(SandboxError):
         super(CommandExitError, self).__init__(
             'Command exited with code {0}'.format(result.exit_code)
         )
+
+
+class InvalidArgumentException(SandboxError):
+    pass
+
+
+class FileNotFoundException(SandboxError):
+    pass
+
+
+class GitAuthException(SandboxError):
+    pass
+
+
+class GitUpstreamException(SandboxError):
+    pass

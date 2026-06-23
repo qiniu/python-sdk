@@ -193,7 +193,9 @@ def test_runtime_commands_filesystem_and_git_helpers():
             repo_path, 'feat: runtime', allow_empty=True).exit_code == 0
         assert sandbox.git.create_branch(repo_path, 'feature').exit_code == 0
         assert sandbox.git.checkout_branch(repo_path, 'feature').exit_code == 0
-        assert sandbox.git.branches(repo_path).exit_code == 0
+        branches = sandbox.git.branches(repo_path)
+        assert 'feature' in branches.branches
+        assert branches.current_branch == 'feature'
         assert sandbox.git.get_config(repo_path, 'user.name').exit_code == 0
         assert sandbox.git.reset(repo_path, 'HEAD', mode='hard').exit_code == 0
         assert sandbox.git.restore(repo_path, paths=['README.md']).exit_code == 0

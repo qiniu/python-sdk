@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import time
+from io import IOBase, TextIOBase
 
-from .errors import SandboxError
+from .errors import InvalidArgumentException, SandboxError
 from .envd import connect_rpc, envd_headers, raw_envd_request
 
 
@@ -28,6 +29,63 @@ class FilesystemEvent(object):
         return {'name': self.name, 'type': self.type}
 
 
+class WriteEntry(dict):
+    def __init__(self, path=None, data=None, **kwargs):
+        dict.__init__(self, path=path, data=data, **kwargs)
+        self.path = path
+        self.data = data
+
+
+class WriteInfo(object):
+    def __init__(self, name=None, type=None, path=None):
+        self.name = name
+        self.type = type
+        self.path = path
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'type': self.type,
+            'path': self.path,
+        }
+
+    def __getitem__(self, key):
+        return self.to_dict()[key]
+
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            data = self.to_dict()
+            return all(data.get(key) == value for key, value in other.items())
+        return object.__eq__(self, other)
+
+
+class EntryInfo(WriteInfo):
+    def __init__(self, name=None, type=None, path=None, size=None, mode=None,
+                 permissions=None, owner=None, group=None, modified_time=None,
+                 symlink_target=None):
+        WriteInfo.__init__(self, name=name, type=type, path=path)
+        self.size = size
+        self.mode = mode
+        self.permissions = permissions
+        self.owner = owner
+        self.group = group
+        self.modified_time = modified_time
+        self.symlink_target = symlink_target
+
+    def to_dict(self):
+        data = WriteInfo.to_dict(self)
+        data.update({
+            'size': self.size,
+            'mode': self.mode,
+            'permissions': self.permissions,
+            'owner': self.owner,
+            'group': self.group,
+            'modified_time': self.modified_time,
+            'symlink_target': self.symlink_target,
+        })
+        return data
+
+
 def normalize_event_type(event_type):
     mapping = {
         'EVENT_TYPE_CREATE': FilesystemEventType.CREATE,
@@ -44,16 +102,49 @@ def normalize_event_type(event_type):
     return mapping.get(event_type, event_type)
 
 
-def normalize_entry(entry):
+def normalize_entry_type(entry_type):
+    if entry_type in ('FILE_TYPE_DIRECTORY', 'DIRECTORY', 'dir'):
+        return FileType.DIR
+    if entry_type in ('FILE_TYPE_FILE', 'FILE', 'file'):
+        return FileType.FILE
+    return entry_type
+
+
+def normalize_entry(entry, extended=False):
     entry = entry or {}
     entry_type = entry.get('type')
-    if entry_type in ('FILE_TYPE_DIRECTORY', 'DIRECTORY', 'dir'):
-        entry_type = 'dir'
-    elif entry_type in ('FILE_TYPE_FILE', 'FILE', 'file'):
-        entry_type = 'file'
-    if entry_type:
-        entry['type'] = entry_type
-    return entry
+    entry_type = normalize_entry_type(entry_type)
+    info_cls = EntryInfo if extended else WriteInfo
+    return info_cls(
+        name=entry.get('name'),
+        type=entry_type,
+        path=entry.get('path'),
+        size=entry.get('size'),
+        mode=entry.get('mode'),
+        permissions=entry.get('permissions'),
+        owner=entry.get('owner'),
+        group=entry.get('group'),
+        modified_time=entry.get('modifiedTime') or entry.get('modified_time'),
+        symlink_target=entry.get('symlinkTarget') or entry.get(
+            'symlink_target'),
+    ) if extended else info_cls(
+        name=entry.get('name'),
+        type=entry_type,
+        path=entry.get('path'),
+    )
+
+
+def to_upload_body(data, encoding='utf-8'):
+    if isinstance(data, bytes):
+        return data
+    if isinstance(data, str):
+        return data.encode(encoding)
+    if isinstance(data, TextIOBase):
+        return data.read().encode(encoding)
+    if isinstance(data, IOBase):
+        return data.read()
+    raise InvalidArgumentException(
+        'Unsupported data type for filesystem write: {0}'.format(type(data)))
 
 
 class WatchHandle(object):
@@ -109,8 +200,13 @@ class Filesystem(object):
             url,
             headers=envd_headers(self.sandbox, user),
         )
+        if format == 'stream':
+            if hasattr(response, 'iter_content'):
+                return response.iter_content(chunk_size=opts.get(
+                    'chunk_size', 8192))
+            return iter([response.content])
         if format == 'bytes':
-            return response.content
+            return bytearray(response.content)
         return response.content.decode(opts.get('encoding', 'utf-8'))
 
     def read_text(self, path, user=None, **opts):
@@ -119,8 +215,7 @@ class Filesystem(object):
     readText = read_text
 
     def write(self, path, data, user=None, **opts):
-        if not isinstance(data, bytes):
-            data = str(data).encode(opts.get('encoding', 'utf-8'))
+        data = to_upload_body(data, opts.get('encoding', 'utf-8'))
         url = self.sandbox.upload_url(path, user=user)
         if opts.get('use_octet_stream'):
             response = raw_envd_request(
@@ -196,7 +291,7 @@ class Filesystem(object):
             user=user,
             timeout=timeout,
         )
-        return normalize_entry((data or {}).get('entry'))
+        return normalize_entry((data or {}).get('entry'), extended=True)
 
     getInfo = get_info
     stat = get_info
@@ -210,7 +305,7 @@ class Filesystem(object):
             timeout=timeout,
         )
         return [
-            normalize_entry(entry) for entry in (
+            normalize_entry(entry, extended=True) for entry in (
                 data or {}).get(
                 'entries', [])]
 
@@ -233,7 +328,7 @@ class Filesystem(object):
             user=user,
             timeout=timeout,
         )
-        return normalize_entry((data or {}).get('entry'))
+        return normalize_entry((data or {}).get('entry'), extended=True)
 
     makeDir = make_dir
     mkdir = make_dir
@@ -256,7 +351,7 @@ class Filesystem(object):
             user=user,
             timeout=timeout,
         )
-        return normalize_entry((data or {}).get('entry'))
+        return normalize_entry((data or {}).get('entry'), extended=True)
 
     def watch_dir(self, path, recursive=False, user=None, timeout=None):
         data = connect_rpc(
