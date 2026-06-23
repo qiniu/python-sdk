@@ -20,7 +20,7 @@ def wait_for_port(port):
 def wait_for_url(url, status_code=200):
     status_code = int(status_code)
     return ReadyCmd(
-        'curl -s -o /dev/null -w "%{{http_code}}" {0} | grep -q "{1}"'.format(
+        '[ "$(curl -s -o /dev/null -w "%{{http_code}}" {0})" = "{1}" ]'.format(
             shell_quote(url),
             status_code,
         )

@@ -219,12 +219,13 @@ def test_filesystem_write_accepts_duck_typed_file_like_objects():
             return b'hello'
 
     sandbox, session = sandbox_with_envd_session()
+    file_like = FileLike()
 
-    sandbox.files.write('/tmp/file-like.txt', FileLike())
+    sandbox.files.write('/tmp/file-like.txt', file_like)
 
     assert session.requests[0]['kwargs']['files']['file'] == (
         'file-like.txt',
-        b'hello',
+        file_like,
     )
 
 
@@ -295,12 +296,14 @@ def test_commands_run_supports_e2b_callbacks_and_request_timeout():
         'echo hello',
         on_stdout=stdout.append,
         on_stderr=stderr.append,
+        timeout=3,
         request_timeout=7,
     )
 
     assert result.stdout == 'hello\n'
     assert stdout == ['hello\n']
     assert stderr == []
+    assert session.posts[0]['data']['timeout'] == 3
     assert session.posts[0]['timeout'] == 7
 
 
@@ -404,10 +407,12 @@ def test_filesystem_returns_e2b_style_entry_objects_and_streams():
     assert entries[0].name == 'hello.txt'
     assert entries[0].type == FileType.FILE
     assert session.requests[0]['kwargs']['stream'] is True
+    written_data = session.requests[1]['kwargs']['files']['file'][1]
     assert session.requests[1]['kwargs']['files']['file'] == (
         'hello.txt',
-        b'hello',
+        written_data,
     )
+    assert isinstance(written_data, BytesIO)
 
 
 def test_filesystem_read_write_pass_request_timeout_to_file_requests():

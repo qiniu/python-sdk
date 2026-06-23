@@ -180,7 +180,10 @@ class SandboxClient(object):
             auth=auth,
         )
         prepared = self.session.prepare_request(request)
-        response = self.session.send(prepared, timeout=self.timeout)
+        try:
+            response = self.session.send(prepared, timeout=self.timeout)
+        except requests.RequestException as err:
+            raise SandboxError('Sandbox API request failed: {0}'.format(err))
         if response.status_code < 200 or response.status_code >= 300:
             response_data = None
             try:
@@ -273,9 +276,7 @@ class SandboxClient(object):
 
     resumeSandbox = resume_sandbox
 
-    def connect_sandbox(self, sandbox_id, timeout=15, **opts):
-        if timeout is None:
-            timeout = opts.pop('timeout', 15)
+    def connect_sandbox(self, sandbox_id, timeout=15):
         return self._request(
             'POST',
             '/sandboxes/{0}/connect'.format(encode_path(sandbox_id)),
@@ -398,6 +399,8 @@ class SandboxClient(object):
     getTemplate = get_template
 
     def delete_template(self, template_id):
+        if not template_id:
+            raise SandboxError('template_id is required')
         return self._request(
             'DELETE',
             '/templates/{0}'.format(encode_path(template_id)),

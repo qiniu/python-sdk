@@ -14,6 +14,8 @@ def test_load_dotenv_if_present_reads_key_values_without_overwriting(tmpdir):
         '\n'.join([
             'QINIU_SANDBOX_API_KEY=from-file',
             'QINIU_SANDBOX_TEMPLATE="python:3.11"',
+            'QINIU_SANDBOX_COMMENTED=value # inline comment',
+            'QINIU_SANDBOX_HASH="value # not comment"',
             'EXISTING=value-from-file',
             '# ignored',
             '',
@@ -25,18 +27,24 @@ def test_load_dotenv_if_present_reads_key_values_without_overwriting(tmpdir):
         for key in (
             'QINIU_SANDBOX_API_KEY',
             'QINIU_SANDBOX_TEMPLATE',
+            'QINIU_SANDBOX_COMMENTED',
+            'QINIU_SANDBOX_HASH',
             'EXISTING',
         )
     }
     try:
         os.environ.pop('QINIU_SANDBOX_API_KEY', None)
         os.environ.pop('QINIU_SANDBOX_TEMPLATE', None)
+        os.environ.pop('QINIU_SANDBOX_COMMENTED', None)
+        os.environ.pop('QINIU_SANDBOX_HASH', None)
         os.environ['EXISTING'] = 'already-set'
 
         load_dotenv_if_present(str(dotenv))
 
         assert os.environ['QINIU_SANDBOX_API_KEY'] == 'from-file'
         assert os.environ['QINIU_SANDBOX_TEMPLATE'] == 'python:3.11'
+        assert os.environ['QINIU_SANDBOX_COMMENTED'] == 'value'
+        assert os.environ['QINIU_SANDBOX_HASH'] == 'value # not comment'
         assert os.environ['EXISTING'] == 'already-set'
     finally:
         for key, value in old.items():

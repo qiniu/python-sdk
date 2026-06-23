@@ -338,6 +338,9 @@ class Git(object):
         ]
         if len(remotes) == 1:
             return remotes[0]
+        if len(remotes) == 0:
+            raise InvalidArgumentException(
+                'No remotes found in the repository.')
         raise InvalidArgumentException(
             'Remote is required when using username/password and the '
             'repository has multiple remotes.')
@@ -386,7 +389,8 @@ class Git(object):
             raise operation_error
         return result
 
-    def _raise_known_result_error(self, result, operation):
+    def _raise_known_result_error(
+            self, result, operation, throw_on_error=False):
         if result.exit_code:
             if _is_auth_failure(result):
                 raise GitAuthException(
@@ -396,6 +400,9 @@ class Git(object):
                 raise GitUpstreamException(
                     'Git {0} failed because no upstream branch is configured.'
                     .format(operation))
+            if throw_on_error:
+                from qiniu.services.sandbox import CommandExitError
+                raise CommandExitError(result)
 
     def clone(self, repo_url, path=None, branch=None, depth=None, **opts):
         args = ['clone']
@@ -463,6 +470,7 @@ class Git(object):
 
     def pull(self, repo_path, remote=None, branch=None, username=None,
              password=None, **opts):
+        throw_on_error = opts.pop('throw_on_error', False)
         if password and not username:
             raise GitAuthException(
                 'Git pull requires username when password is provided')
@@ -482,18 +490,22 @@ class Git(object):
                 remote_name,
                 username,
                 password,
-                lambda: self._run_git(repo_path, args, **opts),
+                lambda: self._run_git(
+                    repo_path, args, throw_on_error=False, **opts),
                 **opts
             )
-            self._raise_known_result_error(result, 'pull')
+            self._raise_known_result_error(
+                result, 'pull', throw_on_error=throw_on_error)
             return result
 
-        result = self._run_git(repo_path, args, **opts)
-        self._raise_known_result_error(result, 'pull')
+        result = self._run_git(repo_path, args, throw_on_error=False, **opts)
+        self._raise_known_result_error(
+            result, 'pull', throw_on_error=throw_on_error)
         return result
 
     def push(self, repo_path, remote=None, branch=None, set_upstream=True,
              username=None, password=None, **opts):
+        throw_on_error = opts.pop('throw_on_error', False)
         if password and not username:
             raise GitAuthException(
                 'Git push requires username when password is provided')
@@ -515,14 +527,17 @@ class Git(object):
                 remote_name,
                 username,
                 password,
-                lambda: self._run_git(repo_path, args, **opts),
+                lambda: self._run_git(
+                    repo_path, args, throw_on_error=False, **opts),
                 **opts
             )
-            self._raise_known_result_error(result, 'push')
+            self._raise_known_result_error(
+                result, 'push', throw_on_error=throw_on_error)
             return result
 
-        result = self._run_git(repo_path, args, **opts)
-        self._raise_known_result_error(result, 'push')
+        result = self._run_git(repo_path, args, throw_on_error=False, **opts)
+        self._raise_known_result_error(
+            result, 'push', throw_on_error=throw_on_error)
         return result
 
     def dangerously_authenticate(
@@ -570,10 +585,7 @@ class Git(object):
                     'trap "rm -f {0}" EXIT; '
                     'git credential approve < {0}'
                 ).format(quoted_path)
-                return self.commands.run(
-                    'sh -c {0}'.format(shell_quote(script)),
-                    **opts
-                )
+                return self.commands.run(script, **opts)
             except Exception:
                 _remove_credential_file(filesystem, path)
                 raise
@@ -590,11 +602,25 @@ class Git(object):
     dangerouslyAuthenticate = dangerously_authenticate
 
     def remote_add(self, repo_path, name, url, **opts):
-        return self._run_git(repo_path, [
+        fetch = opts.pop('fetch', False)
+        overwrite = opts.pop('overwrite', False)
+        if overwrite:
+            self._run_git(repo_path, [
+                'remote',
+                'remove',
+                shell_quote(name),
+            ], **opts)
+        result = self._run_git(repo_path, [
             'remote',
             'add',
             shell_quote(name),
             shell_quote(url),
+        ], **opts)
+        if result.exit_code != 0 or not fetch:
+            return result
+        return self._run_git(repo_path, [
+            'fetch',
+            shell_quote(name),
         ], **opts)
 
     remoteAdd = remote_add

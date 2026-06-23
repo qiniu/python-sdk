@@ -155,9 +155,8 @@ class Commands(object):
             stdin=stdin,
             tag=tag,
             throw_on_error=throw_on_error,
-            timeout=(
-                request_timeout if request_timeout is not None else timeout
-            ),
+            timeout=timeout,
+            request_timeout=request_timeout,
             on_stdout=on_stdout,
             on_stderr=on_stderr,
             **opts
@@ -165,8 +164,8 @@ class Commands(object):
         return handle if background else handle.wait()
 
     def start(self, cmd, cwd=None, envs=None, user=None, stdin=False,
-              tag=None, throw_on_error=False, timeout=None, on_stdout=None,
-              on_stderr=None, **opts):
+              tag=None, throw_on_error=False, timeout=None,
+              request_timeout=None, on_stdout=None, on_stderr=None, **opts):
         process = {
             'cmd': '/bin/bash',
             'args': ['-l', '-c', cmd],
@@ -181,12 +180,14 @@ class Commands(object):
         }
         if tag:
             body['tag'] = tag
+        if timeout is not None:
+            body['timeout'] = timeout
         events = connect_stream_rpc(
             self.sandbox,
             '/process.Process/Start',
             body,
             user=user,
-            timeout=timeout,
+            timeout=request_timeout,
             stream=True,
         )
         events = iter(events)

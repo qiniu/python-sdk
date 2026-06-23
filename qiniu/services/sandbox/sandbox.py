@@ -18,6 +18,12 @@ from .util import (
 )
 
 
+try:
+    from time import monotonic as _monotonic_time
+except ImportError:
+    _monotonic_time = time.time
+
+
 class _ConnectDescriptor(object):
     def __get__(self, obj, cls):
         if obj is None:
@@ -29,9 +35,9 @@ class _ConnectDescriptor(object):
                 return sandbox
             return class_connect
 
-        def instance_connect(timeout=15, **opts):
+        def instance_connect(timeout=15):
             info = obj.client.connect_sandbox(
-                obj.sandbox_id, timeout=timeout, **opts)
+                obj.sandbox_id, timeout=timeout)
             obj.update_info(info)
             obj.refresh_envd_token_if_needed()
             return obj
@@ -315,15 +321,15 @@ class Sandbox(object):
     UploadURL = upload_url
 
     def wait_for_ready(self, timeout=60, interval=1):
-        started = time.time()
+        started = _monotonic_time()
         while True:
-            if timeout is not None and time.time() - started >= timeout:
+            if timeout is not None and _monotonic_time() - started >= timeout:
                 raise SandboxError('Sandbox envd did not become ready')
-            elapsed = time.time() - started
+            elapsed = _monotonic_time() - started
             remaining = None if timeout is None else max(timeout - elapsed, 0)
             request_timeout = 5
             if remaining is not None:
-                request_timeout = min(5, remaining)
+                request_timeout = max(0.1, min(5, remaining))
             try:
                 response = self.client.session.get(
                     self.envd_url() + '/health',

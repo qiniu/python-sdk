@@ -142,12 +142,7 @@ def to_upload_body(data, encoding='utf-8'):
     if isinstance(data, basestring):
         return data.encode(encoding)
     if isinstance(data, (TextIOBase, IOBase)) or hasattr(data, 'read'):
-        content = data.read()
-        if isinstance(content, bytes):
-            return content
-        if isinstance(content, basestring):
-            return content.encode(encoding)
-        return content
+        return data
     raise InvalidArgumentException(
         'Unsupported data type for filesystem write: {0}'.format(type(data)))
 
@@ -202,9 +197,11 @@ class Filesystem(object):
             return opts.get('request_timeout')
         return opts.get('timeout')
 
-    def read(self, path, user=None, format='text', **opts):
+    def read(self, path, user=None, fmt=None, **opts):
+        if fmt is None:
+            fmt = opts.pop('format', 'text')
         url = self.sandbox.download_url(path, user=user)
-        stream_mode = format == 'stream'
+        stream_mode = fmt == 'stream'
         response = raw_envd_request(
             self.sandbox,
             'GET',
@@ -213,12 +210,12 @@ class Filesystem(object):
             timeout=self._request_timeout(opts),
             stream=stream_mode,
         )
-        if format == 'stream':
+        if fmt == 'stream':
             if hasattr(response, 'iter_content'):
                 return response.iter_content(chunk_size=opts.get(
                     'chunk_size', 8192))
             return iter([response.content])
-        if format == 'bytes':
+        if fmt == 'bytes':
             return bytearray(response.content)
         return response.content.decode(opts.get('encoding', 'utf-8'))
 

@@ -10,6 +10,7 @@ except ImportError:
     from urlparse import parse_qs, urlparse
 
 from qiniu.services.sandbox import (
+    CommandExitError,
     DEFAULT_ENDPOINT,
     ENVD_PORT,
     GitAuthException,
@@ -66,7 +67,10 @@ class RecordingSession(requests.Session):
     def send(self, request, **kwargs):
         self.requests.append(request)
         if self.responses:
-            return self.responses.pop(0)
+            response = self.responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            return response
         return DummyResponse(body={})
 
     def get(self, url, **kwargs):
@@ -218,6 +222,18 @@ def test_client_uses_default_http_timeout():
     assert custom.timeout == 12
 
 
+def test_client_wraps_request_exceptions_in_sandbox_error():
+    client = SandboxClient(
+        api_key='api-key',
+        session=RecordingSession([requests.Timeout('timed out')]))
+
+    with pytest.raises(SandboxError) as err:
+        client.list_sandboxes()
+
+    assert 'Sandbox API request failed' in str(err.value)
+    assert 'timed out' in str(err.value)
+
+
 def test_sandbox_instance_lifecycle_methods_call_control_plane():
     session = RecordingSession([
         DummyResponse(204, None),
@@ -249,6 +265,24 @@ def test_sandbox_instance_lifecycle_methods_call_control_plane():
     assert body_of(session.requests[1]) == {'timeout': 30}
     assert session.requests[2].url.endswith('/sandboxes/sbx123/connect')
     assert body_of(session.requests[2]) == {'timeout': 45}
+
+
+def test_connect_sandbox_uses_timeout_body_only():
+    session = RecordingSession([DummyResponse(200, {'sandboxID': 'sbx123'})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.connect_sandbox('sbx123', timeout=9)
+
+    assert body_of(session.requests[0]) == {'timeout': 9}
+
+
+def test_delete_template_requires_template_id():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.delete_template(None)
+
+    assert 'template_id is required' in str(err.value)
 
 
 def test_sandbox_envd_and_file_urls_are_signed_when_token_is_available():
@@ -444,8 +478,8 @@ def test_template_ready_cmd_helpers_align_with_e2b():
         'http://localhost:3000/health',
         status_code=204,
     ).get_cmd() == (
-        'curl -s -o /dev/null -w "%{http_code}" '
-        'http://localhost:3000/health | grep -q "204"'
+        '[ "$(curl -s -o /dev/null -w "%{http_code}" '
+        'http://localhost:3000/health)" = "204" ]'
     )
     assert wait_for_process('nginx').get_cmd() == 'pgrep nginx > /dev/null'
     assert wait_for_file('/tmp/ready').get_cmd() == '[ -f /tmp/ready ]'
@@ -466,8 +500,8 @@ def test_template_ready_cmd_helpers_quote_shell_inputs():
         'http://localhost:3000/health; touch /tmp/pwn',
         status_code='204',
     ).get_cmd() == (
-        'curl -s -o /dev/null -w "%{http_code}" '
-        "'http://localhost:3000/health; touch /tmp/pwn' | grep -q \"204\""
+        '[ "$(curl -s -o /dev/null -w "%{http_code}" '
+        '\'http://localhost:3000/health; touch /tmp/pwn\')" = "204" ]'
     )
     assert wait_for_process('nginx; touch /tmp/pwn').get_cmd() == (
         "pgrep 'nginx; touch /tmp/pwn' > /dev/null"
@@ -542,6 +576,24 @@ def test_git_helpers_align_with_e2b_method_names():
     assert commands.calls[7][0] == 'git restore a.txt b.txt'
     assert commands.calls[8][0] == 'git config user.name tester'
     assert commands.calls[9][0] == 'git config --get user.name'
+
+
+def test_git_remote_add_supports_overwrite_and_fetch_options():
+    commands = RecordingCommands()
+    git = Git(commands)
+
+    git.remote_add(
+        '/repo',
+        'origin',
+        'https://github.com/qiniu/repo.git',
+        overwrite=True,
+        fetch=True,
+    )
+
+    assert commands.calls[0][0] == 'git remote remove origin'
+    assert commands.calls[1][0] == (
+        'git remote add origin https://github.com/qiniu/repo.git')
+    assert commands.calls[2][0] == 'git fetch origin'
 
 
 def test_git_add_and_restore_accept_single_string_path():
@@ -620,7 +672,7 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
     )
     assert files.writes[0][2] == {}
     assert commands.calls[1][0].startswith('chmod 600 /tmp/')
-    assert commands.calls[2][0].startswith('sh -c ')
+    assert commands.calls[2][0].startswith('trap "rm -f /tmp/')
     assert 'git credential approve' in commands.calls[2][0]
     assert 'secret-%-token' not in commands.calls[2][0]
 
@@ -722,6 +774,50 @@ def test_git_push_maps_auth_failure_to_e2b_exception():
 
     with pytest.raises(GitAuthException):
         git.push('/repo')
+
+
+def test_git_credential_remote_requires_existing_remote():
+    commands = RecordingCommands()
+    commands.results = [type('Result', (object,), {
+        'exit_code': 0,
+        'stdout': '',
+        'stderr': '',
+        'error': '',
+    })()]
+    git = Git(commands)
+
+    with pytest.raises(InvalidArgumentException) as err:
+        git.push('/repo', username='git-user', password='secret')
+
+    assert 'No remotes found' in str(err.value)
+
+
+def test_git_push_maps_known_errors_before_throw_on_error():
+    commands = RecordingCommands()
+    commands.results = [type('Result', (object,), {
+        'exit_code': 128,
+        'stdout': '',
+        'stderr': 'fatal: Authentication failed',
+        'error': '',
+    })()]
+    git = Git(commands)
+
+    with pytest.raises(GitAuthException):
+        git.push('/repo', throw_on_error=True)
+
+
+def test_git_push_respects_throw_on_error_for_unknown_errors():
+    commands = RecordingCommands()
+    commands.results = [type('Result', (object,), {
+        'exit_code': 1,
+        'stdout': '',
+        'stderr': 'unexpected failure',
+        'error': '',
+    })()]
+    git = Git(commands)
+
+    with pytest.raises(CommandExitError):
+        git.push('/repo', throw_on_error=True)
 
 
 def test_git_push_with_credentials_sets_remote_url_temporarily():

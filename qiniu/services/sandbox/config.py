@@ -23,7 +23,7 @@ def load_dotenv_if_present(*paths):
                     continue
                 key, value = line.split('=', 1)
                 key = key.strip()
-                value = value.strip()
+                value = _strip_inline_comment(value.strip()).strip()
                 if (
                     len(value) >= 2 and
                     value[0] == value[-1] and
@@ -42,6 +42,28 @@ def _native_env_pair(key, value):
         if isinstance(value, text_type):
             value = value.encode('utf-8')
     return key, value
+
+
+def _strip_inline_comment(value):
+    quote = None
+    escaped = False
+    for index, char in enumerate(value):
+        if escaped:
+            escaped = False
+            continue
+        if char == '\\':
+            escaped = True
+            continue
+        if quote:
+            if char == quote:
+                quote = None
+            continue
+        if char in ('"', "'"):
+            quote = char
+            continue
+        if char == '#' and (index == 0 or value[index - 1].isspace()):
+            return value[:index]
+    return value
 
 
 def env(key, fallback=None):

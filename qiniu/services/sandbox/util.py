@@ -49,17 +49,6 @@ def json_dumps(data):
     return std_json.dumps(data, separators=(',', ':'))
 
 
-def timeout_seconds_from_options(opts):
-    opts = opts or {}
-    if opts.get('timeout') is not None:
-        return opts.get('timeout')
-    if opts.get('timeout_ms') is not None:
-        return int((opts.get('timeout_ms') + 999) / 1000)
-    if opts.get('timeoutMs') is not None:
-        return int((opts.get('timeoutMs') + 999) / 1000)
-    return None
-
-
 def basic_auth(user=None):
     user = user or DEFAULT_USER
     raw = ('{0}:'.format(user)).encode('utf-8')
