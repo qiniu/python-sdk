@@ -1617,6 +1617,8 @@ def test_git_config_helpers_accept_legacy_repo_path_signatures():
     git.set_config(None, 'http.version', 'HTTP/1.1', global_config=True)
     git.set_config('/repo', 'user.name', 'Sandbox Demo')
     git.set_config('/repo', 'gitreview.username', 'global')
+    git.set_config('repo', 'user.email', 'global')
+    git.set_config('.', 'core.editor', 'global')
     git.get_config('/repo', 'user.name')
 
     assert commands.calls[0][0] == "git config --global http.version HTTP/1.1"
@@ -1627,5 +1629,9 @@ def test_git_config_helpers_accept_legacy_repo_path_signatures():
     assert commands.calls[2][0] == (
         'git config --local gitreview.username global')
     assert commands.calls[2][1]['cwd'] == '/repo'
-    assert commands.calls[3][0] == 'git config --local --get user.name'
-    assert commands.calls[3][1]['cwd'] == '/repo'
+    assert commands.calls[3][0] == 'git config --local user.email global'
+    assert commands.calls[3][1]['cwd'] == 'repo'
+    assert commands.calls[4][0] == 'git config --local core.editor global'
+    assert commands.calls[4][1]['cwd'] == '.'
+    assert commands.calls[5][0] == 'git config --local --get user.name'
+    assert commands.calls[5][1]['cwd'] == '/repo'

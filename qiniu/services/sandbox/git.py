@@ -785,7 +785,12 @@ class Git(object):
         if scope_name not in ('global', 'local', 'system'):
             return True
         key_text = str(key or '')
-        return '/' in key_text or '\\' in key_text
+        return (
+            '/' in key_text or
+            '\\' in key_text or
+            key_text in ('.', '..') or
+            '.' not in key_text
+        )
 
     def _resolve_config_scope(self, scope=None, path=None):
         scope_name = (scope or 'global').strip().lower()
