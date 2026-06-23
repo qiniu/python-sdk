@@ -306,6 +306,17 @@ def _with_credentials(url, username, password):
     ))
 
 
+def _askpass_script():
+    return (
+        '#!/bin/sh\n'
+        'case "$1" in\n'
+        '*Username*) printf "%s\\n" "$GIT_USERNAME" ;;\n'
+        '*Password*) printf "%s\\n" "$GIT_PASSWORD" ;;\n'
+        '*) printf "\\n" ;;\n'
+        'esac\n'
+    )
+
+
 class Git(object):
     def __init__(self, commands):
         self.commands = commands
@@ -348,44 +359,51 @@ class Git(object):
     def _with_remote_credentials(self, repo_path, remote, username, password,
                                  operation, **opts):
         original_url = self._get_remote_url(repo_path, remote, **opts)
-        credential_url = _with_credentials(original_url, username, password)
-        set_result = self._run_git(repo_path, [
-            'remote',
-            'set-url',
-            shell_quote(remote),
-            shell_quote(credential_url),
-        ], **opts)
-        if getattr(set_result, 'exit_code', 0):
-            return set_result
+        _with_credentials(original_url, username, password)
+        sandbox = getattr(self.commands, 'sandbox', None)
+        filesystem = getattr(sandbox, 'files', None)
+        if filesystem is None:
+            raise SandboxError(
+                'Sandbox filesystem is required for credentialed Git '
+                'operations.')
+        temp_dir = '/tmp/qiniu-git-auth'
+        prepare_result = self.commands.run(
+            'install -d -m 700 {0}'.format(shell_quote(temp_dir)),
+            **opts
+        )
+        if getattr(prepare_result, 'exit_code', 0):
+            return prepare_result
+        askpass_path = '{0}/qiniu-git-askpass-{1}'.format(
+            temp_dir,
+            int(time.time() * 1000),
+        )
+        filesystem.write(askpass_path, _askpass_script())
+        chmod_result = self.commands.run(
+            'chmod 700 {0}'.format(shell_quote(askpass_path)),
+            **opts
+        )
+        if getattr(chmod_result, 'exit_code', 0):
+            _remove_credential_file(filesystem, askpass_path)
+            return chmod_result
+
+        auth_opts = dict(opts)
+        envs = dict(auth_opts.get('envs') or {})
+        envs.update({
+            'GIT_ASKPASS': askpass_path,
+            'GIT_TERMINAL_PROMPT': '0',
+            'GIT_USERNAME': username,
+            'GIT_PASSWORD': password,
+        })
+        auth_opts['envs'] = envs
 
         operation_error = None
         try:
-            result = operation()
+            result = operation(auth_opts)
         except Exception as err:
             operation_error = err
             result = None
-
-        restore_result = self._run_git(repo_path, [
-            'remote',
-            'set-url',
-            shell_quote(remote),
-            shell_quote(original_url),
-        ], **opts)
-        if getattr(restore_result, 'exit_code', 0):
-            message = (
-                'Failed to restore original remote URL. Credentials may be '
-                'leaked in .git/config: {0}'
-            ).format(
-                getattr(restore_result, 'stderr', '') or
-                getattr(restore_result, 'stdout', '') or
-                getattr(restore_result, 'error', '')
-            )
-            if operation_error is not None:
-                message = '{0}. Original operation failed with: {1}'.format(
-                    message,
-                    operation_error,
-                )
-            raise SandboxError(message)
+        finally:
+            _remove_credential_file(filesystem, askpass_path)
         if operation_error is not None:
             raise operation_error
         return result
@@ -491,8 +509,8 @@ class Git(object):
                 remote_name,
                 username,
                 password,
-                lambda: self._run_git(
-                    repo_path, args, throw_on_error=False, **opts),
+                lambda auth_opts: self._run_git(
+                    repo_path, args, throw_on_error=False, **auth_opts),
                 **opts
             )
             self._raise_known_result_error(
@@ -528,8 +546,8 @@ class Git(object):
                 remote_name,
                 username,
                 password,
-                lambda: self._run_git(
-                    repo_path, args, throw_on_error=False, **opts),
+                lambda auth_opts: self._run_git(
+                    repo_path, args, throw_on_error=False, **auth_opts),
                 **opts
             )
             self._raise_known_result_error(
@@ -549,9 +567,9 @@ class Git(object):
             protocol='https',
             **opts):
         if not username:
-            raise ValueError('username is required')
+            raise InvalidArgumentException('username is required')
         if not password:
-            raise ValueError('password is required')
+            raise InvalidArgumentException('password is required')
 
         result = self._run_git(
             None,
@@ -701,6 +719,11 @@ class Git(object):
         return self._run_git(repo_path, args, **opts)
 
     def set_config(self, *args, **opts):
+        """Set a Git config value.
+
+        Supports both set_config(repo_path, key, value, global_config=False)
+        and set_config(key, value, scope='global', path=None).
+        """
         global_config = opts.pop('global_config', False)
         scope = opts.pop('scope', None)
         path = opts.pop('path', None)
@@ -724,6 +747,11 @@ class Git(object):
     setConfig = set_config
 
     def get_config(self, *args, **opts):
+        """Get a Git config value.
+
+        Supports both get_config(repo_path, key, global_config=False) and
+        get_config(key, scope='global', path=None).
+        """
         global_config = opts.pop('global_config', False)
         scope = opts.pop('scope', None)
         path = opts.pop('path', None)

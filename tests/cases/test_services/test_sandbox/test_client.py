@@ -640,6 +640,26 @@ class RecordingCommands(object):
         return None
 
 
+class RecordingFiles(object):
+    def __init__(self):
+        self.writes = []
+        self.removes = []
+
+    def write(self, path, data, **opts):
+        self.writes.append((path, data, opts))
+        return None
+
+    def remove(self, path, **opts):
+        self.removes.append((path, opts))
+        return None
+
+
+def attach_recording_files(commands):
+    files = RecordingFiles()
+    commands.sandbox = type('Sandbox', (object,), {'files': files})()
+    return files
+
+
 def test_git_helpers_align_with_e2b_method_names():
     commands = RecordingCommands()
     git = Git(commands)
@@ -737,22 +757,8 @@ def test_git_dangerously_authenticate_aligns_with_e2b():
 
 
 def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
-    class FakeFiles(object):
-        def __init__(self):
-            self.writes = []
-            self.removes = []
-
-        def write(self, path, data, **opts):
-            self.writes.append((path, data, opts))
-            return None
-
-        def remove(self, path, **opts):
-            self.removes.append((path, opts))
-            return None
-
     commands = RecordingCommands()
-    files = FakeFiles()
-    commands.sandbox = type('Sandbox', (object,), {'files': files})()
+    files = attach_recording_files(commands)
     git = Git(commands)
 
     git.dangerously_authenticate(
@@ -780,19 +786,6 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
 
 
 def test_git_dangerously_authenticate_removes_temp_file_on_chmod_failure():
-    class FakeFiles(object):
-        def __init__(self):
-            self.writes = []
-            self.removes = []
-
-        def write(self, path, data, **opts):
-            self.writes.append((path, data, opts))
-            return None
-
-        def remove(self, path, **opts):
-            self.removes.append((path, opts))
-            return None
-
     commands = RecordingCommands()
     commands.results = [
         type('Result', (object,), {
@@ -817,8 +810,7 @@ def test_git_dangerously_authenticate_removes_temp_file_on_chmod_failure():
             'error': 'chmod failed',
         })(),
     ]
-    files = FakeFiles()
-    commands.sandbox = type('Sandbox', (object,), {'files': files})()
+    files = attach_recording_files(commands)
     git = Git(commands)
 
     result = git.dangerously_authenticate(
@@ -929,12 +921,13 @@ def test_git_push_respects_throw_on_error_for_unknown_errors():
         git.push('/repo', throw_on_error=True)
 
 
-def test_git_push_with_credentials_sets_remote_url_temporarily():
+def test_git_push_with_credentials_uses_askpass_without_remote_url_leak():
     commands = RecordingCommands()
+    files = attach_recording_files(commands)
     commands.results = [
         type('Result', (object,), {
             'exit_code': 0,
-            'stdout': 'https://old:old-token@github.com/qiniu/repo.git\n',
+            'stdout': 'https://github.com/qiniu/repo.git\n',
             'stderr': '',
             'error': '',
         })(),
@@ -969,20 +962,23 @@ def test_git_push_with_credentials_sets_remote_url_temporarily():
     )
 
     assert commands.calls[0][0] == 'git remote get-url origin'
-    assert commands.calls[1][0] == (
-        'git remote set-url origin '
-        'https://git%3Auser:secret%3A%25%40token@github.com/qiniu/repo.git'
-    )
-    assert commands.calls[2][0] == 'git push --set-upstream origin main'
-    assert commands.calls[3][0] == (
-        'git remote set-url origin '
-        'https://old:old-token@github.com/qiniu/repo.git'
-    )
-    assert commands.calls[2][1]['request_timeout'] == 7
+    assert commands.calls[1][0] == 'install -d -m 700 /tmp/qiniu-git-auth'
+    assert files.writes[0][0].startswith(
+        '/tmp/qiniu-git-auth/qiniu-git-askpass-')
+    assert commands.calls[2][0].startswith(
+        'chmod 700 /tmp/qiniu-git-auth/qiniu-git-askpass-')
+    assert commands.calls[3][0] == 'git push --set-upstream origin main'
+    assert 'secret:%@token' not in commands.calls[3][0]
+    assert commands.calls[3][1]['request_timeout'] == 7
+    assert commands.calls[3][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
+    assert commands.calls[3][1]['envs']['GIT_USERNAME'] == 'git:user'
+    assert commands.calls[3][1]['envs']['GIT_PASSWORD'] == 'secret:%@token'
+    assert files.removes == [(files.writes[0][0], {})]
 
 
 def test_git_pull_with_credentials_resolves_single_remote():
     commands = RecordingCommands()
+    files = attach_recording_files(commands)
     commands.results = [
         type('Result', (object,), {
             'exit_code': 0,
@@ -1025,22 +1021,26 @@ def test_git_pull_with_credentials_resolves_single_remote():
     )
 
     assert commands.calls[0][0] == 'git remote'
-    assert commands.calls[2][0] == (
-        'git remote set-url origin '
-        'https://git-user:secret-token@github.com/qiniu/repo.git'
-    )
-    assert commands.calls[3][0] == 'git pull origin main'
-    assert commands.calls[4][0] == (
-        'git remote set-url origin https://github.com/qiniu/repo.git'
-    )
+    assert commands.calls[2][0] == 'install -d -m 700 /tmp/qiniu-git-auth'
+    assert commands.calls[4][0] == 'git pull origin main'
+    assert 'secret-token' not in commands.calls[4][0]
+    assert commands.calls[4][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
+    assert files.removes == [(files.writes[0][0], {})]
 
 
-def test_git_push_with_credentials_restores_remote_on_auth_failure():
+def test_git_push_with_credentials_cleans_askpass_on_auth_failure():
     commands = RecordingCommands()
+    files = attach_recording_files(commands)
     commands.results = [
         type('Result', (object,), {
             'exit_code': 0,
             'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
             'stderr': '',
             'error': '',
         })(),
@@ -1073,13 +1073,13 @@ def test_git_push_with_credentials_restores_remote_on_auth_failure():
             password='bad-token',
         )
 
-    assert commands.calls[-1][0] == (
-        'git remote set-url origin https://github.com/qiniu/repo.git'
-    )
+    assert commands.calls[-1][0] == 'git push --set-upstream origin'
+    assert files.removes == [(files.writes[0][0], {})]
 
 
-def test_git_push_reports_restore_failure_after_credentials_are_injected():
+def test_git_push_cleans_askpass_after_operation_exception():
     commands = RecordingCommands()
+    files = attach_recording_files(commands)
     commands.results = [
         type('Result', (object,), {
             'exit_code': 0,
@@ -1091,54 +1091,6 @@ def test_git_push_reports_restore_failure_after_credentials_are_injected():
             'exit_code': 0,
             'stdout': '',
             'stderr': '',
-            'error': '',
-        })(),
-        type('Result', (object,), {
-            'exit_code': 128,
-            'stdout': '',
-            'stderr': 'fatal: Authentication failed',
-            'error': '',
-        })(),
-        type('Result', (object,), {
-            'exit_code': 1,
-            'stdout': '',
-            'stderr': 'config locked',
-            'error': '',
-        })(),
-    ]
-    git = Git(commands)
-
-    with pytest.raises(SandboxError) as err:
-        git.push(
-            '/repo',
-            remote='origin',
-            username='git-user',
-            password='bad-token',
-        )
-
-    assert 'Credentials may be leaked' in str(err.value)
-    assert 'config locked' in str(err.value)
-
-
-def test_git_push_reports_restore_failure_after_operation_exception():
-    commands = RecordingCommands()
-    commands.results = [
-        type('Result', (object,), {
-            'exit_code': 0,
-            'stdout': 'https://github.com/qiniu/repo.git\n',
-            'stderr': '',
-            'error': '',
-        })(),
-        type('Result', (object,), {
-            'exit_code': 0,
-            'stdout': '',
-            'stderr': '',
-            'error': '',
-        })(),
-        type('Result', (object,), {
-            'exit_code': 1,
-            'stdout': '',
-            'stderr': 'config locked',
             'error': '',
         })(),
     ]
@@ -1150,12 +1102,12 @@ def test_git_push_reports_restore_failure_after_operation_exception():
             'origin',
             'git-user',
             'bad-token',
-            lambda: (_ for _ in ()).throw(SandboxError('rpc timed out')),
+            lambda auth_opts: (_ for _ in ()).throw(
+                SandboxError('rpc timed out')),
         )
 
-    assert 'Credentials may be leaked' in str(err.value)
-    assert 'config locked' in str(err.value)
     assert 'rpc timed out' in str(err.value)
+    assert files.removes == [(files.writes[0][0], {})]
 
 
 def test_git_helpers_accept_e2b_style_signatures():

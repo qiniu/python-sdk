@@ -43,7 +43,6 @@ def assert_git_network_ok(step, run, attempts=5):
             return assert_git_ok(step, result)
         print('{0}: retry {1}/{2}'.format(step, attempt + 2, attempts))
         time.sleep(attempt + 1)
-    return assert_git_ok(step, result)
 
 
 def remote_git_config():
