@@ -76,8 +76,8 @@ class Template(object):
     addStep = add_step
 
     def run_cmd(self, command, user=None):
-        args = [' && '.join(command) if isinstance(
-            command, (list, tuple)) else command]
+        args = [str(arg) for arg in command] if isinstance(
+            command, (list, tuple)) else [command]
         if user:
             args.append(user)
         return self.add_step('RUN', args)

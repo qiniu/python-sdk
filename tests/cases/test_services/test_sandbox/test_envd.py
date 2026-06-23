@@ -202,7 +202,7 @@ def test_command_event_decode_handles_base64_and_non_utf8_output():
     }])
 
     assert result.stdout == 'YWJj'
-    assert result.stderr == '////'
+    assert result.stderr == u'\ufffd\ufffd\ufffd'
 
 
 def test_command_event_decode_preserves_plain_strings():

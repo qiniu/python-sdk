@@ -720,6 +720,8 @@ class Git(object):
 
     def set_config(self, key, value, scope='global', path=None, **opts):
         """Set a Git config value."""
+        key, value, scope, path = self._normalize_set_config_args(
+            key, value, scope, path, opts)
         scope_flag, repo_path = self._resolve_config_scope(scope, path)
         args = ['config']
         if scope_flag:
@@ -731,6 +733,8 @@ class Git(object):
 
     def get_config(self, key, scope='global', path=None, **opts):
         """Get a Git config value."""
+        key, scope, path = self._normalize_get_config_args(
+            key, scope, path, opts)
         scope_flag, repo_path = self._resolve_config_scope(scope, path)
         args = ['config']
         if scope_flag:
@@ -739,6 +743,32 @@ class Git(object):
         return self._run_git(repo_path, args, **opts)
 
     getConfig = get_config
+
+    def _normalize_set_config_args(self, key, value, scope, path, opts):
+        global_config = opts.pop(
+            'global_config', opts.pop('globalConfig', False))
+        if global_config or self._is_legacy_config_call(scope):
+            repo_path = key
+            key = value
+            value = scope
+            scope = 'global' if global_config or repo_path is None else 'local'
+            path = None if scope == 'global' else repo_path
+        return key, value, scope, path
+
+    def _normalize_get_config_args(self, key, scope, path, opts):
+        global_config = opts.pop(
+            'global_config', opts.pop('globalConfig', False))
+        if global_config or self._is_legacy_config_call(scope):
+            repo_path = key
+            key = scope
+            scope = 'global' if global_config or repo_path is None else 'local'
+            path = None if scope == 'global' else repo_path
+        return key, scope, path
+
+    def _is_legacy_config_call(self, scope):
+        if scope is None:
+            return False
+        return str(scope).strip().lower() not in ('global', 'local', 'system')
 
     def _resolve_config_scope(self, scope=None, path=None):
         scope_name = (scope or 'global').strip().lower()

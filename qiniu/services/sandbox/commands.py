@@ -60,7 +60,8 @@ def _decode_bytes(value):
             decoded = base64.b64decode(value).decode('utf-8', 'replace')
         except (binascii.Error, TypeError):
             return value
-        if u'\ufffd' in decoded:
+        if u'\ufffd' in decoded and all(
+                ch.isalnum() for ch in value):
             return value
         return decoded
     return str(value)

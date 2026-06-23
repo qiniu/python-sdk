@@ -598,6 +598,7 @@ def test_template_builder_outputs_build_config():
         Template()
         .from_image('python:3.11')
         .run_cmd('pip install qiniu')
+        .run_cmd(['python', '-m', 'pip', 'install', 'pytest'])
         .copy('/local/app.py', '/app/app.py')
         .set_env('PYTHONUNBUFFERED', '1')
         .set_start_cmd('python /app/app.py')
@@ -607,6 +608,8 @@ def test_template_builder_outputs_build_config():
         'fromImage': 'python:3.11',
         'steps': [
             {'type': 'RUN', 'args': ['pip install qiniu']},
+            {'type': 'RUN', 'args': [
+                'python', '-m', 'pip', 'install', 'pytest']},
             {'type': 'COPY', 'args': ['/local/app.py', '/app/app.py']},
             {'type': 'ENV', 'args': ['PYTHONUNBUFFERED', '1']},
         ],
@@ -1189,3 +1192,20 @@ def test_git_helpers_accept_e2b_style_signatures():
     assert commands.calls[2][1]['cwd'] == '/repo'
     assert commands.calls[3][0] == 'git config --local --get user.name'
     assert commands.calls[3][1]['cwd'] == '/repo'
+
+
+def test_git_config_helpers_accept_legacy_repo_path_signatures():
+    commands = RecordingCommands()
+    git = Git(commands)
+
+    git.set_config(None, 'http.version', 'HTTP/1.1', global_config=True)
+    git.set_config('/repo', 'user.name', 'Sandbox Demo')
+    git.get_config('/repo', 'user.name')
+
+    assert commands.calls[0][0] == "git config --global http.version HTTP/1.1"
+    assert 'cwd' not in commands.calls[0][1]
+    assert commands.calls[1][0] == (
+        "git config --local user.name 'Sandbox Demo'")
+    assert commands.calls[1][1]['cwd'] == '/repo'
+    assert commands.calls[2][0] == 'git config --local --get user.name'
+    assert commands.calls[2][1]['cwd'] == '/repo'
