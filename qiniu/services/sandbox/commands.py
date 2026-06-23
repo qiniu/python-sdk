@@ -284,6 +284,6 @@ class Commands(object):
             }, user=user, timeout=timeout)
             return True
         except SandboxError as err:
-            if err.status_code == 404:
+            if getattr(err, 'status_code', None) == 404:
                 return False
             raise

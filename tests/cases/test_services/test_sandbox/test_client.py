@@ -475,6 +475,15 @@ def test_get_sandboxes_metrics_serializes_ids_as_comma_string():
     assert query['sandbox_ids'] == ['sbx1,sbx2']
 
 
+def test_get_sandboxes_metrics_rejects_empty_dict_values():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError):
+        client.get_sandboxes_metrics({})
+    with pytest.raises(SandboxError):
+        client.get_sandboxes_metrics({'sandboxIDs': None})
+
+
 def test_template_builder_outputs_build_config():
     template = (
         Template()
@@ -675,9 +684,14 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
     class FakeFiles(object):
         def __init__(self):
             self.writes = []
+            self.removes = []
 
         def write(self, path, data, **opts):
             self.writes.append((path, data, opts))
+            return None
+
+        def remove(self, path, **opts):
+            self.removes.append((path, opts))
             return None
 
     commands = RecordingCommands()
@@ -701,6 +715,7 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
     assert commands.calls[2][0].startswith('trap "rm -f /tmp/')
     assert 'git credential approve' in commands.calls[2][0]
     assert 'secret-%-token' not in commands.calls[2][0]
+    assert files.removes == [(files.writes[0][0], {})]
 
 
 def test_git_dangerously_authenticate_removes_temp_file_on_chmod_failure():
@@ -1035,6 +1050,44 @@ def test_git_push_reports_restore_failure_after_credentials_are_injected():
 
     assert 'Credentials may be leaked' in str(err.value)
     assert 'config locked' in str(err.value)
+
+
+def test_git_push_reports_restore_failure_after_operation_exception():
+    commands = RecordingCommands()
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 1,
+            'stdout': '',
+            'stderr': 'config locked',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    with pytest.raises(SandboxError) as err:
+        git._with_remote_credentials(
+            '/repo',
+            'origin',
+            'git-user',
+            'bad-token',
+            lambda: (_ for _ in ()).throw(SandboxError('rpc timed out')),
+        )
+
+    assert 'Credentials may be leaked' in str(err.value)
+    assert 'config locked' in str(err.value)
+    assert 'rpc timed out' in str(err.value)
 
 
 def test_git_helpers_accept_e2b_style_signatures():

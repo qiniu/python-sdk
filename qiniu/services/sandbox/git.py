@@ -358,15 +358,19 @@ class Git(object):
         if getattr(set_result, 'exit_code', 0):
             return set_result
 
+        operation_error = None
         try:
             result = operation()
-        finally:
-            restore_result = self._run_git(repo_path, [
-                'remote',
-                'set-url',
-                shell_quote(remote),
-                shell_quote(original_url),
-            ], **opts)
+        except Exception as err:
+            operation_error = err
+            result = None
+
+        restore_result = self._run_git(repo_path, [
+            'remote',
+            'set-url',
+            shell_quote(remote),
+            shell_quote(original_url),
+        ], **opts)
         if getattr(restore_result, 'exit_code', 0):
             message = (
                 'Failed to restore original remote URL. Credentials may be '
@@ -376,7 +380,14 @@ class Git(object):
                 getattr(restore_result, 'stdout', '') or
                 getattr(restore_result, 'error', '')
             )
+            if operation_error is not None:
+                message = '{0}. Original operation failed with: {1}'.format(
+                    message,
+                    operation_error,
+                )
             raise SandboxError(message)
+        if operation_error is not None:
+            raise operation_error
         return result
 
     def _raise_known_result_error(
@@ -569,16 +580,14 @@ class Git(object):
                     **opts
                 )
                 if chmod_result.exit_code != 0:
-                    _remove_credential_file(filesystem, path)
                     return chmod_result
                 script = (
                     'trap "rm -f {0}" EXIT; '
                     'git credential approve < {0}'
                 ).format(quoted_path)
                 return self.commands.run(script, **opts)
-            except Exception:
+            finally:
                 _remove_credential_file(filesystem, path)
-                raise
         handle = self.commands.run(
             'git credential approve',
             stdin=True,

@@ -338,10 +338,14 @@ class SandboxClient(object):
     getMetrics = get_sandbox_metrics
 
     def get_sandboxes_metrics(self, sandbox_ids):
+        if not sandbox_ids:
+            raise SandboxError('At least one sandbox ID must be provided')
         values = sandbox_ids
         if isinstance(sandbox_ids, dict):
             values = sandbox_ids.get(
                 'sandbox_ids') or sandbox_ids.get('sandboxIDs')
+        if values is None:
+            raise SandboxError('At least one sandbox ID must be provided')
         if not isinstance(values, (list, tuple)):
             values = [values]
         ids = []
