@@ -70,6 +70,14 @@ def env(key, fallback=None):
     return os.getenv(key) or fallback
 
 
+def first_env(*keys):
+    for key in keys:
+        value = os.getenv(key)
+        if value:
+            return value
+    return None
+
+
 def required_env(key):
     value = os.getenv(key)
     if value:
@@ -82,7 +90,15 @@ def sandbox_endpoint():
 
 
 def sandbox_api_key():
-    return required_env('QINIU_SANDBOX_API_KEY')
+    value = first_env(
+        'QINIU_SANDBOX_API_KEY',
+        'QINIU_API_KEY',
+        'E2B_API_KEY',
+    )
+    if value:
+        return value
+    raise RuntimeError(
+        'Please set QINIU_SANDBOX_API_KEY, QINIU_API_KEY, or E2B_API_KEY')
 
 
 def sandbox_template():

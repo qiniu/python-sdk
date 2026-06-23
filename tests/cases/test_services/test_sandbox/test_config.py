@@ -90,6 +90,19 @@ def test_sandbox_client_uses_loaded_env(tmpdir):
                 os.environ[key] = value
 
 
+def test_sandbox_client_uses_documented_api_key_env_fallbacks(monkeypatch):
+    monkeypatch.delenv('QINIU_SANDBOX_API_KEY', raising=False)
+    monkeypatch.delenv('QINIU_API_KEY', raising=False)
+    monkeypatch.delenv('E2B_API_KEY', raising=False)
+
+    monkeypatch.setenv('QINIU_API_KEY', 'qiniu-api-key')
+    assert sandbox_client().api_key == 'qiniu-api-key'
+
+    monkeypatch.delenv('QINIU_API_KEY')
+    monkeypatch.setenv('E2B_API_KEY', 'e2b-api-key')
+    assert sandbox_client().api_key == 'e2b-api-key'
+
+
 def test_native_env_pair_encodes_unicode_on_python2(monkeypatch):
     monkeypatch.setattr(sandbox_config, 'is_py2', True)
 

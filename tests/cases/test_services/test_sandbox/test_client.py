@@ -120,6 +120,23 @@ def test_client_uses_default_endpoint_and_api_key_headers():
     }
 
 
+def test_client_reads_documented_api_key_env_fallbacks(monkeypatch):
+    monkeypatch.delenv('QINIU_SANDBOX_API_KEY', raising=False)
+    monkeypatch.delenv('QINIU_API_KEY', raising=False)
+    monkeypatch.delenv('E2B_API_KEY', raising=False)
+
+    monkeypatch.setenv('QINIU_API_KEY', 'qiniu-api-key')
+    assert SandboxClient(session=RecordingSession()).api_key == 'qiniu-api-key'
+
+    monkeypatch.delenv('QINIU_API_KEY')
+    monkeypatch.setenv('E2B_API_KEY', 'e2b-api-key')
+    assert SandboxClient(session=RecordingSession()).api_key == 'e2b-api-key'
+
+    monkeypatch.setenv('QINIU_SANDBOX_API_KEY', 'sandbox-api-key')
+    assert SandboxClient(session=RecordingSession()).api_key == (
+        'sandbox-api-key')
+
+
 def test_util_helpers_encode_unicode_values_safely():
     assert encode_path(u'目录/文件.txt')
     assert file_signature(

@@ -131,6 +131,14 @@ def _normalize_list_options(opts):
     return opts
 
 
+def _sandbox_api_key_from_env():
+    return (
+        os.getenv('QINIU_SANDBOX_API_KEY') or
+        os.getenv('QINIU_API_KEY') or
+        os.getenv('E2B_API_KEY')
+    )
+
+
 class SandboxClient(object):
     def __init__(self, endpoint=None, api_url=None, api_key=None,
                  access_token=None, mac=None, access_key=None,
@@ -139,7 +147,7 @@ class SandboxClient(object):
             raise SandboxError(
                 'Both access_key and secret_key must be provided')
         self.endpoint = normalize_endpoint(endpoint or api_url)
-        self.api_key = api_key or os.getenv('QINIU_SANDBOX_API_KEY')
+        self.api_key = api_key or _sandbox_api_key_from_env()
         self.access_token = access_token or os.getenv(
             'QINIU_SANDBOX_ACCESS_TOKEN')
         self.mac = mac
