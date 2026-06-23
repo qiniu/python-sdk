@@ -57,6 +57,18 @@ def _has_kodo_resource(resources):
     return False
 
 
+def _has_saved_injection_rule(injections):
+    for injection in injections or []:
+        data = _normalize_injection(injection)
+        if not isinstance(data, dict):
+            continue
+        if data.get('type') == 'id':
+            return True
+        if data.get('ruleID') or data.get('rule_id') or data.get('id'):
+            return True
+    return False
+
+
 def _normalize_sandbox_create_options(template=None, **opts):
     body = {'templateID': (
         opts.pop('templateID', None) or
@@ -204,8 +216,10 @@ class SandboxClient(object):
 
     def create_sandbox(self, template=None, **opts):
         body = _normalize_sandbox_create_options(template, **opts)
-        auth_type = 'qiniu' if _has_kodo_resource(
-            opts.get('resources')) else None
+        auth_type = 'qiniu' if (
+            _has_kodo_resource(body.get('resources')) or
+            _has_saved_injection_rule(body.get('injections'))
+        ) else None
         return self._request(
             'POST',
             '/sandboxes',

@@ -149,6 +149,36 @@ def test_create_with_kodo_resource_uses_qiniu_signature():
     }]
 
 
+def test_create_with_saved_injection_rule_requires_qiniu_credentials():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.create_sandbox(injections=[{
+            'type': 'id',
+            'ruleID': 'rule-1',
+        }])
+
+    assert 'Qiniu AK/SK' in str(err.value)
+
+
+def test_create_with_saved_injection_rule_uses_qiniu_signature():
+    session = RecordingSession(
+        [DummyResponse(201, {'sandboxID': 'sbx123', 'templateID': 'base'})])
+    client = SandboxClient(access_key='ak', secret_key='sk', session=session)
+
+    client.create_sandbox(injections=[{
+        'type': 'id',
+        'ruleId': 'rule-1',
+    }])
+
+    req = session.requests[0]
+    assert req.headers['Authorization'].startswith('Qiniu ak:')
+    assert body_of(req)['injections'] == [{
+        'type': 'id',
+        'ruleID': 'rule-1',
+    }]
+
+
 def test_sandbox_create_signature_matches_e2b_style():
     session = RecordingSession([
         DummyResponse(201, {
