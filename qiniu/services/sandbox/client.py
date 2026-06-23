@@ -83,7 +83,8 @@ def _normalize_sandbox_create_options(template=None, **opts):
         'secure',
         'network',
         'metadata',
-            'mcp'):
+        'mcp',
+    ):
         if opts.get(key) is not None:
             body[key] = opts.get(key)
     if opts.get('auto_pause') is not None:

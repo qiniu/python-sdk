@@ -76,12 +76,14 @@ def run_remote_push_demo(sandbox):
         sandbox.git.set_config(
             None, 'http.version', 'HTTP/1.1', global_config=True),
     )
+
+    def _clone_with_cleanup():
+        sandbox.commands.run('rm -rf {0}'.format(repo_path))
+        return sandbox.git.clone(repo_url, repo_path, depth=1)
+
     assert_git_network_ok(
         'git clone remote',
-        lambda: (
-            sandbox.commands.run('rm -rf {0}'.format(repo_path)),
-            sandbox.git.clone(repo_url, repo_path, depth=1),
-        )[1],
+        _clone_with_cleanup,
     )
     assert_git_ok(
         'configure remote user',
