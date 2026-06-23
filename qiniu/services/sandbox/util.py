@@ -7,7 +7,7 @@ import posixpath
 import time
 
 from qiniu.compat import bytes as bytes_type
-from qiniu.compat import is_py2, str as text_type, urlencode, urlparse
+from qiniu.compat import is_py2, str as text_type, urlencode
 
 from .constants import DEFAULT_ENDPOINT, DEFAULT_USER
 
@@ -106,7 +106,3 @@ def get_info_value(info, camel_key, snake_key=None):
     if snake_key and snake_key in info:
         return info.get(snake_key)
     return None
-
-
-def parsed_url(url):
-    return urlparse(url)

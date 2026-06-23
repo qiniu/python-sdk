@@ -712,7 +712,8 @@ def test_template_builder_outputs_build_config():
 def test_template_ready_cmd_helpers_align_with_e2b():
     ready = wait_for_port(8000)
     assert isinstance(ready, ReadyCmd)
-    assert ready.get_cmd() == 'ss -tuln | grep :8000'
+    assert ready.get_cmd() == (
+        "ss -tuln | awk '{print $5}' | grep -E '(^|:)8000$'")
     assert wait_for_url(
         'http://localhost:3000/health',
         status_code=204,
@@ -731,7 +732,8 @@ def test_template_ready_cmd_helpers_align_with_e2b():
     )
 
     assert template.to_dict()['startCmd'] == 'python app.py'
-    assert template.to_dict()['readyCmd'] == 'ss -tuln | grep :8000'
+    assert template.to_dict()['readyCmd'] == (
+        "ss -tuln | awk '{print $5}' | grep -E '(^|:)8000$'")
 
 
 def test_template_ready_cmd_helpers_quote_shell_inputs():
@@ -833,7 +835,7 @@ def test_git_helpers_align_with_e2b_method_names():
     assert commands.calls[4][0] == 'git checkout main'
     assert commands.calls[5][0] == 'git branch -D old'
     assert commands.calls[6][0] == "git reset --hard 'HEAD~1'"
-    assert commands.calls[7][0] == 'git restore a.txt b.txt'
+    assert commands.calls[7][0] == 'git restore -- a.txt b.txt'
     assert commands.calls[8][0] == 'git config --local user.name tester'
     assert commands.calls[8][1]['cwd'] == '/repo'
     assert commands.calls[9][0] == 'git config --local --get user.name'
@@ -866,9 +868,20 @@ def test_git_add_and_restore_accept_single_string_path():
     git.restore('/repo', paths='README.md')
     git.restore('/repo', files='setup.py')
 
-    assert commands.calls[0][0] == 'git add README.md'
-    assert commands.calls[1][0] == 'git restore README.md'
-    assert commands.calls[2][0] == 'git restore setup.py'
+    assert commands.calls[0][0] == 'git add -- README.md'
+    assert commands.calls[1][0] == 'git restore -- README.md'
+    assert commands.calls[2][0] == 'git restore -- setup.py'
+
+
+def test_git_add_and_restore_use_path_separator_for_dash_paths():
+    commands = RecordingCommands()
+    git = Git(commands)
+
+    git.add('/repo', files='--intent-to-add')
+    git.restore('/repo', paths='--worktree')
+
+    assert commands.calls[0][0] == "git add -- --intent-to-add"
+    assert commands.calls[1][0] == "git restore -- --worktree"
 
 
 def test_git_reset_rejects_unsupported_mode():
@@ -1074,6 +1087,15 @@ def test_git_credential_remote_requires_existing_remote():
         git.push('/repo', username='git-user', password='secret')
 
     assert 'No remotes found' in str(err.value)
+
+
+def test_git_credentials_require_username_with_password():
+    git = Git(RecordingCommands())
+
+    with pytest.raises(InvalidArgumentException):
+        git.pull('/repo', password='secret')
+    with pytest.raises(InvalidArgumentException):
+        git.push('/repo', password='secret')
 
 
 def test_git_push_maps_known_errors_before_throw_on_error():

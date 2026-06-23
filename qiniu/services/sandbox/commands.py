@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import binascii
 
 from qiniu.compat import basestring, bytes as bytes_type
 
@@ -55,7 +56,10 @@ def _decode_bytes(value):
     if isinstance(value, bytes_type):
         return value.decode('utf-8', 'replace')
     if isinstance(value, basestring):
-        return base64.b64decode(value).decode('utf-8', 'replace')
+        try:
+            return base64.b64decode(value).decode('utf-8', 'replace')
+        except (binascii.Error, TypeError):
+            return value
     return str(value)
 
 
@@ -87,8 +91,8 @@ def command_result_from_events(events, on_stdout=None, on_stderr=None,
             stderr += stderr_chunk
             stdout += pty_chunk
         if end:
-            exit_code = 0 if end.get(
-                'exitCode') is None else end.get('exitCode')
+            if end.get('exitCode') is not None:
+                exit_code = end.get('exitCode')
             error = end.get('error') or ''
     return CommandResult(pid, exit_code, stdout, stderr, error)
 

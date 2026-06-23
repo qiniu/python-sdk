@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
-from io import BytesIO
+from io import BytesIO, StringIO
 import json
 import struct
 
@@ -205,6 +205,16 @@ def test_command_event_decode_handles_base64_and_non_utf8_output():
     assert result.stderr == u'\ufffd\ufffd\ufffd'
 
 
+def test_command_event_decode_keeps_invalid_base64_strings():
+    result = command_result_from_events([{
+        'event': {'data': {
+            'stderr': 'plain text!',
+        }},
+    }])
+
+    assert result.stderr == 'plain text!'
+
+
 def test_command_event_decode_decodes_plain_word_base64():
     result = command_result_from_events([{
         'event': {'data': {
@@ -213,6 +223,14 @@ def test_command_event_decode_decodes_plain_word_base64():
     }])
 
     assert result.stdout == 'text'
+
+
+def test_command_event_decode_keeps_unknown_exit_code():
+    result = command_result_from_events([{
+        'event': {'end': {}},
+    }])
+
+    assert result.exit_code == -1
 
 
 def test_command_event_decode_handles_bytes_values():
@@ -285,6 +303,7 @@ def test_filesystem_write_accepts_unicode_text():
 
     sandbox.files.write('/tmp/unicode.txt', u'你好')
     sandbox.files.write('/tmp/bytes.txt', bytearray(b'abc'))
+    sandbox.files.write('/tmp/text-stream.txt', StringIO(u'你好'))
 
     assert session.requests[0]['kwargs']['files']['file'] == (
         'unicode.txt',
@@ -293,6 +312,10 @@ def test_filesystem_write_accepts_unicode_text():
     assert session.requests[1]['kwargs']['files']['file'] == (
         'bytes.txt',
         b'abc',
+    )
+    assert session.requests[2]['kwargs']['files']['file'] == (
+        'text-stream.txt',
+        u'你好'.encode('utf-8'),
     )
 
 

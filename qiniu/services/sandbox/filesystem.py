@@ -143,7 +143,9 @@ def to_upload_body(data, encoding='utf-8'):
         return data
     if isinstance(data, basestring):
         return data.encode(encoding)
-    if isinstance(data, (TextIOBase, IOBase)) or hasattr(data, 'read'):
+    if isinstance(data, TextIOBase):
+        return data.read().encode(encoding)
+    if isinstance(data, IOBase) or hasattr(data, 'read'):
         return data
     raise InvalidArgumentException(
         'Unsupported data type for filesystem write: {0}'.format(type(data)))

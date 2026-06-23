@@ -4,10 +4,9 @@ import uuid
 from qiniu.compat import basestring
 
 try:
-    from urllib.parse import quote, urlparse, urlunparse
+    from urllib.parse import urlparse
 except ImportError:
-    from urllib import quote
-    from urlparse import urlparse, urlunparse
+    from urlparse import urlparse
 
 from .errors import (
     CommandExitError,
@@ -293,24 +292,6 @@ def _is_missing_upstream(result):
     return any(snippet in message for snippet in snippets)
 
 
-def _with_credentials(url, username, password):
-    parsed = _validate_git_url_credentials(url, username, password)
-    if parsed is None:
-        return url
-    host = parsed.hostname or ''
-    if ':' in host and not host.startswith('['):
-        host = '[{0}]'.format(host)
-    if parsed.port:
-        host = '{0}:{1}'.format(host, parsed.port)
-    return urlunparse(parsed._replace(
-        netloc='{0}:{1}@{2}'.format(
-            quote(str(username), safe=''),
-            quote(str(password), safe=''),
-            host,
-        )
-    ))
-
-
 def _validate_git_url_credentials(url, username, password):
     if not username and not password:
         return None
@@ -494,6 +475,7 @@ class Git(object):
         if all:
             args.append('--all')
         else:
+            args.append('--')
             for path in _normalize_paths(files) or ['.']:
                 args.append(shell_quote(path))
         return self._run_git(repo_path, args, **opts)
@@ -532,7 +514,7 @@ class Git(object):
              password=None, **opts):
         throw_on_error = opts.pop('throw_on_error', False)
         if password and not username:
-            raise GitAuthException(
+            raise InvalidArgumentException(
                 'Git pull requires username when password is provided')
         remote_name = None
         if username and password:
@@ -567,7 +549,7 @@ class Git(object):
              username=None, password=None, **opts):
         throw_on_error = opts.pop('throw_on_error', False)
         if password and not username:
-            raise GitAuthException(
+            raise InvalidArgumentException(
                 'Git push requires username when password is provided')
         remote_name = None
         if username and password:
@@ -757,12 +739,21 @@ class Git(object):
         if source:
             args.extend(['--source', shell_quote(source)])
         paths = paths if paths is not None else opts.get('files')
+        args.append('--')
         for path in _normalize_paths(paths) or ['.']:
             args.append(shell_quote(path))
         return self._run_git(repo_path, args, **opts)
 
     def set_config(self, key, value, scope='global', path=None, **opts):
-        """Set a Git config value."""
+        """Set a Git config value.
+
+        Preferred signature:
+            set_config(key, value, scope='global', path=None, **opts)
+
+        For local config, pass scope='local' and path=repo_path. For backward
+        compatibility this method also accepts the deprecated signature:
+            set_config(repo_path, key, value, global_config=False, **opts)
+        """
         key, value, scope, path = self._normalize_set_config_args(
             key, value, scope, path, opts)
         scope_flag, repo_path = self._resolve_config_scope(scope, path)
@@ -775,7 +766,15 @@ class Git(object):
     setConfig = set_config
 
     def get_config(self, key, scope='global', path=None, **opts):
-        """Get a Git config value."""
+        """Get a Git config value.
+
+        Preferred signature:
+            get_config(key, scope='global', path=None, **opts)
+
+        For local config, pass scope='local' and path=repo_path. For backward
+        compatibility this method also accepts the deprecated signature:
+            get_config(repo_path, key, global_config=False, **opts)
+        """
         key, scope, path = self._normalize_get_config_args(
             key, scope, path, opts)
         scope_flag, repo_path = self._resolve_config_scope(scope, path)

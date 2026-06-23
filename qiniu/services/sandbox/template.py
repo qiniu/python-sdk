@@ -14,7 +14,9 @@ class ReadyCmd(object):
 
 def wait_for_port(port):
     port = int(port)
-    return ReadyCmd('ss -tuln | grep :{0}'.format(port))
+    return ReadyCmd(
+        "ss -tuln | awk '{{print $5}}' | grep -E '(^|:){0}$'".format(
+            port))
 
 
 def wait_for_url(url, status_code=200):
