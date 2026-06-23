@@ -187,12 +187,15 @@ class Commands(object):
             body['tag'] = tag
         if timeout is not None:
             body['timeout'] = timeout
+        stream_timeout = request_timeout
+        if stream_timeout is None:
+            stream_timeout = timeout
         events = connect_stream_rpc(
             self.sandbox,
             '/process.Process/Start',
             body,
             user=user,
-            timeout=request_timeout,
+            timeout=stream_timeout,
             stream=True,
         )
         events = iter(events)

@@ -387,6 +387,16 @@ def test_commands_run_supports_e2b_callbacks_and_request_timeout():
     assert session.posts[0]['timeout'] == 7
 
 
+def test_commands_run_uses_command_timeout_for_stream_request_by_default():
+    sandbox, session = sandbox_with_envd_session()
+
+    result = sandbox.commands.run('sleep 60', timeout=120)
+
+    assert result.exit_code == 0
+    assert session.posts[0]['data']['timeout'] == 120
+    assert session.posts[0]['timeout'] == 120
+
+
 def test_commands_run_background_returns_before_command_finishes():
     sandbox, session = sandbox_with_envd_session()
 
