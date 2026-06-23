@@ -321,9 +321,9 @@ class Sandbox(object):
                 raise SandboxError('Sandbox envd did not become ready')
             elapsed = time.time() - started
             remaining = None if timeout is None else max(timeout - elapsed, 0)
-            request_timeout = interval
+            request_timeout = 5
             if remaining is not None:
-                request_timeout = min(interval, remaining)
+                request_timeout = min(5, remaining)
             try:
                 response = self.client.session.get(
                     self.envd_url() + '/health',

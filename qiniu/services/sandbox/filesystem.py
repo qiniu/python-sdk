@@ -5,6 +5,7 @@ from qiniu.compat import basestring
 
 from .errors import InvalidArgumentException, SandboxError
 from .envd import connect_rpc, envd_headers, raw_envd_request
+from .util import file_basename
 
 
 class FileType(object):
@@ -245,7 +246,7 @@ class Filesystem(object):
             self.sandbox,
             'POST',
             url,
-            files={'file': (path, data)},
+            files={'file': (file_basename(path), data)},
             headers=envd_headers(self.sandbox, user),
             timeout=self._request_timeout(opts),
         )

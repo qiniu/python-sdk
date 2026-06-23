@@ -193,7 +193,7 @@ def test_filesystem_write_accepts_unicode_text():
     sandbox.files.write('/tmp/unicode.txt', u'你好')
 
     assert session.requests[0]['kwargs']['files']['file'] == (
-        '/tmp/unicode.txt',
+        'unicode.txt',
         u'你好'.encode('utf-8'),
     )
 
@@ -349,7 +349,7 @@ def test_filesystem_uses_envd_rpc_and_signed_file_urls():
     assert session.requests[1]['method'] == 'POST'
     assert 'Content-Type' not in session.requests[1]['kwargs']['headers']
     assert session.requests[1]['kwargs']['files']['file'] == (
-        '/tmp/hello.txt',
+        'hello.txt',
         b'hello',
     )
     assert session.posts[0]['url'].endswith('/filesystem.Filesystem/Stat')
@@ -375,7 +375,7 @@ def test_filesystem_returns_e2b_style_entry_objects_and_streams():
     assert entries[0].type == FileType.FILE
     assert session.requests[0]['kwargs']['stream'] is True
     assert session.requests[1]['kwargs']['files']['file'] == (
-        '/tmp/hello.txt',
+        'hello.txt',
         b'hello',
     )
 

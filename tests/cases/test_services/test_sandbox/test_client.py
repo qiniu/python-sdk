@@ -16,6 +16,7 @@ from qiniu.services.sandbox import (
     GitBranches,
     GitStatus,
     Git,
+    InvalidArgumentException,
     KodoResource,
     ReadyCmd,
     Sandbox,
@@ -258,7 +259,22 @@ def test_wait_for_ready_passes_request_timeout_to_health_check():
     sandbox.wait_for_ready(timeout=10, interval=2)
 
     assert session.requests[0].url == sandbox.envd_url() + '/health'
-    assert session.requests[0].kwargs['timeout'] == 2
+    assert session.requests[0].kwargs['timeout'] == 5
+
+
+def test_wait_for_ready_caps_request_timeout_to_remaining_timeout():
+    session = RecordingSession([DummyResponse(200, {})])
+    sandbox = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=session,
+    ), info={
+        'sandboxID': 'sbx123',
+        'domain': 'example.test',
+    })
+
+    sandbox.wait_for_ready(timeout=3, interval=2)
+
+    assert session.requests[0].kwargs['timeout'] <= 3
 
 
 def test_wait_for_ready_ignores_startup_request_errors_until_ready():
@@ -511,6 +527,16 @@ def test_git_add_and_restore_accept_single_string_path():
     assert commands.calls[2][0] == 'git restore setup.py'
 
 
+def test_git_reset_rejects_unsupported_mode():
+    commands = RecordingCommands()
+    git = Git(commands)
+
+    with pytest.raises(InvalidArgumentException):
+        git.reset('/repo', 'HEAD', mode='hard; touch /tmp/pwn')
+
+    assert commands.calls == []
+
+
 def test_git_dangerously_authenticate_aligns_with_e2b():
     commands = RecordingCommands()
     git = Git(commands)
@@ -563,9 +589,10 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
         'username=git-user\npassword=secret-%-token\n\n'
     )
     assert files.writes[0][2] == {}
-    assert commands.calls[1][0].startswith('sh -c ')
-    assert 'git credential approve' in commands.calls[1][0]
-    assert 'secret-%-token' not in commands.calls[1][0]
+    assert commands.calls[1][0].startswith('chmod 600 /tmp/')
+    assert commands.calls[2][0].startswith('sh -c ')
+    assert 'git credential approve' in commands.calls[2][0]
+    assert 'secret-%-token' not in commands.calls[2][0]
 
 
 def test_git_status_and_branches_return_structured_e2b_types():

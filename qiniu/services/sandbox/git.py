@@ -26,6 +26,9 @@ def _normalize_paths(paths):
     return paths
 
 
+RESET_MODES = set(['soft', 'mixed', 'hard', 'merge', 'keep'])
+
+
 class GitFileStatus(object):
     def __init__(self, name, status, index_status, working_tree_status,
                  staged, renamed_from=None):
@@ -548,6 +551,12 @@ class Git(object):
                 int(time.time() * 1000))
             filesystem.write(path, credential)
             quoted_path = shell_quote(path)
+            chmod_result = self.commands.run(
+                'chmod 600 {0}'.format(quoted_path),
+                **opts
+            )
+            if chmod_result.exit_code != 0:
+                return chmod_result
             script = (
                 'trap "rm -f {0}" EXIT; '
                 'git credential approve < {0}'
@@ -625,6 +634,10 @@ class Git(object):
         args = ['reset']
         mode = mode or opts.get('reset_type') or opts.get('resetType')
         if mode:
+            if mode not in RESET_MODES:
+                raise InvalidArgumentException(
+                    'Unsupported git reset mode: {0}'.format(mode)
+                )
             args.append('--{0}'.format(mode))
         if target:
             args.append(shell_quote(target))
