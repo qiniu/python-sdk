@@ -5,7 +5,7 @@ import time
 import requests
 
 from qiniu.auth import QiniuMacAuth, QiniuMacRequestsAuth
-from qiniu.compat import basestring
+from qiniu.compat import basestring, urlencode
 
 from .constants import DEFAULT_TEMPLATE
 from .errors import SandboxError, TemplateBuildError
@@ -133,9 +133,10 @@ def _normalize_list_options(opts):
     opts = dict(opts or {})
     query = opts.pop('query', None) or {}
     metadata = query.get('metadata')
-    if metadata:
-        for key, value in metadata.items():
-            opts['metadata[{0}]'.format(key)] = value
+    if metadata is not None:
+        opts['metadata'] = metadata
+    if isinstance(opts.get('metadata'), dict):
+        opts['metadata'] = urlencode(opts.get('metadata'))
     if query.get('state') is not None:
         opts['state'] = query.get('state')
     return opts
@@ -170,6 +171,8 @@ class SandboxClient(object):
 
     def _headers(self, auth_type=None):
         headers = {'Content-Type': 'application/json'}
+        if self.api_key:
+            headers['X-API-Key'] = self.api_key
         if auth_type == 'qiniu':
             return headers
         if auth_type == 'accessToken':
@@ -180,7 +183,6 @@ class SandboxClient(object):
                 self.access_token)
             return headers
         if self.api_key:
-            headers['X-API-Key'] = self.api_key
             headers['Authorization'] = 'Bearer {0}'.format(self.api_key)
         elif self.access_token:
             headers['Authorization'] = 'Bearer {0}'.format(self.access_token)
@@ -386,7 +388,12 @@ class SandboxClient(object):
                 values = [sandbox_ids]
         if values is None:
             raise SandboxError('At least one sandbox ID must be provided')
-        if not isinstance(values, (list, tuple, set)):
+        if isinstance(values, (list, tuple, set)):
+            values = list(values)
+        elif hasattr(values, '__iter__') and not isinstance(
+                values, (basestring, dict)):
+            values = list(values)
+        else:
             values = [values]
         ids = []
         for value in values:

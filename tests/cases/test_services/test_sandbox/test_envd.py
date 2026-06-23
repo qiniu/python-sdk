@@ -202,7 +202,7 @@ def test_command_event_decode_handles_base64_and_non_utf8_output():
     }])
 
     assert result.stdout == 'YWJj'
-    assert result.stderr == u'\ufffd\ufffd\ufffd'
+    assert result.stderr == '////'
 
 
 def test_command_event_decode_keeps_invalid_base64_strings():
@@ -213,6 +213,16 @@ def test_command_event_decode_keeps_invalid_base64_strings():
     }])
 
     assert result.stderr == 'plain text!'
+
+
+def test_command_event_decode_keeps_plain_base64_looking_strings():
+    result = command_result_from_events([{
+        'event': {'data': {
+            'stdout': 'test',
+        }},
+    }])
+
+    assert result.stdout == 'test'
 
 
 def test_command_event_decode_decodes_plain_word_base64():
@@ -313,10 +323,9 @@ def test_filesystem_write_accepts_unicode_text():
         'bytes.txt',
         b'abc',
     )
-    assert session.requests[2]['kwargs']['files']['file'] == (
-        'text-stream.txt',
-        u'你好'.encode('utf-8'),
-    )
+    stream_upload = session.requests[2]['kwargs']['files']['file']
+    assert stream_upload[0] == 'text-stream.txt'
+    assert stream_upload[1].read() == u'你好'.encode('utf-8')
 
 
 def test_filesystem_write_accepts_duck_typed_file_like_objects():

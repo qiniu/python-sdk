@@ -8,6 +8,21 @@ from .envd import connect_rpc, envd_headers, raw_envd_request
 from .util import file_basename
 
 
+class _EncodedTextReader(object):
+    def __init__(self, stream, encoding):
+        self.stream = stream
+        self.encoding = encoding
+
+    def read(self, size=-1):
+        chunk = self.stream.read(size)
+        if isinstance(chunk, basestring):
+            return chunk.encode(self.encoding)
+        return chunk
+
+    def __getattr__(self, name):
+        return getattr(self.stream, name)
+
+
 class FileType(object):
     FILE = 'file'
     DIR = 'dir'
@@ -144,7 +159,7 @@ def to_upload_body(data, encoding='utf-8'):
     if isinstance(data, basestring):
         return data.encode(encoding)
     if isinstance(data, TextIOBase):
-        return data.read().encode(encoding)
+        return _EncodedTextReader(data, encoding)
     if isinstance(data, IOBase) or hasattr(data, 'read'):
         return data
     raise InvalidArgumentException(

@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 import base64
 import binascii
+import re
 
 from qiniu.compat import basestring, bytes as bytes_type
 
 from .envd import connect_rpc, connect_stream_rpc
 from .errors import CommandExitError, SandboxError
+
+
+_BASE64_RE = re.compile(r'^[A-Za-z0-9+/]+={0,2}$')
 
 
 class ProcessInfo(object):
@@ -56,9 +60,13 @@ def _decode_bytes(value):
     if isinstance(value, bytes_type):
         return value.decode('utf-8', 'replace')
     if isinstance(value, basestring):
+        candidate = value.strip()
+        if not candidate or len(candidate) % 4 != 0 or not _BASE64_RE.match(
+                candidate):
+            return value
         try:
-            return base64.b64decode(value).decode('utf-8', 'replace')
-        except (binascii.Error, TypeError):
+            return base64.b64decode(candidate).decode('utf-8')
+        except (binascii.Error, TypeError, UnicodeError):
             return value
     return str(value)
 

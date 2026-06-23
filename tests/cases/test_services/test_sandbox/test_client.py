@@ -192,7 +192,12 @@ def test_create_with_kodo_resource_requires_qiniu_credentials():
 def test_create_with_kodo_resource_uses_qiniu_signature():
     session = RecordingSession(
         [DummyResponse(201, {'sandboxID': 'sbx123', 'templateID': 'base'})])
-    client = SandboxClient(access_key='ak', secret_key='sk', session=session)
+    client = SandboxClient(
+        api_key='api-key',
+        access_key='ak',
+        secret_key='sk',
+        session=session,
+    )
 
     client.create_sandbox(
         resources=[
@@ -201,6 +206,7 @@ def test_create_with_kodo_resource_uses_qiniu_signature():
                 mount_path='/mnt/bucket')])
 
     req = session.requests[0]
+    assert req.headers['X-API-Key'] == 'api-key'
     assert req.headers['Authorization'].startswith('Qiniu ak:')
     assert 'X-Qiniu-Date' in req.headers
     assert body_of(req)['resources'] == [{
@@ -640,6 +646,30 @@ def test_sandbox_paginator_does_not_send_client_credentials_as_filters():
     assert client.calls[0] == {'metadata': {'app': 'tests'}}
 
 
+def test_list_sandboxes_v2_serializes_metadata_dict_as_query_string():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(query={
+        'metadata': {'app': 'tests'},
+        'state': 'running',
+    })
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['metadata'] == ['app=tests']
+    assert query['state'] == ['running']
+
+
+def test_list_sandboxes_v2_accepts_metadata_string():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(metadata='user=abc&app=prod')
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['metadata'] == ['user=abc&app=prod']
+
+
 def test_wait_for_build_retries_transient_sandbox_errors(monkeypatch):
     class BuildClient(SandboxClient):
         def __init__(self):
@@ -716,6 +746,16 @@ def test_get_sandboxes_metrics_accepts_set_values():
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert set(query['sandbox_ids'][0].split(',')) == set(['sbx1', 'sbx2'])
+
+
+def test_get_sandboxes_metrics_accepts_generator_values():
+    session = RecordingSession([DummyResponse(200, {'metrics': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.get_sandboxes_metrics(item for item in ['sbx1', 'sbx2'])
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['sandbox_ids'] == ['sbx1,sbx2']
 
 
 def test_get_sandboxes_metrics_accepts_single_sandbox_dict():
