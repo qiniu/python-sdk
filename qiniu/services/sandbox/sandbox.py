@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import time
 
+import requests
+
 from .client import SandboxClient
 from .commands import Commands
 from .constants import DEFAULT_USER, ENVD_PORT, MCP_PORT
+from .errors import SandboxError
 from .filesystem import Filesystem
 from .git import Git
 from .pty import Pty
@@ -41,6 +44,8 @@ class SandboxPaginator(object):
         self.opts = dict(opts)
         self.opts.pop('client', None)
         self.next_token = opts.get('nextToken') or opts.get('next_token')
+        self.opts.pop('nextToken', None)
+        self.opts.pop('next_token', None)
         self._has_next = True
 
     @property
@@ -172,6 +177,14 @@ class Sandbox(object):
             self.envd_access_token
         )
         self.envdAccessToken = self.envd_access_token
+        self.traffic_access_token = (
+            get_info_value(
+                info,
+                'trafficAccessToken',
+                'traffic_access_token',
+            ) or self.traffic_access_token
+        )
+        self.trafficAccessToken = self.traffic_access_token
         self.envd_version = (
             get_info_value(info, 'envdVersion', 'envd_version') or
             self.envd_version
@@ -186,7 +199,7 @@ class Sandbox(object):
             return self
         try:
             self.update_info(self.get_info())
-        except Exception:
+        except SandboxError:
             pass
         return self
 
@@ -309,14 +322,17 @@ class Sandbox(object):
             request_timeout = interval
             if remaining is not None:
                 request_timeout = min(interval, remaining)
-            response = self.client.session.get(
-                self.envd_url() + '/health',
-                timeout=request_timeout,
-            )
-            if response.status_code >= 200 and response.status_code < 300:
-                return self
+            try:
+                response = self.client.session.get(
+                    self.envd_url() + '/health',
+                    timeout=request_timeout,
+                )
+                if response.status_code >= 200 and response.status_code < 300:
+                    return self
+            except requests.RequestException:
+                pass
             if timeout is not None and time.time() - started >= timeout:
-                raise RuntimeError('Sandbox envd did not become ready')
+                raise SandboxError('Sandbox envd did not become ready')
             time.sleep(interval)
 
     waitForReady = wait_for_ready

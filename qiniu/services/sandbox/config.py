@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import io
 import os
 
 from .client import SandboxClient
@@ -13,7 +14,7 @@ def load_dotenv_if_present(*paths):
     for path in paths:
         if not path or not os.path.exists(path):
             continue
-        with open(path, 'r') as f:
+        with io.open(path, 'r', encoding='utf-8') as f:
             for raw_line in f:
                 line = raw_line.strip()
                 if not line or line.startswith('#') or '=' not in line:

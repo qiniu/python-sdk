@@ -4,7 +4,12 @@ import time
 
 import pytest
 
-from qiniu.services.sandbox import PtySize, Sandbox, SandboxClient, SandboxError
+from qiniu.services.sandbox import (
+    PtySize,
+    Sandbox,
+    SandboxClient,
+    SandboxError,
+)
 from qiniu.services.sandbox.config import load_dotenv_if_present
 
 
@@ -51,7 +56,7 @@ def is_retryable_git_network_error(result):
     return result.exit_code != 0 and (
         'gnutls' in message or
         'tls connection' in message or
-        'unable to access' in message or
+        'connection was non-properly terminated' in message or
         'the remote end hung up unexpectedly' in message
     )
 
@@ -62,8 +67,11 @@ def assert_git_network_ok(step, run, attempts=5):
         result = run()
         if result.exit_code == 0:
             return result
-        if not is_retryable_git_network_error(result) or attempt == attempts - 1:
+        if not is_retryable_git_network_error(result):
             return assert_command_ok(step, result)
+        if attempt == attempts - 1:
+            pytest.skip('{0} skipped due to external Git network error: {1}'
+                        .format(step, result.stderr or result.stdout))
         time.sleep(attempt + 1)
     return assert_command_ok(step, result)
 
@@ -144,7 +152,10 @@ def test_git_remote_push_when_credentials_are_configured():
         assert_command_ok('git add', sandbox.git.add(repo_path, all=True))
         assert_command_ok(
             'git commit',
-            sandbox.git.commit(repo_path, 'test: qiniu python sdk remote push'),
+            sandbox.git.commit(
+                repo_path,
+                'test: qiniu python sdk remote push',
+            ),
         )
         assert_git_network_ok(
             'git push',
@@ -198,7 +209,10 @@ def test_runtime_commands_filesystem_and_git_helpers():
         assert branches.current_branch == 'feature'
         assert sandbox.git.get_config(repo_path, 'user.name').exit_code == 0
         assert sandbox.git.reset(repo_path, 'HEAD', mode='hard').exit_code == 0
-        assert sandbox.git.restore(repo_path, paths=['README.md']).exit_code == 0
+        assert sandbox.git.restore(
+            repo_path,
+            paths=['README.md'],
+        ).exit_code == 0
     finally:
         if sandbox is not None:
             sandbox.kill()

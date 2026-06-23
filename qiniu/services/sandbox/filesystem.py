@@ -321,7 +321,7 @@ class Filesystem(object):
         try:
             self.get_info(path, user=user, timeout=timeout)
             return True
-        except Exception as err:
+        except SandboxError as err:
             response = getattr(err, 'response', None)
             if response is not None and getattr(
                     response, 'status_code', None) == 404:

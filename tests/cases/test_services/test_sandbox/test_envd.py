@@ -39,6 +39,7 @@ class EnvdSession(object):
     def __init__(self):
         self.posts = []
         self.requests = []
+        self.empty_stream_paths = set()
 
     def post(self, url, data=None, headers=None, timeout=None, stream=False):
         if headers.get('Content-Type') == 'application/connect+json':
@@ -54,6 +55,11 @@ class EnvdSession(object):
             'timeout': timeout,
             'stream': stream,
         })
+        if any(url.endswith(path) for path in self.empty_stream_paths):
+            return DummyResponse(
+                raw=b'',
+                content_type='application/connect+json',
+            )
         if url.endswith('/process.Process/Start'):
             decoded = self.posts[-1]['data']
             output_key = 'pty' if decoded.get('pty') else 'stdout'
@@ -183,6 +189,18 @@ def test_commands_connect_returns_handle_for_running_process():
     }
 
 
+def test_commands_connect_handles_empty_event_stream():
+    sandbox, session = sandbox_with_envd_session()
+    session.empty_stream_paths.add('/process.Process/Connect')
+
+    handle = sandbox.commands.connect(12)
+    result = handle.wait()
+
+    assert result.pid == 0
+    assert result.exit_code == -1
+    assert result.stdout == ''
+
+
 def test_commands_run_supports_e2b_callbacks_and_request_timeout():
     sandbox, session = sandbox_with_envd_session()
     stdout = []
@@ -240,6 +258,23 @@ def test_pty_create_send_resize_connect_and_kill_use_process_rpc():
     }
     assert session.posts[3]['url'].endswith('/process.Process/Connect')
     assert session.posts[4]['url'].endswith('/process.Process/SendSignal')
+
+
+def test_pty_create_and_connect_handle_empty_event_streams():
+    sandbox, session = sandbox_with_envd_session()
+    session.empty_stream_paths.add('/process.Process/Start')
+
+    handle = sandbox.pty.create(PtySize(rows=24, cols=80))
+    result = handle.wait()
+
+    assert result.pid == 0
+    assert result.exit_code == -1
+    assert result.stdout == ''
+
+    session.empty_stream_paths = set(['/process.Process/Connect'])
+    connected = sandbox.pty.connect(12)
+
+    assert connected.wait().stdout == ''
 
 
 def test_filesystem_uses_envd_rpc_and_signed_file_urls():

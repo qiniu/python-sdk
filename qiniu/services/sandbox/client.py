@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import time
 
 import requests
 
@@ -171,7 +172,7 @@ class SandboxClient(object):
             response_data = None
             try:
                 response_data = response.json()
-            except Exception:
+            except ValueError:
                 response_data = getattr(response, 'text', None)
             message = 'Sandbox API request failed with status {0}'.format(
                 response.status_code
@@ -516,7 +517,6 @@ class SandboxClient(object):
     deleteInjectionRule = delete_injection_rule
 
     def wait_for_build(self, template_id, build_id, interval=1, timeout=60):
-        import time
         start = time.time()
         while True:
             info = self.get_template_build_status(template_id, build_id)

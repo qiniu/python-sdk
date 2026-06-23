@@ -37,8 +37,8 @@ def main():
             if watcher is not None:
                 try:
                     watcher.stop()
-                except Exception:
-                    pass
+                except SandboxError as err:
+                    print('failed to stop watcher:', err)
 
         try:
             pty = sandbox.pty.create(PtySize(rows=24, cols=80), timeout=30)

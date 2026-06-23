@@ -65,7 +65,10 @@ class Pty(object):
             stream=True,
         )
         events = iter(events)
-        first_event = next(events)
+        try:
+            first_event = next(events)
+        except StopIteration:
+            first_event = None
         result = command_result_from_events([first_event])
         return CommandHandle(self, result, events=events)
 
@@ -79,7 +82,10 @@ class Pty(object):
             stream=True,
         )
         events = iter(events)
-        first_event = next(events)
+        try:
+            first_event = next(events)
+        except StopIteration:
+            first_event = None
         result = command_result_from_events([first_event])
         return CommandHandle(
             self,

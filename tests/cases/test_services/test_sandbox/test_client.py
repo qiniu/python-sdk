@@ -21,6 +21,7 @@ from qiniu.services.sandbox import (
     Sandbox,
     SandboxClient,
     SandboxError,
+    SandboxPaginator,
     Template,
     wait_for_file,
     wait_for_port,
@@ -74,7 +75,10 @@ class RecordingSession(requests.Session):
             'kwargs': kwargs,
         })())
         if self.responses:
-            return self.responses.pop(0)
+            response = self.responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            return response
         return DummyResponse(body={})
 
 
@@ -243,6 +247,75 @@ def test_wait_for_ready_passes_request_timeout_to_health_check():
 
     assert session.requests[0].url == sandbox.envd_url() + '/health'
     assert session.requests[0].kwargs['timeout'] == 2
+
+
+def test_wait_for_ready_ignores_startup_request_errors_until_ready():
+    session = RecordingSession([
+        requests.exceptions.ConnectionError('envd is starting'),
+        DummyResponse(200, {}),
+    ])
+    sandbox = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=session,
+    ), info={
+        'sandboxID': 'sbx123',
+        'domain': 'example.test',
+    })
+
+    sandbox.wait_for_ready(timeout=10, interval=0)
+
+    assert len(session.requests) == 2
+
+
+def test_wait_for_ready_raises_sandbox_error_on_timeout():
+    session = RecordingSession([
+        requests.exceptions.ConnectionError('envd is starting'),
+    ])
+    sandbox = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=session,
+    ), info={
+        'sandboxID': 'sbx123',
+        'domain': 'example.test',
+    })
+
+    with pytest.raises(SandboxError):
+        sandbox.wait_for_ready(timeout=0, interval=0)
+
+
+def test_update_info_refreshes_traffic_access_token():
+    sandbox = Sandbox(info={
+        'sandboxID': 'sbx123',
+        'domain': 'example.test',
+        'trafficAccessToken': 'old-token',
+    })
+
+    sandbox.update_info({'trafficAccessToken': 'new-token'})
+
+    assert sandbox.traffic_access_token == 'new-token'
+    assert sandbox.trafficAccessToken == 'new-token'
+
+
+class RecordingSandboxListClient(object):
+    def __init__(self):
+        self.calls = []
+
+    def list_sandboxes_v2(self, **opts):
+        self.calls.append(opts)
+        if len(self.calls) == 1:
+            return {'items': [], 'nextToken': 'next-page'}
+        return {'items': []}
+
+
+def test_sandbox_paginator_does_not_reuse_initial_next_token():
+    client = RecordingSandboxListClient()
+    paginator = SandboxPaginator(client=client, next_token='saved-page')
+
+    paginator.next_items()
+    paginator.next_items()
+
+    assert client.calls[0]['nextToken'] == 'saved-page'
+    assert client.calls[1]['nextToken'] == 'next-page'
 
 
 def test_is_running_matches_e2b_health_check_semantics():

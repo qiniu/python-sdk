@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import binascii
 
 from .envd import connect_rpc, connect_stream_rpc
 from .errors import CommandExitError, SandboxError
@@ -53,7 +54,7 @@ def _decode_bytes(value):
     if isinstance(value, str):
         try:
             return base64.b64decode(value).decode('utf-8')
-        except Exception:
+        except (binascii.Error, TypeError):
             return value
     return str(value)
 
@@ -152,7 +153,9 @@ class Commands(object):
             stdin=stdin,
             tag=tag,
             throw_on_error=throw_on_error,
-            timeout=request_timeout if request_timeout is not None else timeout,
+            timeout=(
+                request_timeout if request_timeout is not None else timeout
+            ),
             on_stdout=on_stdout,
             on_stderr=on_stderr,
             **opts
@@ -238,7 +241,10 @@ class Commands(object):
             stream=True,
         )
         events = iter(events)
-        first_event = next(events)
+        try:
+            first_event = next(events)
+        except StopIteration:
+            first_event = None
         result = command_result_from_events([first_event])
         return CommandHandle(
             self,
