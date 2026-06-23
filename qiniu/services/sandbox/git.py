@@ -10,6 +10,7 @@ except ImportError:
     from urlparse import urlparse, urlunparse
 
 from .errors import (
+    CommandExitError,
     GitAuthException,
     GitUpstreamException,
     InvalidArgumentException,
@@ -327,6 +328,8 @@ class Git(object):
         return self.commands.run('git {0}'.format(' '.join(args)), **opts)
 
     def _get_remote_url(self, repo_path, remote, **opts):
+        opts = dict(opts)
+        opts.pop('background', None)
         result = self._run_git(
             repo_path,
             ['remote', 'get-url', shell_quote(remote)],
@@ -341,6 +344,8 @@ class Git(object):
     def _resolve_remote_name(self, repo_path, remote=None, **opts):
         if remote:
             return remote
+        opts = dict(opts)
+        opts.pop('background', None)
         result = self._run_git(repo_path, ['remote'], **opts)
         remotes = [
             line.strip()
@@ -410,6 +415,8 @@ class Git(object):
 
     def _raise_known_result_error(
             self, result, operation, throw_on_error=False):
+        if not hasattr(result, 'exit_code'):
+            return
         if result.exit_code:
             if _is_auth_failure(result):
                 raise GitAuthException(
@@ -420,7 +427,6 @@ class Git(object):
                     'Git {0} failed because no upstream branch is configured.'
                     .format(operation))
             if throw_on_error:
-                from qiniu.services.sandbox import CommandExitError
                 raise CommandExitError(result)
 
     def clone(self, repo_url, path=None, branch=None, depth=None, **opts):
@@ -446,6 +452,8 @@ class Git(object):
         result = self._run_git(
             repo_path, [
                 'status', '--porcelain=1', '-b'], **opts)
+        if result.exit_code:
+            raise CommandExitError(result)
         return parse_git_status(result.stdout)
 
     def add(self, repo_path, files=None, all=False, **opts):

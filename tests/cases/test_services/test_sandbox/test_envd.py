@@ -208,11 +208,11 @@ def test_command_event_decode_handles_base64_and_non_utf8_output():
 def test_command_event_decode_preserves_plain_strings():
     result = command_result_from_events([{
         'event': {'data': {
-            'stdout': 'test',
+            'stdout': 'plain text!',
         }},
     }])
 
-    assert result.stdout == 'test'
+    assert result.stdout == 'plain text!'
 
 
 def test_command_event_decode_handles_bytes_values():

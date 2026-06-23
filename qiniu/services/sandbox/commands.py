@@ -57,13 +57,9 @@ def _decode_bytes(value):
         return value.decode('utf-8', 'replace')
     if isinstance(value, basestring):
         try:
-            decoded = base64.b64decode(value).decode('utf-8', 'replace')
+            return base64.b64decode(value).decode('utf-8', 'replace')
         except (binascii.Error, TypeError):
             return value
-        if u'\ufffd' in decoded and all(
-                ch.isalnum() for ch in value):
-            return value
-        return decoded
     return str(value)
 
 

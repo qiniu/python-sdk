@@ -163,9 +163,11 @@ class SandboxClient(object):
         if auth_type == 'qiniu':
             return headers
         if auth_type == 'accessToken':
-            if self.access_token:
-                headers['Authorization'] = 'Bearer {0}'.format(
-                    self.access_token)
+            if not self.access_token:
+                raise SandboxError(
+                    'access_token is required for this operation')
+            headers['Authorization'] = 'Bearer {0}'.format(
+                self.access_token)
             return headers
         if self.api_key:
             headers['X-API-Key'] = self.api_key
@@ -212,10 +214,13 @@ class SandboxClient(object):
             message = 'Sandbox API request failed with status {0}'.format(
                 response.status_code
             )
-            if isinstance(
-                    response_data,
-                    dict) and response_data.get('message'):
-                message += ': {0}'.format(response_data.get('message'))
+            if isinstance(response_data, dict):
+                err_msg = response_data.get(
+                    'message') or response_data.get('error')
+                if isinstance(err_msg, dict):
+                    err_msg = err_msg.get('message') or err_msg.get('error')
+                if err_msg:
+                    message += ': {0}'.format(err_msg)
             elif isinstance(response_data, basestring) and response_data:
                 if len(response_data) > 200:
                     response_data = response_data[:200] + '...'
@@ -358,6 +363,8 @@ class SandboxClient(object):
         if isinstance(sandbox_ids, dict):
             values = sandbox_ids.get(
                 'sandbox_ids') or sandbox_ids.get('sandboxIDs')
+            if values is None:
+                values = [sandbox_ids]
         if values is None:
             raise SandboxError('At least one sandbox ID must be provided')
         if not isinstance(values, (list, tuple, set)):

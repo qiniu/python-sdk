@@ -307,6 +307,28 @@ def test_client_truncates_long_text_error_responses():
     assert str(err.value).endswith('...')
 
 
+def test_client_includes_nested_error_message_in_api_errors():
+    client = SandboxClient(
+        api_key='api-key',
+        session=RecordingSession([DummyResponse(400, {
+            'error': {'message': 'bad sandbox request'},
+        })]))
+
+    with pytest.raises(SandboxError) as err:
+        client.list_sandboxes()
+
+    assert 'bad sandbox request' in str(err.value)
+
+
+def test_access_token_auth_requires_access_token():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.rebuild_template('tmpl123')
+
+    assert 'access_token is required' in str(err.value)
+
+
 def test_sandbox_instance_lifecycle_methods_call_control_plane():
     session = RecordingSession([
         DummyResponse(204, None),
@@ -584,6 +606,16 @@ def test_get_sandboxes_metrics_accepts_set_values():
     assert set(query['sandbox_ids'][0].split(',')) == set(['sbx1', 'sbx2'])
 
 
+def test_get_sandboxes_metrics_accepts_single_sandbox_dict():
+    session = RecordingSession([DummyResponse(200, {'metrics': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.get_sandboxes_metrics({'id': 'sbx123'})
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['sandbox_ids'] == ['sbx123']
+
+
 def test_get_sandboxes_metrics_rejects_empty_dict_values():
     client = SandboxClient(api_key='api-key', session=RecordingSession())
 
@@ -608,8 +640,7 @@ def test_template_builder_outputs_build_config():
         'fromImage': 'python:3.11',
         'steps': [
             {'type': 'RUN', 'args': ['pip install qiniu']},
-            {'type': 'RUN', 'args': [
-                'python', '-m', 'pip', 'install', 'pytest']},
+            {'type': 'RUN', 'args': ['python -m pip install pytest']},
             {'type': 'COPY', 'args': ['/local/app.py', '/app/app.py']},
             {'type': 'ENV', 'args': ['PYTHONUNBUFFERED', '1']},
         ],
@@ -921,6 +952,20 @@ def test_git_status_and_branches_return_structured_e2b_types():
     assert branches.current_branch == 'main'
 
 
+def test_git_status_raises_when_git_command_fails():
+    commands = RecordingCommands()
+    commands.results = [type('Result', (object,), {
+        'exit_code': 128,
+        'stdout': '',
+        'stderr': 'fatal: not a git repository',
+        'error': '',
+    })()]
+    git = Git(commands)
+
+    with pytest.raises(CommandExitError):
+        git.status('/not-a-repo')
+
+
 def test_git_push_maps_auth_failure_to_e2b_exception():
     commands = RecordingCommands()
     commands.results = [type('Result', (object,), {
@@ -1083,6 +1128,57 @@ def test_git_pull_with_credentials_resolves_single_remote():
     assert commands.calls[4][0] == 'git pull origin main'
     assert 'secret-token' not in commands.calls[4][0]
     assert commands.calls[4][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
+    assert files.removes == [(files.writes[0][0], {})]
+
+
+def test_git_credential_helpers_ignore_background_when_reading_remote():
+    commands = RecordingCommands()
+    files = attach_recording_files(commands)
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'origin\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    git.pull(
+        '/repo',
+        branch='main',
+        username='git-user',
+        password='secret-token',
+        background=True,
+    )
+
+    assert 'background' not in commands.calls[0][1]
+    assert 'background' not in commands.calls[1][1]
+    assert commands.calls[4][1]['background'] is True
     assert files.removes == [(files.writes[0][0], {})]
 
 
