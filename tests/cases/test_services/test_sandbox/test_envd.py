@@ -2,6 +2,7 @@
 import base64
 from io import BytesIO
 import json
+import struct
 
 from qiniu.services.sandbox import (
     EntryInfo,
@@ -10,6 +11,7 @@ from qiniu.services.sandbox import (
     PtySize,
     Sandbox,
     SandboxClient,
+    SandboxError,
 )
 from qiniu.services.sandbox.envd import (
     decode_connect_envelopes,
@@ -165,12 +167,35 @@ def test_command_event_decode_handles_base64_and_non_utf8_output():
     assert result.stderr == u'\ufffd\ufffd\ufffd'
 
 
+def test_connect_error_envelopes_raise_default_sandbox_error():
+    empty_error = struct.pack('>BI', 2, 0)
+    missing_message = (
+        struct.pack('>BI', 2, len(b'{"error":{}}')) + b'{"error":{}}'
+    )
+
+    for data in (empty_error, missing_message):
+        try:
+            decode_connect_envelopes(data)
+            assert False, 'expected SandboxError'
+        except SandboxError as err:
+            assert str(err) == 'Sandbox envd stream failed'
+
+    try:
+        list(iter_connect_envelopes([empty_error]))
+        assert False, 'expected SandboxError'
+    except SandboxError as err:
+        assert str(err) == 'Sandbox envd stream failed'
+
+
 def test_filesystem_write_accepts_unicode_text():
     sandbox, session = sandbox_with_envd_session()
 
     sandbox.files.write('/tmp/unicode.txt', u'你好')
 
-    assert u'你好'.encode('utf-8') in session.requests[0]['kwargs']['data']
+    assert session.requests[0]['kwargs']['files']['file'] == (
+        '/tmp/unicode.txt',
+        u'你好'.encode('utf-8'),
+    )
 
 
 def test_commands_run_posts_process_start_and_decodes_events():
@@ -322,10 +347,11 @@ def test_filesystem_uses_envd_rpc_and_signed_file_urls():
     assert session.requests[0]['method'] == 'GET'
     assert '/files?' in session.requests[0]['url']
     assert session.requests[1]['method'] == 'POST'
-    assert session.requests[1]['kwargs']['headers']['Content-Type'].startswith(
-        'multipart/form-data; boundary='
+    assert 'Content-Type' not in session.requests[1]['kwargs']['headers']
+    assert session.requests[1]['kwargs']['files']['file'] == (
+        '/tmp/hello.txt',
+        b'hello',
     )
-    assert b'name="file"' in session.requests[1]['kwargs']['data']
     assert session.posts[0]['url'].endswith('/filesystem.Filesystem/Stat')
     assert session.posts[1]['url'].endswith('/filesystem.Filesystem/ListDir')
 
@@ -348,7 +374,10 @@ def test_filesystem_returns_e2b_style_entry_objects_and_streams():
     assert entries[0].name == 'hello.txt'
     assert entries[0].type == FileType.FILE
     assert session.requests[0]['kwargs']['stream'] is True
-    assert b'hello' in session.requests[1]['kwargs']['data']
+    assert session.requests[1]['kwargs']['files']['file'] == (
+        '/tmp/hello.txt',
+        b'hello',
+    )
 
 
 def test_filesystem_read_write_pass_request_timeout_to_file_requests():

@@ -348,6 +348,17 @@ def test_is_running_matches_e2b_health_check_semantics():
     assert stopped.is_running() is False
 
 
+def test_is_running_returns_false_for_envd_request_errors():
+    session = RecordingSession([requests.Timeout('timed out')])
+    sandbox = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=session,
+    ), info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+
+    assert sandbox.is_running(request_timeout=1) is False
+    assert session.requests[0].kwargs['timeout'] == 1
+
+
 def test_get_sandboxes_metrics_serializes_ids_as_comma_string():
     session = RecordingSession([DummyResponse(200, {'metrics': []})])
     client = SandboxClient(api_key='api-key', session=session)
@@ -402,6 +413,26 @@ def test_template_ready_cmd_helpers_align_with_e2b():
 
     assert template.to_dict()['startCmd'] == 'python app.py'
     assert template.to_dict()['readyCmd'] == 'ss -tuln | grep :8000'
+
+
+def test_template_ready_cmd_helpers_quote_shell_inputs():
+    assert wait_for_url(
+        'http://localhost:3000/health; touch /tmp/pwn',
+        status_code='204',
+    ).get_cmd() == (
+        'curl -s -o /dev/null -w "%{http_code}" '
+        "'http://localhost:3000/health; touch /tmp/pwn' | grep -q \"204\""
+    )
+    assert wait_for_process('nginx; touch /tmp/pwn').get_cmd() == (
+        "pgrep 'nginx; touch /tmp/pwn' > /dev/null"
+    )
+    assert wait_for_file('/tmp/ready; touch /tmp/pwn').get_cmd() == (
+        "[ -f '/tmp/ready; touch /tmp/pwn' ]"
+    )
+    with pytest.raises(ValueError):
+        wait_for_port('8000; touch /tmp/pwn')
+    with pytest.raises(ValueError):
+        wait_for_url('http://localhost:3000', status_code='200; true')
 
 
 class RecordingCommands(object):
@@ -465,6 +496,19 @@ def test_git_helpers_align_with_e2b_method_names():
     assert commands.calls[7][0] == 'git restore a.txt b.txt'
     assert commands.calls[8][0] == 'git config user.name tester'
     assert commands.calls[9][0] == 'git config --get user.name'
+
+
+def test_git_add_and_restore_accept_single_string_path():
+    commands = RecordingCommands()
+    git = Git(commands)
+
+    git.add('/repo', files='README.md')
+    git.restore('/repo', paths='README.md')
+    git.restore('/repo', files='setup.py')
+
+    assert commands.calls[0][0] == 'git add README.md'
+    assert commands.calls[1][0] == 'git restore README.md'
+    assert commands.calls[2][0] == 'git restore setup.py'
 
 
 def test_git_dangerously_authenticate_aligns_with_e2b():

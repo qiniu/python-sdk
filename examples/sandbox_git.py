@@ -37,7 +37,9 @@ def assert_git_network_ok(step, run, attempts=5):
         if result.exit_code == 0:
             print(step + ':', result.exit_code)
             return result
-        if not is_retryable_git_network_error(result) or attempt == attempts - 1:
+        if (
+                not is_retryable_git_network_error(result) or
+                attempt == attempts - 1):
             return assert_git_ok(step, result)
         print('{0}: retry {1}/{2}'.format(step, attempt + 2, attempts))
         time.sleep(attempt + 1)

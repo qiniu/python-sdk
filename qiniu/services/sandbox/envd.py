@@ -66,17 +66,37 @@ def decode_connect_envelopes(data):
         payload = data[offset:offset + length]
         offset += length
         if flags & 2:
-            if payload:
-                error = json.loads(payload.decode('utf-8')).get('error')
-                if error:
-                    raise SandboxError(
-                        error.get('message') or 'Sandbox envd stream failed',
-                        data=error,
-                    )
-            continue
+            if _is_connect_end(payload):
+                continue
+            _raise_connect_error(payload)
         if payload:
             messages.append(json.loads(payload.decode('utf-8')))
     return messages
+
+
+def _raise_connect_error(payload):
+    error = None
+    message = 'Sandbox envd stream failed'
+    if payload:
+        try:
+            data = json.loads(payload.decode('utf-8'))
+            if isinstance(data, dict):
+                error = data.get('error')
+                if isinstance(error, dict) and error.get('message'):
+                    message = error.get('message')
+        except (TypeError, ValueError):
+            pass
+    raise SandboxError(message, data=error)
+
+
+def _is_connect_end(payload):
+    if not payload:
+        return False
+    try:
+        data = json.loads(payload.decode('utf-8'))
+    except (TypeError, ValueError):
+        return False
+    return data == {}
 
 
 def iter_connect_envelopes(chunks):
@@ -99,15 +119,9 @@ def iter_connect_envelopes(chunks):
             payload = buffer[5:5 + length]
             buffer = buffer[5 + length:]
             if flags & 2:
-                if payload:
-                    error = json.loads(payload.decode('utf-8')).get('error')
-                    if error:
-                        raise SandboxError(
-                            error.get('message') or
-                            'Sandbox envd stream failed',
-                            data=error,
-                        )
-                continue
+                if _is_connect_end(payload):
+                    continue
+                _raise_connect_error(payload)
             if payload:
                 yield json.loads(payload.decode('utf-8'))
     if buffer:

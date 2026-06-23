@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import time
 from io import IOBase, TextIOBase
 
 from qiniu.compat import basestring
@@ -242,19 +241,12 @@ class Filesystem(object):
             )
             return self._format_write_response(response)
 
-        boundary = 'qiniu-sandbox-{0}'.format(int(time.time() * 1000))
         response = raw_envd_request(
             self.sandbox,
             'POST',
             url,
-            data=self._multipart_body(boundary, path, data),
-            headers=envd_headers(
-                self.sandbox,
-                user,
-                {'Content-Type': 'multipart/form-data; boundary={0}'.format(
-                    boundary
-                )},
-            ),
+            files={'file': (path, data)},
+            headers=envd_headers(self.sandbox, user),
             timeout=self._request_timeout(opts),
         )
         return self._format_write_response(response)
@@ -266,21 +258,6 @@ class Filesystem(object):
         if isinstance(data, list):
             return normalize_entry(data[0] if data else {})
         return normalize_entry(data)
-
-    def _multipart_body(self, boundary, filename, data):
-        safe_filename = str(filename).replace('\\', '\\\\').replace('"', '\\"')
-        chunks = [
-            '--{0}\r\n'.format(boundary).encode('utf-8'),
-            (
-                'Content-Disposition: form-data; name="file"; '
-                'filename="{0}"\r\n'
-            ).format(safe_filename).encode('utf-8'),
-            b'Content-Type: application/octet-stream\r\n\r\n',
-            data,
-            b'\r\n',
-            '--{0}--\r\n'.format(boundary).encode('utf-8'),
-        ]
-        return b''.join(chunks)
 
     def write_files(self, files, user=None, **opts):
         result = []

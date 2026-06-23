@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
 
+from .util import shell_quote
+
 
 class ReadyCmd(object):
     def __init__(self, cmd):
@@ -11,24 +13,26 @@ class ReadyCmd(object):
 
 
 def wait_for_port(port):
+    port = int(port)
     return ReadyCmd('ss -tuln | grep :{0}'.format(port))
 
 
 def wait_for_url(url, status_code=200):
+    status_code = int(status_code)
     return ReadyCmd(
         'curl -s -o /dev/null -w "%{{http_code}}" {0} | grep -q "{1}"'.format(
-            url,
+            shell_quote(url),
             status_code,
         )
     )
 
 
 def wait_for_process(process_name):
-    return ReadyCmd('pgrep {0} > /dev/null'.format(process_name))
+    return ReadyCmd('pgrep {0} > /dev/null'.format(shell_quote(process_name)))
 
 
 def wait_for_file(filename):
-    return ReadyCmd('[ -f {0} ]'.format(filename))
+    return ReadyCmd('[ -f {0} ]'.format(shell_quote(filename)))
 
 
 def wait_for_timeout(timeout):

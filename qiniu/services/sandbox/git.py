@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import time
 
+from qiniu.compat import basestring
+
 try:
     from urllib.parse import quote, urlparse, urlunparse
 except ImportError:
@@ -14,6 +16,14 @@ from .errors import (
     SandboxError,
 )
 from .util import shell_quote
+
+
+def _normalize_paths(paths):
+    if paths is None:
+        return None
+    if isinstance(paths, basestring):
+        return [paths]
+    return paths
 
 
 class GitFileStatus(object):
@@ -407,7 +417,7 @@ class Git(object):
         if all:
             args.append('--all')
         else:
-            for path in files or ['.']:
+            for path in _normalize_paths(files) or ['.']:
                 args.append(shell_quote(path))
         return self._run_git(repo_path, args, **opts)
 
@@ -627,7 +637,8 @@ class Git(object):
             args.append('--staged')
         if source:
             args.extend(['--source', shell_quote(source)])
-        for path in paths or opts.get('files') or ['.']:
+        paths = paths if paths is not None else opts.get('files')
+        for path in _normalize_paths(paths) or ['.']:
             args.append(shell_quote(path))
         return self._run_git(repo_path, args, **opts)
 
