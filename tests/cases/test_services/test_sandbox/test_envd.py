@@ -282,6 +282,23 @@ def test_filesystem_returns_e2b_style_entry_objects_and_streams():
     assert b'hello' in session.requests[1]['kwargs']['data']
 
 
+def test_filesystem_read_write_pass_request_timeout_to_file_requests():
+    sandbox, session = sandbox_with_envd_session()
+
+    sandbox.files.read_text('/tmp/hello.txt', timeout=3, request_timeout=7)
+    sandbox.files.write('/tmp/hello.txt', 'hello', timeout=5)
+    sandbox.files.write(
+        '/tmp/octet.txt',
+        b'hello',
+        use_octet_stream=True,
+        request_timeout=11,
+    )
+
+    assert session.requests[0]['kwargs']['timeout'] == 7
+    assert session.requests[1]['kwargs']['timeout'] == 5
+    assert session.requests[2]['kwargs']['timeout'] == 11
+
+
 def test_filesystem_write_files_accepts_e2b_style_file_list():
     sandbox, session = sandbox_with_envd_session()
 

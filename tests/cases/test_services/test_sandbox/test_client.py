@@ -16,7 +16,6 @@ from qiniu.services.sandbox import (
     GitBranches,
     GitStatus,
     Git,
-    EntryInfo,
     KodoResource,
     ReadyCmd,
     Sandbox,
@@ -319,11 +318,11 @@ class RecordingCommands(object):
         self.calls.append((cmd, opts))
         result = self.results.pop(0) if self.results else type(
             'Result', (object,), {
-            'exit_code': 0,
-            'stdout': 'origin https://github.com/qiniu/repo.git\n',
-            'stderr': '',
-            'error': '',
-        })()
+                'exit_code': 0,
+                'stdout': 'origin https://github.com/qiniu/repo.git\n',
+                'stderr': '',
+                'error': '',
+            })()
         if result.exit_code and opts.get('throw_on_error'):
             from qiniu.services.sandbox import CommandExitError
             raise CommandExitError(result)
@@ -370,7 +369,8 @@ def test_git_dangerously_authenticate_aligns_with_e2b():
         protocol='https',
     )
 
-    assert commands.calls[0][0] == 'git config --global credential.helper store'
+    assert commands.calls[0][0] == (
+        'git config --global credential.helper store')
     assert commands.calls[1][0] == (
         "printf 'protocol=https\nhost=github.com\n"
         "username=git-user\npassword=secret-token\n\n' | "
@@ -431,6 +431,154 @@ def test_git_push_maps_auth_failure_to_e2b_exception():
 
     with pytest.raises(GitAuthException):
         git.push('/repo')
+
+
+def test_git_push_with_credentials_sets_remote_url_temporarily():
+    commands = RecordingCommands()
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    git.push(
+        '/repo',
+        remote='origin',
+        branch='main',
+        username='git-user',
+        password='secret-token',
+        request_timeout=7,
+    )
+
+    assert commands.calls[0][0] == 'git remote get-url origin'
+    assert commands.calls[1][0] == (
+        'git remote set-url origin '
+        'https://git-user:secret-token@github.com/qiniu/repo.git'
+    )
+    assert commands.calls[2][0] == 'git push --set-upstream origin main'
+    assert commands.calls[3][0] == (
+        'git remote set-url origin https://github.com/qiniu/repo.git'
+    )
+    assert commands.calls[2][1]['request_timeout'] == 7
+
+
+def test_git_pull_with_credentials_resolves_single_remote():
+    commands = RecordingCommands()
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'origin\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    git.pull(
+        '/repo',
+        branch='main',
+        username='git-user',
+        password='secret-token',
+    )
+
+    assert commands.calls[0][0] == 'git remote'
+    assert commands.calls[2][0] == (
+        'git remote set-url origin '
+        'https://git-user:secret-token@github.com/qiniu/repo.git'
+    )
+    assert commands.calls[3][0] == 'git pull origin main'
+    assert commands.calls[4][0] == (
+        'git remote set-url origin https://github.com/qiniu/repo.git'
+    )
+
+
+def test_git_push_with_credentials_restores_remote_on_auth_failure():
+    commands = RecordingCommands()
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 128,
+            'stdout': '',
+            'stderr': 'fatal: Authentication failed',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    with pytest.raises(GitAuthException):
+        git.push(
+            '/repo',
+            remote='origin',
+            username='git-user',
+            password='bad-token',
+        )
+
+    assert commands.calls[-1][0] == (
+        'git remote set-url origin https://github.com/qiniu/repo.git'
+    )
 
 
 def test_git_helpers_accept_e2b_style_signatures():

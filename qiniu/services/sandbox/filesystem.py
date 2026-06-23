@@ -192,6 +192,11 @@ class Filesystem(object):
     def __init__(self, sandbox):
         self.sandbox = sandbox
 
+    def _request_timeout(self, opts):
+        if opts.get('request_timeout') is not None:
+            return opts.get('request_timeout')
+        return opts.get('timeout')
+
     def read(self, path, user=None, format='text', **opts):
         url = self.sandbox.download_url(path, user=user)
         response = raw_envd_request(
@@ -199,6 +204,7 @@ class Filesystem(object):
             'GET',
             url,
             headers=envd_headers(self.sandbox, user),
+            timeout=self._request_timeout(opts),
         )
         if format == 'stream':
             if hasattr(response, 'iter_content'):
@@ -228,6 +234,7 @@ class Filesystem(object):
                     user,
                     {'Content-Type': 'application/octet-stream'},
                 ),
+                timeout=self._request_timeout(opts),
             )
             return self._format_write_response(response)
 
@@ -244,6 +251,7 @@ class Filesystem(object):
                     boundary
                 )},
             ),
+            timeout=self._request_timeout(opts),
         )
         return self._format_write_response(response)
 

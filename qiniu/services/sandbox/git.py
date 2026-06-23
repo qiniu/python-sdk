@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
-from .errors import GitAuthException, GitUpstreamException
+try:
+    from urllib.parse import urlparse, urlunparse
+except ImportError:
+    from urlparse import urlparse, urlunparse
+
+from .errors import (
+    GitAuthException,
+    GitUpstreamException,
+    InvalidArgumentException,
+)
 from .util import shell_quote
 
 
@@ -248,6 +257,22 @@ def _is_missing_upstream(result):
     return any(snippet in message for snippet in snippets)
 
 
+def _with_credentials(url, username, password):
+    if not username and not password:
+        return url
+    if not username or not password:
+        raise InvalidArgumentException(
+            'Both username and password are required when using Git '
+            'credentials.')
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https'):
+        raise InvalidArgumentException(
+            'Only http(s) Git URLs support username/password credentials.')
+    return urlunparse(parsed._replace(
+        netloc='{0}:{1}@{2}'.format(username, password, parsed.netloc)
+    ))
+
+
 class Git(object):
     def __init__(self, commands):
         self.commands = commands
@@ -256,6 +281,76 @@ class Git(object):
         if repo_path:
             opts['cwd'] = repo_path
         return self.commands.run('git {0}'.format(' '.join(args)), **opts)
+
+    def _get_remote_url(self, repo_path, remote, **opts):
+        result = self._run_git(
+            repo_path,
+            ['remote', 'get-url', shell_quote(remote)],
+            **opts
+        )
+        url = (getattr(result, 'stdout', '') or '').strip()
+        if not url:
+            raise InvalidArgumentException(
+                'Remote "{0}" URL not found in repository.'.format(remote))
+        return url
+
+    def _resolve_remote_name(self, repo_path, remote=None, **opts):
+        if remote:
+            return remote
+        result = self._run_git(repo_path, ['remote'], **opts)
+        remotes = [
+            line.strip()
+            for line in (getattr(result, 'stdout', '') or '').splitlines()
+            if line.strip()
+        ]
+        if len(remotes) == 1:
+            return remotes[0]
+        raise InvalidArgumentException(
+            'Remote is required when using username/password and the '
+            'repository has multiple remotes.')
+
+    def _with_remote_credentials(self, repo_path, remote, username, password,
+                                 operation, **opts):
+        original_url = self._get_remote_url(repo_path, remote, **opts)
+        credential_url = _with_credentials(original_url, username, password)
+        set_result = self._run_git(repo_path, [
+            'remote',
+            'set-url',
+            shell_quote(remote),
+            shell_quote(credential_url),
+        ], **opts)
+        if getattr(set_result, 'exit_code', 0):
+            return set_result
+
+        operation_error = None
+        result = None
+        try:
+            result = operation()
+        except Exception as err:
+            operation_error = err
+        finally:
+            restore_result = self._run_git(repo_path, [
+                'remote',
+                'set-url',
+                shell_quote(remote),
+                shell_quote(original_url),
+            ], **opts)
+        if operation_error:
+            raise operation_error
+        if getattr(restore_result, 'exit_code', 0):
+            return restore_result
+        return result
+
+    def _raise_known_result_error(self, result, operation):
+        if result.exit_code:
+            if _is_auth_failure(result):
+                raise GitAuthException(
+                    'Git {0} requires credentials for private repositories.'
+                    .format(operation))
+            if _is_missing_upstream(result):
+                raise GitUpstreamException(
+                    'Git {0} failed because no upstream branch is configured.'
+                    .format(operation))
 
     def clone(self, repo_url, path=None, branch=None, depth=None, **opts):
         args = ['clone']
@@ -326,19 +421,30 @@ class Git(object):
         if password and not username:
             raise GitAuthException(
                 'Git pull requires username when password is provided')
+        remote_name = None
+        if username and password:
+            remote_name = self._resolve_remote_name(repo_path, remote, **opts)
+
         args = ['pull']
-        if remote:
-            args.append(shell_quote(remote))
+        target_remote = remote_name or remote
+        if target_remote:
+            args.append(shell_quote(target_remote))
         if branch:
             args.append(shell_quote(branch))
+        if username and password:
+            result = self._with_remote_credentials(
+                repo_path,
+                remote_name,
+                username,
+                password,
+                lambda: self._run_git(repo_path, args, **opts),
+                **opts
+            )
+            self._raise_known_result_error(result, 'pull')
+            return result
+
         result = self._run_git(repo_path, args, **opts)
-        if result.exit_code:
-            if _is_auth_failure(result):
-                raise GitAuthException(
-                    'Git pull requires credentials for private repositories.')
-            if _is_missing_upstream(result):
-                raise GitUpstreamException(
-                    'Git pull failed because no upstream branch is configured.')
+        self._raise_known_result_error(result, 'pull')
         return result
 
     def push(self, repo_path, remote=None, branch=None, set_upstream=True,
@@ -346,21 +452,32 @@ class Git(object):
         if password and not username:
             raise GitAuthException(
                 'Git push requires username when password is provided')
+        remote_name = None
+        if username and password:
+            remote_name = self._resolve_remote_name(repo_path, remote, **opts)
+
         args = ['push']
-        if set_upstream and remote:
+        target_remote = remote_name or remote
+        if set_upstream and target_remote:
             args.append('--set-upstream')
-        if remote:
-            args.append(shell_quote(remote))
+        if target_remote:
+            args.append(shell_quote(target_remote))
         if branch:
             args.append(shell_quote(branch))
+        if username and password:
+            result = self._with_remote_credentials(
+                repo_path,
+                remote_name,
+                username,
+                password,
+                lambda: self._run_git(repo_path, args, **opts),
+                **opts
+            )
+            self._raise_known_result_error(result, 'push')
+            return result
+
         result = self._run_git(repo_path, args, **opts)
-        if result.exit_code:
-            if _is_auth_failure(result):
-                raise GitAuthException(
-                    'Git push requires credentials for private repositories.')
-            if _is_missing_upstream(result):
-                raise GitUpstreamException(
-                    'Git push failed because no upstream branch is configured.')
+        self._raise_known_result_error(result, 'push')
         return result
 
     def dangerously_authenticate(
@@ -459,7 +576,8 @@ class Git(object):
             args.append(shell_quote(target))
         return self._run_git(repo_path, args, **opts)
 
-    def restore(self, repo_path, paths=None, staged=False, source=None, **opts):
+    def restore(self, repo_path, paths=None, staged=False, source=None,
+                **opts):
         args = ['restore']
         if staged:
             args.append('--staged')
@@ -518,7 +636,8 @@ class Git(object):
     def _resolve_config_scope(self, scope=None, path=None):
         scope_name = (scope or 'global').strip().lower()
         if scope_name not in ('global', 'local', 'system'):
-            raise ValueError('Git config scope must be global, local, or system')
+            raise ValueError(
+                'Git config scope must be global, local, or system')
         if scope_name == 'local':
             if not path:
                 raise ValueError('Repository path is required for local scope')
