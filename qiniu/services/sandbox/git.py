@@ -610,35 +610,6 @@ class Git(object):
             'username={2}\n'
             'password={3}\n\n'
         ).format(protocol, host, username, password)
-        sandbox = getattr(self.commands, 'sandbox', None)
-        filesystem = getattr(sandbox, 'files', None)
-        if filesystem is not None:
-            temp_dir = '/tmp/qiniu-git-auth'
-            prepare_result = self.commands.run(
-                'install -d -m 700 {0}'.format(shell_quote(temp_dir)),
-                **opts
-            )
-            if prepare_result.exit_code != 0:
-                return prepare_result
-            path = '{0}/qiniu-git-credential-{1}'.format(
-                temp_dir,
-                uuid.uuid4().hex)
-            filesystem.write(path, credential)
-            quoted_path = shell_quote(path)
-            try:
-                chmod_result = self.commands.run(
-                    'chmod 600 {0}'.format(quoted_path),
-                    **opts
-                )
-                if chmod_result.exit_code != 0:
-                    return chmod_result
-                script = (
-                    'trap "rm -f {0}" EXIT; '
-                    'git credential approve < {0}'
-                ).format(quoted_path)
-                return self.commands.run(script, **opts)
-            finally:
-                _remove_credential_file(filesystem, path)
         handle = self.commands.run(
             'git credential approve',
             stdin=True,

@@ -411,6 +411,17 @@ def test_connect_sandbox_uses_timeout_body_only():
     assert body_of(session.requests[0]) == {'timeout': 9}
 
 
+def test_sandbox_control_methods_require_sandbox_id():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError):
+        client.pause_sandbox('')
+    with pytest.raises(SandboxError):
+        client.resume_sandbox(None)
+    with pytest.raises(SandboxError):
+        client.connect_sandbox('')
+
+
 def test_sandbox_connect_forwards_envd_options_to_instance():
     session = RecordingSession([DummyResponse(200, {'sandboxID': 'sbx123'})])
     client = SandboxClient(api_key='api-key', session=session)
@@ -459,6 +470,13 @@ def test_sandbox_envd_and_file_urls_are_signed_when_token_is_available():
     assert query['username'] == ['user']
     assert query['signature_expiration'] == ['1893456000']
     assert query['signature'][0]
+
+
+def test_envd_url_requires_domain_without_override():
+    sandbox = Sandbox(info={'sandboxID': 'sbx123'})
+
+    with pytest.raises(SandboxError):
+        sandbox.envd_url()
 
 
 def test_file_url_accepts_none_signature_expiration():
@@ -620,6 +638,35 @@ def test_sandbox_paginator_does_not_send_client_credentials_as_filters():
     paginator.next_items()
 
     assert client.calls[0] == {'metadata': {'app': 'tests'}}
+
+
+def test_wait_for_build_retries_transient_sandbox_errors(monkeypatch):
+    class BuildClient(SandboxClient):
+        def __init__(self):
+            super(BuildClient, self).__init__(
+                api_key='api-key',
+                session=RecordingSession(),
+            )
+            self.calls = 0
+
+        def get_template_build_status(self, template_id, build_id, **opts):
+            del template_id, build_id, opts
+            self.calls += 1
+            if self.calls == 1:
+                raise SandboxError('temporary gateway error')
+            return {'status': 'ready', 'templateID': 'tmpl123'}
+
+    monkeypatch.setattr(
+        'qiniu.services.sandbox.client.time.sleep',
+        lambda x: x,
+    )
+    client = BuildClient()
+
+    assert client.wait_for_build('tmpl123', 'build123', interval=0) == {
+        'status': 'ready',
+        'templateID': 'tmpl123',
+    }
+    assert client.calls == 2
 
 
 def test_is_running_matches_e2b_health_check_semantics():
@@ -924,7 +971,7 @@ def test_git_dangerously_authenticate_aligns_with_e2b():
     assert commands.calls[3] == ('close_stdin', {'pid': 12})
 
 
-def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
+def test_git_dangerously_authenticate_uses_stdin_with_real_sandbox():
     commands = RecordingCommands()
     files = attach_recording_files(commands)
     git = Git(commands)
@@ -936,24 +983,16 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
         protocol='https',
     )
 
-    assert files.writes[0][1] == (
+    assert files.writes == []
+    assert files.removes == []
+    assert commands.calls[1][0] == 'git credential approve'
+    assert commands.calls[2][1]['data'] == (
         'protocol=https\nhost=github.com\n'
         'username=git-user\npassword=secret-%-token\n\n'
     )
-    assert files.writes[0][0].startswith(
-        '/tmp/qiniu-git-auth/qiniu-git-credential-')
-    assert files.writes[0][2] == {}
-    assert commands.calls[1][0] == 'install -d -m 700 /tmp/qiniu-git-auth'
-    assert commands.calls[2][0].startswith(
-        'chmod 600 /tmp/qiniu-git-auth/qiniu-git-credential-')
-    assert commands.calls[3][0].startswith(
-        'trap "rm -f /tmp/qiniu-git-auth/qiniu-git-credential-')
-    assert 'git credential approve' in commands.calls[3][0]
-    assert 'secret-%-token' not in commands.calls[3][0]
-    assert files.removes == [(files.writes[0][0], {})]
 
 
-def test_git_dangerously_authenticate_ignores_background_for_temp_file():
+def test_git_dangerously_authenticate_ignores_background_for_stdin_flow():
     commands = RecordingCommands()
     files = attach_recording_files(commands)
     git = Git(commands)
@@ -965,47 +1004,11 @@ def test_git_dangerously_authenticate_ignores_background_for_temp_file():
     )
 
     assert 'background' not in commands.calls[0][1]
-    assert 'background' not in commands.calls[1][1]
+    assert commands.calls[1][1]['background'] is True
     assert 'background' not in commands.calls[2][1]
     assert 'background' not in commands.calls[3][1]
-    assert files.removes == [(files.writes[0][0], {})]
-
-
-def test_git_dangerously_authenticate_removes_temp_file_on_chmod_failure():
-    commands = RecordingCommands()
-    commands.results = [
-        type('Result', (object,), {
-            'pid': 12,
-            'exit_code': 0,
-            'stdout': '',
-            'stderr': '',
-            'error': '',
-        })(),
-        type('Result', (object,), {
-            'pid': 12,
-            'exit_code': 0,
-            'stdout': '',
-            'stderr': '',
-            'error': '',
-        })(),
-        type('Result', (object,), {
-            'pid': 12,
-            'exit_code': 1,
-            'stdout': '',
-            'stderr': 'chmod failed',
-            'error': 'chmod failed',
-        })(),
-    ]
-    files = attach_recording_files(commands)
-    git = Git(commands)
-
-    result = git.dangerously_authenticate(
-        username='git-user',
-        password='secret-token',
-    )
-
-    assert result.exit_code == 1
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.writes == []
+    assert files.removes == []
 
 
 def test_git_status_and_branches_return_structured_e2b_types():

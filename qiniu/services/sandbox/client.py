@@ -297,6 +297,8 @@ class SandboxClient(object):
     kill = delete_sandbox
 
     def pause_sandbox(self, sandbox_id):
+        if not sandbox_id:
+            raise SandboxError('sandbox_id is required')
         return self._request(
             'POST',
             '/sandboxes/{0}/pause'.format(encode_path(sandbox_id)),
@@ -307,6 +309,8 @@ class SandboxClient(object):
     pauseSandbox = pause_sandbox
 
     def resume_sandbox(self, sandbox_id, **opts):
+        if not sandbox_id:
+            raise SandboxError('sandbox_id is required')
         return self._request(
             'POST',
             '/sandboxes/{0}/resume'.format(encode_path(sandbox_id)),
@@ -316,6 +320,8 @@ class SandboxClient(object):
     resumeSandbox = resume_sandbox
 
     def connect_sandbox(self, sandbox_id, timeout=15):
+        if not sandbox_id:
+            raise SandboxError('sandbox_id is required')
         return self._request(
             'POST',
             '/sandboxes/{0}/connect'.format(encode_path(sandbox_id)),
@@ -582,20 +588,24 @@ class SandboxClient(object):
     def wait_for_build(self, template_id, build_id, interval=1, timeout=60):
         start = _monotonic_time()
         while True:
-            info = self.get_template_build_status(template_id, build_id)
-            if info and info.get('status') in ('ready', 'error'):
-                if info.get('status') == 'error':
-                    message = (
-                        (
-                            isinstance(info.get('error'), dict) and
-                            info.get('error').get('message')
-                        ) or
-                        info.get('error') or
-                        info.get('message') or
-                        'Sandbox template build failed'
-                    )
-                    raise TemplateBuildError(message, data=info)
-                return info
+            try:
+                info = self.get_template_build_status(template_id, build_id)
+                if info and info.get('status') in ('ready', 'error'):
+                    if info.get('status') == 'error':
+                        message = (
+                            (
+                                isinstance(info.get('error'), dict) and
+                                info.get('error').get('message')
+                            ) or
+                            info.get('error') or
+                            info.get('message') or
+                            'Sandbox template build failed'
+                        )
+                        raise TemplateBuildError(message, data=info)
+                    return info
+            except SandboxError as err:
+                if isinstance(err, TemplateBuildError):
+                    raise
             if _monotonic_time() - start >= timeout:
                 raise SandboxError('Sandbox template build polling timed out')
             time.sleep(interval)

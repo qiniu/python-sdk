@@ -276,6 +276,8 @@ class Sandbox(object):
     def envd_url(self):
         if self._envd_url:
             return self._envd_url
+        if not self.domain:
+            raise SandboxError('Sandbox domain is not available')
         return 'https://{0}'.format(self.get_host(ENVD_PORT))
 
     envdUrl = envd_url
