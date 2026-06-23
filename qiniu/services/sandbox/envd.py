@@ -99,33 +99,40 @@ def _is_connect_end(payload):
     return data == {}
 
 
-def iter_connect_envelopes(chunks):
-    buffer = b''
-    for chunk in chunks:
-        if not chunk:
-            continue
-        if not isinstance(chunk, bytes):
-            chunk = chunk.encode('utf-8')
-        buffer += chunk
-        while len(buffer) >= 5:
-            flags, length = struct.unpack('>BI', buffer[:5])
-            if length > MAX_CONNECT_ENVELOPE_BYTES:
-                raise SandboxError(
-                    'Sandbox envd stream envelope too large: {0}'.format(
-                        length)
-                )
-            if len(buffer) < 5 + length:
-                break
-            payload = buffer[5:5 + length]
-            buffer = buffer[5 + length:]
-            if flags & 2:
-                if _is_connect_end(payload):
-                    continue
-                _raise_connect_error(payload)
-            if payload:
-                yield json.loads(payload.decode('utf-8'))
-    if buffer:
-        raise SandboxError('Sandbox envd stream truncated unexpectedly')
+def iter_connect_envelopes(chunks, response=None):
+    try:
+        buffer = b''
+        for chunk in chunks:
+            if not chunk:
+                continue
+            if not isinstance(chunk, bytes):
+                chunk = chunk.encode('utf-8')
+            buffer += chunk
+            while len(buffer) >= 5:
+                flags, length = struct.unpack('>BI', buffer[:5])
+                if length > MAX_CONNECT_ENVELOPE_BYTES:
+                    raise SandboxError(
+                        'Sandbox envd stream envelope too large: {0}'.format(
+                            length)
+                    )
+                if len(buffer) < 5 + length:
+                    break
+                payload = buffer[5:5 + length]
+                buffer = buffer[5 + length:]
+                if flags & 2:
+                    if _is_connect_end(payload):
+                        continue
+                    _raise_connect_error(payload)
+                if payload:
+                    yield json.loads(payload.decode('utf-8'))
+        if buffer:
+            raise SandboxError('Sandbox envd stream truncated unexpectedly')
+    finally:
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
 
 
 def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
@@ -153,7 +160,10 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
                 response.status_code), response, response.text, )
 
     if stream and hasattr(response, 'iter_content'):
-        return iter_connect_envelopes(response.iter_content(chunk_size=8192))
+        return iter_connect_envelopes(
+            response.iter_content(chunk_size=8192),
+            response=response,
+        )
 
     content_type = response.headers.get('Content-Type', '')
     if 'application/connect+json' in content_type:

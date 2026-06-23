@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
+import qiniu.services.sandbox.config as sandbox_config
 from qiniu.services.sandbox.config import (
     load_dotenv_if_present,
     sandbox_client,
@@ -79,3 +80,12 @@ def test_sandbox_client_uses_loaded_env(tmpdir):
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+
+
+def test_native_env_pair_encodes_unicode_on_python2(monkeypatch):
+    monkeypatch.setattr(sandbox_config, 'is_py2', True)
+
+    key, value = sandbox_config._native_env_pair(u'KEY', u'值')
+
+    assert key == b'KEY'
+    assert value == u'值'.encode('utf-8')

@@ -29,6 +29,13 @@ def _normalize_paths(paths):
 RESET_MODES = set(['soft', 'mixed', 'hard', 'merge', 'keep'])
 
 
+def _remove_credential_file(filesystem, path):
+    try:
+        filesystem.remove(path)
+    except Exception:
+        pass
+
+
 class GitFileStatus(object):
     def __init__(self, name, status, index_status, working_tree_status,
                  staged, renamed_from=None):
@@ -551,20 +558,25 @@ class Git(object):
                 int(time.time() * 1000))
             filesystem.write(path, credential)
             quoted_path = shell_quote(path)
-            chmod_result = self.commands.run(
-                'chmod 600 {0}'.format(quoted_path),
-                **opts
-            )
-            if chmod_result.exit_code != 0:
-                return chmod_result
-            script = (
-                'trap "rm -f {0}" EXIT; '
-                'git credential approve < {0}'
-            ).format(quoted_path)
-            return self.commands.run(
-                'sh -c {0}'.format(shell_quote(script)),
-                **opts
-            )
+            try:
+                chmod_result = self.commands.run(
+                    'chmod 600 {0}'.format(quoted_path),
+                    **opts
+                )
+                if chmod_result.exit_code != 0:
+                    _remove_credential_file(filesystem, path)
+                    return chmod_result
+                script = (
+                    'trap "rm -f {0}" EXIT; '
+                    'git credential approve < {0}'
+                ).format(quoted_path)
+                return self.commands.run(
+                    'sh -c {0}'.format(shell_quote(script)),
+                    **opts
+                )
+            except Exception:
+                _remove_credential_file(filesystem, path)
+                raise
         handle = self.commands.run(
             'git credential approve',
             stdin=True,

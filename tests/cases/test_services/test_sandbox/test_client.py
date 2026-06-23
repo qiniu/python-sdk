@@ -595,6 +595,50 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
     assert 'secret-%-token' not in commands.calls[2][0]
 
 
+def test_git_dangerously_authenticate_removes_temp_file_on_chmod_failure():
+    class FakeFiles(object):
+        def __init__(self):
+            self.writes = []
+            self.removes = []
+
+        def write(self, path, data, **opts):
+            self.writes.append((path, data, opts))
+            return None
+
+        def remove(self, path, **opts):
+            self.removes.append((path, opts))
+            return None
+
+    commands = RecordingCommands()
+    commands.results = [
+        type('Result', (object,), {
+            'pid': 12,
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'pid': 12,
+            'exit_code': 1,
+            'stdout': '',
+            'stderr': 'chmod failed',
+            'error': 'chmod failed',
+        })(),
+    ]
+    files = FakeFiles()
+    commands.sandbox = type('Sandbox', (object,), {'files': files})()
+    git = Git(commands)
+
+    result = git.dangerously_authenticate(
+        username='git-user',
+        password='secret-token',
+    )
+
+    assert result.exit_code == 1
+    assert files.removes == [(files.writes[0][0], {})]
+
+
 def test_git_status_and_branches_return_structured_e2b_types():
     commands = RecordingCommands()
     commands.results = [

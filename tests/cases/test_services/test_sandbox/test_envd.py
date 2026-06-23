@@ -29,6 +29,7 @@ class DummyResponse(object):
             body or {}).encode('utf-8')
         self.text = self.content.decode('utf-8')
         self.headers = {'Content-Type': content_type}
+        self.closed = False
 
     def json(self):
         return json.loads(self.content.decode('utf-8'))
@@ -36,6 +37,9 @@ class DummyResponse(object):
     def iter_content(self, chunk_size=8192):
         del chunk_size
         yield self.content
+
+    def close(self):
+        self.closed = True
 
 
 class EnvdSession(object):
@@ -155,6 +159,17 @@ def test_iter_connect_envelopes_decodes_chunked_stream_frames():
     ]
 
 
+def test_iter_connect_envelopes_closes_stream_response():
+    raw = encode_connect_envelope({'event': {'start': {'pid': 12}}})
+    response = DummyResponse(raw=raw, content_type='application/connect+json')
+
+    assert list(iter_connect_envelopes(
+        response.iter_content(chunk_size=8192),
+        response=response,
+    )) == [{'event': {'start': {'pid': 12}}}]
+    assert response.closed is True
+
+
 def test_command_event_decode_handles_base64_and_non_utf8_output():
     result = command_result_from_events([{
         'event': {'data': {
@@ -195,6 +210,21 @@ def test_filesystem_write_accepts_unicode_text():
     assert session.requests[0]['kwargs']['files']['file'] == (
         'unicode.txt',
         u'你好'.encode('utf-8'),
+    )
+
+
+def test_filesystem_write_accepts_duck_typed_file_like_objects():
+    class FileLike(object):
+        def read(self):
+            return b'hello'
+
+    sandbox, session = sandbox_with_envd_session()
+
+    sandbox.files.write('/tmp/file-like.txt', FileLike())
+
+    assert session.requests[0]['kwargs']['files']['file'] == (
+        'file-like.txt',
+        b'hello',
     )
 
 

@@ -2,6 +2,8 @@
 import io
 import os
 
+from qiniu.compat import is_py2, str as text_type
+
 from .client import SandboxClient
 
 
@@ -29,7 +31,17 @@ def load_dotenv_if_present(*paths):
                 ):
                     value = value[1:-1]
                 if key and key not in os.environ:
+                    key, value = _native_env_pair(key, value)
                     os.environ[key] = value
+
+
+def _native_env_pair(key, value):
+    if is_py2:
+        if isinstance(key, text_type):
+            key = key.encode('utf-8')
+        if isinstance(value, text_type):
+            value = value.encode('utf-8')
+    return key, value
 
 
 def env(key, fallback=None):
