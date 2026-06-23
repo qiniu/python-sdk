@@ -30,7 +30,12 @@ class _ConnectDescriptor(object):
             def class_connect(sandbox_id, client=None, timeout=15, **opts):
                 client = client or SandboxClient(**opts)
                 info = client.connect_sandbox(sandbox_id, timeout=timeout)
-                sandbox = cls(client=client, info=info, sandbox_id=sandbox_id)
+                sandbox = cls(
+                    client=client,
+                    info=info,
+                    sandbox_id=sandbox_id,
+                    **opts
+                )
                 sandbox.refresh_envd_token_if_needed()
                 return sandbox
             return class_connect
@@ -83,6 +88,7 @@ class Sandbox(object):
 
     def __init__(self, client=None, info=None, sandbox_id=None, sandboxID=None,
                  envd_url=None, envdAccessToken=None, **client_opts):
+        envd_url = envd_url or client_opts.pop('envdUrl', None)
         self.client = client or SandboxClient(**client_opts)
         self.info = info or {}
         self.sandbox_id = (

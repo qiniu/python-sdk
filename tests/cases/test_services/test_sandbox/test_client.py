@@ -321,6 +321,22 @@ def test_connect_sandbox_uses_timeout_body_only():
     assert body_of(session.requests[0]) == {'timeout': 9}
 
 
+def test_sandbox_connect_forwards_envd_options_to_instance():
+    session = RecordingSession([DummyResponse(200, {'sandboxID': 'sbx123'})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    sandbox = Sandbox.connect(
+        'sbx123',
+        client=client,
+        envd_url='http://envd.local',
+        envdAccessToken='envd-token',
+    )
+
+    assert sandbox.envd_url() == 'http://envd.local'
+    assert sandbox.envdAccessToken == 'envd-token'
+    assert body_of(session.requests[0]) == {'timeout': 15}
+
+
 def test_delete_template_requires_template_id():
     client = SandboxClient(api_key='api-key', session=RecordingSession())
 
@@ -366,6 +382,13 @@ def test_file_url_accepts_none_signature_expiration():
     query = parse_qs(urlparse(url).query)
 
     assert query['signature'][0]
+    assert query['signature'][0] == file_signature(
+        '/tmp/hello.txt',
+        'read',
+        'user',
+        'token',
+        '',
+    )
     assert 'signature_expiration' not in query
 
 
@@ -743,11 +766,16 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
         'protocol=https\nhost=github.com\n'
         'username=git-user\npassword=secret-%-token\n\n'
     )
+    assert files.writes[0][0].startswith(
+        '/tmp/qiniu-git-auth/qiniu-git-credential-')
     assert files.writes[0][2] == {}
-    assert commands.calls[1][0].startswith('chmod 600 /tmp/')
-    assert commands.calls[2][0].startswith('trap "rm -f /tmp/')
-    assert 'git credential approve' in commands.calls[2][0]
-    assert 'secret-%-token' not in commands.calls[2][0]
+    assert commands.calls[1][0] == 'install -d -m 700 /tmp/qiniu-git-auth'
+    assert commands.calls[2][0].startswith(
+        'chmod 600 /tmp/qiniu-git-auth/qiniu-git-credential-')
+    assert commands.calls[3][0].startswith(
+        'trap "rm -f /tmp/qiniu-git-auth/qiniu-git-credential-')
+    assert 'git credential approve' in commands.calls[3][0]
+    assert 'secret-%-token' not in commands.calls[3][0]
     assert files.removes == [(files.writes[0][0], {})]
 
 
@@ -767,6 +795,13 @@ def test_git_dangerously_authenticate_removes_temp_file_on_chmod_failure():
 
     commands = RecordingCommands()
     commands.results = [
+        type('Result', (object,), {
+            'pid': 12,
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
         type('Result', (object,), {
             'pid': 12,
             'exit_code': 0,

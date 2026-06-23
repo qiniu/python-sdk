@@ -570,7 +570,15 @@ class Git(object):
         sandbox = getattr(self.commands, 'sandbox', None)
         filesystem = getattr(sandbox, 'files', None)
         if filesystem is not None:
-            path = '/tmp/qiniu-git-credential-{0}'.format(
+            temp_dir = '/tmp/qiniu-git-auth'
+            prepare_result = self.commands.run(
+                'install -d -m 700 {0}'.format(shell_quote(temp_dir)),
+                **opts
+            )
+            if prepare_result.exit_code != 0:
+                return prepare_result
+            path = '{0}/qiniu-git-credential-{1}'.format(
+                temp_dir,
                 int(time.time() * 1000))
             filesystem.write(path, credential)
             quoted_path = shell_quote(path)

@@ -61,6 +61,8 @@ def basic_auth(user=None):
 
 
 def file_signature(path, operation, user, access_token, expiration):
+    if expiration is None:
+        expiration = ''
     components = [path, operation, user, access_token, expiration]
     raw = b':'.join([_to_utf8_bytes(component)
                      for component in components])

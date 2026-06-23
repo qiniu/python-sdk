@@ -491,3 +491,14 @@ def test_filesystem_watch_dir_returns_e2b_style_watch_handle():
     assert session.posts[1]['data'] == {'watcherId': 'watch-1'}
     assert session.posts[2]['url'].endswith(
         '/filesystem.Filesystem/RemoveWatcher')
+
+
+def test_filesystem_watch_dir_handle_supports_context_manager():
+    sandbox, session = sandbox_with_envd_session()
+
+    with sandbox.files.watch_dir('/tmp') as handle:
+        assert handle.watcher_id == 'watch-1'
+
+    assert handle._closed is True
+    assert session.posts[1]['url'].endswith(
+        '/filesystem.Filesystem/RemoveWatcher')

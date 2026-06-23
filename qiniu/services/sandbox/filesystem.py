@@ -162,6 +162,13 @@ class WatchHandle(object):
         self.watcherID = watcher_id
         self._closed = False
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+        return False
+
     def get_new_events(self, user=None, timeout=None):
         if self._closed:
             raise SandboxError('The watcher is already stopped')
