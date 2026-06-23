@@ -284,10 +284,15 @@ def test_filesystem_write_accepts_unicode_text():
     sandbox, session = sandbox_with_envd_session()
 
     sandbox.files.write('/tmp/unicode.txt', u'你好')
+    sandbox.files.write('/tmp/bytes.txt', bytearray(b'abc'))
 
     assert session.requests[0]['kwargs']['files']['file'] == (
         'unicode.txt',
         u'你好'.encode('utf-8'),
+    )
+    assert session.requests[1]['kwargs']['files']['file'] == (
+        'bytes.txt',
+        b'abc',
     )
 
 
@@ -362,9 +367,12 @@ def test_commands_send_stdin_encodes_unicode_text():
     sandbox, session = sandbox_with_envd_session()
 
     sandbox.commands.send_stdin(12, u'你好')
+    sandbox.commands.send_stdin(12, bytearray(b'abc'))
 
     raw = session.posts[0]['data']['input']['stdin']
     assert base64.b64decode(raw).decode('utf-8') == u'你好'
+    raw = session.posts[1]['data']['input']['stdin']
+    assert base64.b64decode(raw) == b'abc'
 
 
 def test_commands_run_supports_e2b_callbacks_and_request_timeout():
@@ -414,6 +422,7 @@ def test_pty_create_send_resize_connect_and_kill_use_process_rpc():
 
     handle = sandbox.pty.create(PtySize(rows=24, cols=80), cwd='/workspace')
     sandbox.pty.send_stdin(handle.pid, u'你好\n')
+    sandbox.pty.send_stdin(handle.pid, bytearray(b'abc'))
     sandbox.pty.resize(handle.pid, {'rows': 30, 'cols': 100})
     connected = sandbox.pty.connect(handle.pid)
     assert sandbox.pty.kill(handle.pid) is True
@@ -433,12 +442,15 @@ def test_pty_create_send_resize_connect_and_kill_use_process_rpc():
     assert base64.b64decode(
         session.posts[1]['data']['input']['pty']
     ).decode('utf-8') == u'你好\n'
-    assert session.posts[2]['url'].endswith('/process.Process/Update')
-    assert session.posts[2]['data']['pty'] == {
+    assert session.posts[2]['url'].endswith('/process.Process/SendInput')
+    assert base64.b64decode(
+        session.posts[2]['data']['input']['pty']) == b'abc'
+    assert session.posts[3]['url'].endswith('/process.Process/Update')
+    assert session.posts[3]['data']['pty'] == {
         'size': {'rows': 30, 'cols': 100},
     }
-    assert session.posts[3]['url'].endswith('/process.Process/Connect')
-    assert session.posts[4]['url'].endswith('/process.Process/SendSignal')
+    assert session.posts[4]['url'].endswith('/process.Process/Connect')
+    assert session.posts[5]['url'].endswith('/process.Process/SendSignal')
 
 
 def test_pty_create_and_connect_handle_empty_event_streams():

@@ -95,7 +95,9 @@ class Pty(object):
         )
 
     def send_stdin(self, pid, data, user=None, timeout=None):
-        if not isinstance(data, bytes):
+        if isinstance(data, bytearray):
+            data = bytes(data)
+        elif not isinstance(data, bytes):
             if hasattr(data, 'encode'):
                 data = data.encode('utf-8')
             else:

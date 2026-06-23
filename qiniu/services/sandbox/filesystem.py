@@ -137,6 +137,8 @@ def normalize_entry(entry, extended=False):
 
 
 def to_upload_body(data, encoding='utf-8'):
+    if isinstance(data, bytearray):
+        return bytes(data)
     if isinstance(data, bytes):
         return data
     if isinstance(data, basestring):

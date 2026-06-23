@@ -31,10 +31,21 @@ RESET_MODES = set(['soft', 'mixed', 'hard', 'merge', 'keep'])
 
 
 def _remove_credential_file(filesystem, path):
+    if not path:
+        return
     try:
         filesystem.remove(path)
     except Exception:
         pass
+
+
+def _cleanup_after_wait(wait, filesystem, path):
+    def wrapped_wait(*args, **kwargs):
+        try:
+            return wait(*args, **kwargs)
+        finally:
+            _remove_credential_file(filesystem, path)
+    return wrapped_wait
 
 
 class GitFileStatus(object):
@@ -411,11 +422,16 @@ class Git(object):
         operation_error = None
         try:
             result = operation(auth_opts)
+            if opts.get('background') and hasattr(result, 'wait'):
+                result.wait = _cleanup_after_wait(
+                    result.wait, filesystem, askpass_path)
+                askpass_path = None
         except BaseException as err:
             operation_error = err
             result = None
         finally:
-            _remove_credential_file(filesystem, askpass_path)
+            if askpass_path:
+                _remove_credential_file(filesystem, askpass_path)
         if operation_error is not None:
             raise operation_error
         return result
@@ -581,6 +597,8 @@ class Git(object):
             host='github.com',
             protocol='https',
             **opts):
+        opts = dict(opts)
+        opts.pop('background', None)
         if not username:
             raise InvalidArgumentException('username is required')
         if not password:

@@ -890,6 +890,24 @@ def test_git_dangerously_authenticate_uses_temp_file_with_real_sandbox():
     assert files.removes == [(files.writes[0][0], {})]
 
 
+def test_git_dangerously_authenticate_ignores_background_for_temp_file():
+    commands = RecordingCommands()
+    files = attach_recording_files(commands)
+    git = Git(commands)
+
+    git.dangerously_authenticate(
+        username='git-user',
+        password='secret-token',
+        background=True,
+    )
+
+    assert 'background' not in commands.calls[0][1]
+    assert 'background' not in commands.calls[1][1]
+    assert 'background' not in commands.calls[2][1]
+    assert 'background' not in commands.calls[3][1]
+    assert files.removes == [(files.writes[0][0], {})]
+
+
 def test_git_dangerously_authenticate_removes_temp_file_on_chmod_failure():
     commands = RecordingCommands()
     commands.results = [
@@ -1184,7 +1202,7 @@ def test_git_credential_helpers_ignore_background_when_reading_remote():
     ]
     git = Git(commands)
 
-    git.pull(
+    handle = git.pull(
         '/repo',
         branch='main',
         username='git-user',
@@ -1195,6 +1213,8 @@ def test_git_credential_helpers_ignore_background_when_reading_remote():
     assert 'background' not in commands.calls[0][1]
     assert 'background' not in commands.calls[1][1]
     assert commands.calls[4][1]['background'] is True
+    assert files.removes == []
+    handle.wait()
     assert files.removes == [(files.writes[0][0], {})]
 
 
