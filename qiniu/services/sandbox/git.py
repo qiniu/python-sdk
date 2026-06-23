@@ -217,7 +217,7 @@ def parse_git_status(output):
         path = line[3:]
         renamed_from = None
         name = path
-        if ' -> ' in path:
+        if (index_status == 'R' or working_status == 'R') and ' -> ' in path:
             renamed_from, name = path.split(' -> ', 1)
         file_status.append(GitFileStatus(
             name=name,

@@ -197,12 +197,12 @@ def test_command_event_decode_handles_base64_and_non_utf8_output():
     result = command_result_from_events([{
         'event': {'data': {
             'stdout': base64.b64encode(b'YWJj').decode('ascii'),
-            'stderr': '////',
+            'stderr': base64.b64encode(b'\xff\xff\xff').decode('ascii'),
         }},
     }])
 
     assert result.stdout == 'YWJj'
-    assert result.stderr == '////'
+    assert result.stderr == u'\ufffd\ufffd\ufffd'
 
 
 def test_command_event_decode_keeps_invalid_base64_strings():
@@ -215,10 +215,10 @@ def test_command_event_decode_keeps_invalid_base64_strings():
     assert result.stderr == 'plain text!'
 
 
-def test_command_event_decode_keeps_plain_base64_looking_strings():
+def test_command_event_decode_expects_base64_encoded_strings():
     result = command_result_from_events([{
         'event': {'data': {
-            'stdout': 'test',
+            'stdout': base64.b64encode(b'test').decode('ascii'),
         }},
     }])
 

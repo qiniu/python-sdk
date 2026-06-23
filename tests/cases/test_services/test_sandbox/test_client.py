@@ -699,6 +699,33 @@ def test_wait_for_build_retries_transient_sandbox_errors(monkeypatch):
     assert client.calls == 2
 
 
+def test_wait_for_build_reraises_permanent_sandbox_errors(monkeypatch):
+    class BuildClient(SandboxClient):
+        def __init__(self):
+            super(BuildClient, self).__init__(
+                api_key='api-key',
+                session=RecordingSession(),
+            )
+            self.calls = 0
+
+        def get_template_build_status(self, template_id, build_id, **opts):
+            del template_id, build_id, opts
+            self.calls += 1
+            raise SandboxError('missing build', DummyResponse(404, {}))
+
+    monkeypatch.setattr(
+        'qiniu.services.sandbox.client.time.sleep',
+        lambda x: x,
+    )
+    client = BuildClient()
+
+    with pytest.raises(SandboxError) as err:
+        client.wait_for_build('tmpl123', 'build123', interval=0)
+
+    assert err.value.status_code == 404
+    assert client.calls == 1
+
+
 def test_is_running_matches_e2b_health_check_semantics():
     running_session = RecordingSession([DummyResponse(200, {})])
     running = Sandbox(client=SandboxClient(
@@ -1060,6 +1087,8 @@ def test_git_status_and_branches_return_structured_e2b_types():
                 '## main...origin/main [ahead 2, behind 1]\n'
                 ' M changed.txt\n'
                 'A  staged.txt\n'
+                ' M my -> file.txt\n'
+                'R  old.txt -> renamed.txt\n'
                 '?? new.txt\n'
             ),
             'stderr': '',
@@ -1087,6 +1116,10 @@ def test_git_status_and_branches_return_structured_e2b_types():
     assert status.has_untracked is True
     assert status.file_status[0].name == 'changed.txt'
     assert status.file_status[0].status == 'modified'
+    assert status.file_status[2].name == 'my -> file.txt'
+    assert status.file_status[2].renamed_from is None
+    assert status.file_status[3].name == 'renamed.txt'
+    assert status.file_status[3].renamed_from == 'old.txt'
     assert isinstance(branches, GitBranches)
     assert branches.branches == ['main', 'feature']
     assert branches.current_branch == 'main'
