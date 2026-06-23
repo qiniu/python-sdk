@@ -28,13 +28,17 @@ class DummyResponse(object):
     def json(self):
         return json.loads(self.content.decode('utf-8'))
 
+    def iter_content(self, chunk_size=8192):
+        del chunk_size
+        yield self.content
+
 
 class EnvdSession(object):
     def __init__(self):
         self.posts = []
         self.requests = []
 
-    def post(self, url, data=None, headers=None, timeout=None):
+    def post(self, url, data=None, headers=None, timeout=None, stream=False):
         if headers.get('Content-Type') == 'application/connect+json':
             decoded = decode_connect_envelopes(data)[0]
         else:
@@ -46,6 +50,7 @@ class EnvdSession(object):
             'data': decoded,
             'headers': headers,
             'timeout': timeout,
+            'stream': stream,
         })
         if url.endswith('/process.Process/Start'):
             decoded = self.posts[-1]['data']
@@ -188,6 +193,18 @@ def test_commands_run_supports_e2b_callbacks_and_request_timeout():
     assert stdout == ['hello\n']
     assert stderr == []
     assert session.posts[0]['timeout'] == 7
+
+
+def test_commands_run_background_returns_before_command_finishes():
+    sandbox, session = sandbox_with_envd_session()
+
+    handle = sandbox.commands.run('sleep 30', background=True)
+
+    assert session.posts[0]['stream'] is True
+    assert handle.pid == 12
+    assert handle.exit_code == -1
+    assert handle.stdout == ''
+    assert handle.wait().stdout == 'hello\n'
 
 
 def test_pty_create_send_resize_connect_and_kill_use_process_rpc():

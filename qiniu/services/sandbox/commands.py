@@ -94,27 +94,37 @@ def command_result_from_events(events, on_stdout=None, on_stderr=None,
 
 class CommandHandle(object):
     def __init__(self, commands, result=None, throw_on_error=False,
-                 events=None):
+                 events=None, on_stdout=None, on_stderr=None):
         self.commands = commands
         result = result or CommandResult()
         self.result = result
         self.pid = result.pid
+        self.exit_code = result.exit_code
+        self.exitCode = result.exit_code
         self.stdout = result.stdout
         self.stderr = result.stderr
         self.throw_on_error = throw_on_error
         self._events = events
+        self._on_stdout = on_stdout
+        self._on_stderr = on_stderr
 
     def wait(self, on_stdout=None, on_stderr=None):
         if self._events is not None:
             result = command_result_from_events(
                 self._events,
-                on_stdout=on_stdout,
-                on_stderr=on_stderr,
+                on_stdout=on_stdout or self._on_stdout,
+                on_stderr=on_stderr or self._on_stderr,
             )
             if not result.pid:
                 result.pid = self.pid
+            result.stdout = self.result.stdout + result.stdout
+            result.stderr = self.result.stderr + result.stderr
+            if not result.error:
+                result.error = self.result.error
             self.result = result
             self.pid = result.pid
+            self.exit_code = result.exit_code
+            self.exitCode = result.exit_code
             self.stdout = result.stdout
             self.stderr = result.stderr
             self._events = None
@@ -172,13 +182,26 @@ class Commands(object):
             body,
             user=user,
             timeout=timeout,
+            stream=True,
         )
+        events = iter(events)
+        try:
+            first_event = next(events)
+        except StopIteration:
+            first_event = None
         result = command_result_from_events(
-            events,
+            [first_event] if first_event else [],
             on_stdout=on_stdout,
             on_stderr=on_stderr,
         )
-        return CommandHandle(self, result, throw_on_error=throw_on_error)
+        return CommandHandle(
+            self,
+            result,
+            throw_on_error=throw_on_error,
+            events=events,
+            on_stdout=on_stdout,
+            on_stderr=on_stderr,
+        )
 
     def list(self, user=None, timeout=None):
         data = connect_rpc(

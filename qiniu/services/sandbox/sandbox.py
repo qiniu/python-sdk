@@ -304,10 +304,18 @@ class Sandbox(object):
     def wait_for_ready(self, timeout=60, interval=1):
         started = time.time()
         while True:
-            response = self.client.session.get(self.envd_url() + '/health')
+            elapsed = time.time() - started
+            remaining = None if timeout is None else max(timeout - elapsed, 0)
+            request_timeout = interval
+            if remaining is not None:
+                request_timeout = min(interval, remaining)
+            response = self.client.session.get(
+                self.envd_url() + '/health',
+                timeout=request_timeout,
+            )
             if response.status_code >= 200 and response.status_code < 300:
                 return self
-            if time.time() - started >= timeout:
+            if timeout is not None and time.time() - started >= timeout:
                 raise RuntimeError('Sandbox envd did not become ready')
             time.sleep(interval)
 

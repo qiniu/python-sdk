@@ -47,6 +47,16 @@ class RecordingSession(requests.Session):
             return self.responses.pop(0)
         return DummyResponse(body={})
 
+    def get(self, url, **kwargs):
+        self.requests.append(type('Request', (object,), {
+            'method': 'GET',
+            'url': url,
+            'kwargs': kwargs,
+        })())
+        if self.responses:
+            return self.responses.pop(0)
+        return DummyResponse(body={})
+
 
 def body_of(request):
     if request.body is None:
@@ -197,6 +207,22 @@ def test_sandbox_envd_and_file_urls_are_signed_when_token_is_available():
     assert query['username'] == ['user']
     assert query['signature_expiration'] == ['1893456000']
     assert query['signature'][0]
+
+
+def test_wait_for_ready_passes_request_timeout_to_health_check():
+    session = RecordingSession([DummyResponse(200, {})])
+    sandbox = Sandbox(client=SandboxClient(
+        api_key='api-key',
+        session=session,
+    ), info={
+        'sandboxID': 'sbx123',
+        'domain': 'example.test',
+    })
+
+    sandbox.wait_for_ready(timeout=10, interval=2)
+
+    assert session.requests[0].url == sandbox.envd_url() + '/health'
+    assert session.requests[0].kwargs['timeout'] == 2
 
 
 def test_template_builder_outputs_build_config():
