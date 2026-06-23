@@ -1,13 +1,30 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-from qiniu.services.sandbox import GitRepositoryResource, KodoResource
+from qiniu.services.sandbox import (
+    GitRepositoryResource,
+    KodoResource,
+    SandboxError,
+)
 from sandbox_common import (
     cleanup_sandbox,
     create_sandbox,
     env,
     run_example,
 )
+
+
+def is_optional_resource_error(err):
+    status_code = getattr(err, 'status_code', None)
+    if status_code in (404, 408, 409, 429, 500, 502, 503, 504):
+        return True
+    message = str(err).lower()
+    return (
+        'timeout' in message or
+        'timed out' in message or
+        'not found' in message or
+        'temporarily unavailable' in message
+    )
 
 
 def run_git_resource_example():
@@ -21,17 +38,23 @@ def run_git_resource_example():
         return
 
     mount_path = env('QINIU_SANDBOX_GIT_MOUNT_PATH', '/workspace/repo')
-    sandbox = create_sandbox(
-        timeout=300,
-        metadata={'example': 'sandbox_resources_git'},
-        resources=[
-            GitRepositoryResource(
-                url=repo_url,
-                mount_path=mount_path,
-                authorization_token=repo_token,
-            )
-        ],
-    )
+    try:
+        sandbox = create_sandbox(
+            timeout=300,
+            metadata={'example': 'sandbox_resources_git'},
+            resources=[
+                GitRepositoryResource(
+                    url=repo_url,
+                    mount_path=mount_path,
+                    authorization_token=repo_token,
+                )
+            ],
+        )
+    except SandboxError as err:
+        if is_optional_resource_error(err):
+            print('Skip GitHub repository resource:', err)
+            return
+        raise
     try:
         print('Git resource sandbox:', sandbox.sandbox_id)
         print(sandbox.commands.run('ls -la {0} | head -20'.format(
@@ -53,11 +76,17 @@ def run_kodo_resource_example():
         mount_path=mount_path,
         prefix=env('QINIU_SANDBOX_KODO_PREFIX') or None,
     )
-    sandbox = create_sandbox(
-        timeout=300,
-        metadata={'example': 'sandbox_resources_kodo'},
-        resources=[resource],
-    )
+    try:
+        sandbox = create_sandbox(
+            timeout=300,
+            metadata={'example': 'sandbox_resources_kodo'},
+            resources=[resource],
+        )
+    except SandboxError as err:
+        if is_optional_resource_error(err):
+            print('Skip Kodo resource:', err)
+            return
+        raise
     try:
         print('Kodo resource sandbox:', sandbox.sandbox_id)
         print(sandbox.commands.run('ls -la {0} | head -20'.format(

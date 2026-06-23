@@ -13,6 +13,7 @@ from .commands import (
     CommandHandle,
     CommandResult,
     Commands,
+    ProcessInfo,
 )
 from .constants import (
     DEFAULT_ENDPOINT,
@@ -21,8 +22,15 @@ from .constants import (
     ENVD_PORT,
 )
 from .errors import SandboxError, TemplateBuildError
-from .filesystem import Filesystem
+from .filesystem import (
+    FileType,
+    Filesystem,
+    FilesystemEvent,
+    FilesystemEventType,
+    WatchHandle,
+)
 from .git import Git
+from .pty import Pty, PtySize
 from .resources import GitRepositoryResource, KodoResource
 from .sandbox import Sandbox, SandboxPaginator
 from .template import Template
@@ -36,16 +44,23 @@ __all__ = [
     'DEFAULT_TEMPLATE',
     'DEFAULT_USER',
     'ENVD_PORT',
+    'FileType',
     'Filesystem',
+    'FilesystemEvent',
+    'FilesystemEventType',
     'Git',
     'GitRepositoryResource',
     'KodoResource',
+    'ProcessInfo',
+    'Pty',
+    'PtySize',
     'Sandbox',
     'SandboxClient',
     'SandboxError',
     'SandboxPaginator',
     'Template',
     'TemplateBuildError',
+    'WatchHandle',
     'env',
     'load_dotenv_if_present',
     'required_env',

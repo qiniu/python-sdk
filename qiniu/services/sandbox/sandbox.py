@@ -6,6 +6,7 @@ from .commands import Commands
 from .constants import DEFAULT_USER, ENVD_PORT, MCP_PORT
 from .filesystem import Filesystem
 from .git import Git
+from .pty import Pty
 from .util import (
     append_query,
     file_signature,
@@ -110,6 +111,7 @@ class Sandbox(object):
         self.files = Filesystem(self)
         self.filesystem = self.files
         self.commands = Commands(self)
+        self.pty = Pty(self)
         self.git = Git(self.commands)
 
     @classmethod

@@ -81,3 +81,122 @@ class Git(object):
         if branch:
             args.append(shell_quote(branch))
         return self._run_git(repo_path, args, **opts)
+
+    def dangerously_authenticate(
+            self,
+            username,
+            password,
+            host='github.com',
+            protocol='https',
+            **opts):
+        if not username:
+            raise ValueError('username is required')
+        if not password:
+            raise ValueError('password is required')
+
+        result = self._run_git(
+            None,
+            ['config', '--global', 'credential.helper', 'store'],
+            **opts
+        )
+        if result.exit_code != 0:
+            return result
+
+        credential = (
+            'protocol={0}\n'
+            'host={1}\n'
+            'username={2}\n'
+            'password={3}\n\n'
+        ).format(protocol, host, username, password)
+        return self.commands.run(
+            'printf {0} | git credential approve'.format(
+                shell_quote(credential)),
+            **opts
+        )
+
+    dangerouslyAuthenticate = dangerously_authenticate
+
+    def remote_add(self, repo_path, name, url, **opts):
+        return self._run_git(repo_path, [
+            'remote',
+            'add',
+            shell_quote(name),
+            shell_quote(url),
+        ], **opts)
+
+    remoteAdd = remote_add
+
+    def remote_get(self, repo_path, name='origin', **opts):
+        return self._run_git(repo_path, [
+            'remote',
+            'get-url',
+            shell_quote(name),
+        ], **opts)
+
+    remoteGet = remote_get
+
+    def branches(self, repo_path, **opts):
+        return self._run_git(repo_path, ['branch', '--list'], **opts)
+
+    def create_branch(self, repo_path, name, start_point=None, **opts):
+        args = ['branch', shell_quote(name)]
+        if start_point:
+            args.append(shell_quote(start_point))
+        return self._run_git(repo_path, args, **opts)
+
+    createBranch = create_branch
+
+    def checkout_branch(self, repo_path, name, create=False, **opts):
+        args = ['checkout']
+        if create:
+            args.append('-b')
+        args.append(shell_quote(name))
+        return self._run_git(repo_path, args, **opts)
+
+    checkoutBranch = checkout_branch
+
+    def delete_branch(self, repo_path, name, force=True, **opts):
+        return self._run_git(repo_path, [
+            'branch',
+            '-D' if force else '-d',
+            shell_quote(name),
+        ], **opts)
+
+    deleteBranch = delete_branch
+
+    def reset(self, repo_path, target=None, mode=None, **opts):
+        args = ['reset']
+        mode = mode or opts.get('reset_type') or opts.get('resetType')
+        if mode:
+            args.append('--{0}'.format(mode))
+        if target:
+            args.append(shell_quote(target))
+        return self._run_git(repo_path, args, **opts)
+
+    def restore(self, repo_path, paths=None, staged=False, source=None, **opts):
+        args = ['restore']
+        if staged:
+            args.append('--staged')
+        if source:
+            args.extend(['--source', shell_quote(source)])
+        for path in paths or opts.get('files') or ['.']:
+            args.append(shell_quote(path))
+        return self._run_git(repo_path, args, **opts)
+
+    def set_config(self, repo_path, key, value, global_config=False, **opts):
+        args = ['config']
+        if global_config:
+            args.append('--global')
+        args.extend([shell_quote(key), shell_quote(value)])
+        return self._run_git(repo_path, args, **opts)
+
+    setConfig = set_config
+
+    def get_config(self, repo_path, key, global_config=False, **opts):
+        args = ['config']
+        if global_config:
+            args.append('--global')
+        args.extend(['--get', shell_quote(key)])
+        return self._run_git(repo_path, args, **opts)
+
+    getConfig = get_config

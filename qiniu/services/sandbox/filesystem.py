@@ -1,7 +1,47 @@
 # -*- coding: utf-8 -*-
 import time
 
+from .errors import SandboxError
 from .envd import connect_rpc, envd_headers, raw_envd_request
+
+
+class FileType(object):
+    FILE = 'file'
+    DIR = 'dir'
+    DIRECTORY = DIR
+
+
+class FilesystemEventType(object):
+    CREATE = 'create'
+    WRITE = 'write'
+    REMOVE = 'remove'
+    RENAME = 'rename'
+    CHMOD = 'chmod'
+
+
+class FilesystemEvent(object):
+    def __init__(self, name=None, type=None):
+        self.name = name
+        self.type = type
+
+    def to_dict(self):
+        return {'name': self.name, 'type': self.type}
+
+
+def normalize_event_type(event_type):
+    mapping = {
+        'EVENT_TYPE_CREATE': FilesystemEventType.CREATE,
+        'EVENT_TYPE_WRITE': FilesystemEventType.WRITE,
+        'EVENT_TYPE_REMOVE': FilesystemEventType.REMOVE,
+        'EVENT_TYPE_RENAME': FilesystemEventType.RENAME,
+        'EVENT_TYPE_CHMOD': FilesystemEventType.CHMOD,
+        1: FilesystemEventType.CREATE,
+        2: FilesystemEventType.WRITE,
+        3: FilesystemEventType.REMOVE,
+        4: FilesystemEventType.RENAME,
+        5: FilesystemEventType.CHMOD,
+    }
+    return mapping.get(event_type, event_type)
 
 
 def normalize_entry(entry):
@@ -14,6 +54,47 @@ def normalize_entry(entry):
     if entry_type:
         entry['type'] = entry_type
     return entry
+
+
+class WatchHandle(object):
+    def __init__(self, filesystem, watcher_id):
+        self.filesystem = filesystem
+        self.watcher_id = watcher_id
+        self.watcherID = watcher_id
+        self._closed = False
+
+    def get_new_events(self, user=None, timeout=None):
+        if self._closed:
+            raise SandboxError('The watcher is already stopped')
+        data = connect_rpc(
+            self.filesystem.sandbox,
+            '/filesystem.Filesystem/GetWatcherEvents',
+            {'watcherId': self.watcher_id},
+            user=user,
+            timeout=timeout,
+        )
+        events = []
+        for event in (data or {}).get('events', []):
+            events.append(FilesystemEvent(
+                name=event.get('name'),
+                type=normalize_event_type(event.get('type')),
+            ))
+        return events
+
+    getNewEvents = get_new_events
+
+    def stop(self, user=None, timeout=None):
+        if self._closed:
+            return None
+        connect_rpc(
+            self.filesystem.sandbox,
+            '/filesystem.Filesystem/RemoveWatcher',
+            {'watcherId': self.watcher_id},
+            user=user,
+            timeout=timeout,
+        )
+        self._closed = True
+        return None
 
 
 class Filesystem(object):
@@ -94,6 +175,19 @@ class Filesystem(object):
         ]
         return b''.join(chunks)
 
+    def write_files(self, files, user=None, **opts):
+        result = []
+        for item in files or []:
+            if isinstance(item, dict):
+                path = item.get('path')
+                data = item.get('data', item.get('content', ''))
+            else:
+                path, data = item
+            result.append(self.write(path, data, user=user, **opts))
+        return result
+
+    writeFiles = write_files
+
     def get_info(self, path, user=None, timeout=None):
         data = connect_rpc(
             self.sandbox,
@@ -163,3 +257,19 @@ class Filesystem(object):
             timeout=timeout,
         )
         return normalize_entry((data or {}).get('entry'))
+
+    def watch_dir(self, path, recursive=False, user=None, timeout=None):
+        data = connect_rpc(
+            self.sandbox,
+            '/filesystem.Filesystem/CreateWatcher',
+            {'path': path, 'recursive': recursive},
+            user=user,
+            timeout=timeout,
+        )
+        watcher_id = (
+            (data or {}).get('watcherId') or
+            (data or {}).get('watcher_id')
+        )
+        return WatchHandle(self, watcher_id)
+
+    watchDir = watch_dir

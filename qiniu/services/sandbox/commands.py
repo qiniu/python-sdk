@@ -2,7 +2,28 @@
 import base64
 
 from .envd import connect_rpc, connect_stream_rpc
-from .errors import CommandExitError
+from .errors import CommandExitError, SandboxError
+
+
+class ProcessInfo(object):
+    def __init__(self, pid=None, tag=None, cmd=None, args=None, envs=None,
+                 cwd=None):
+        self.pid = pid
+        self.tag = tag
+        self.cmd = cmd
+        self.args = args or []
+        self.envs = envs or {}
+        self.cwd = cwd
+
+    def to_dict(self):
+        return {
+            'pid': self.pid,
+            'tag': self.tag,
+            'cmd': self.cmd,
+            'args': self.args,
+            'envs': self.envs,
+            'cwd': self.cwd,
+        }
 
 
 class CommandResult(object):
@@ -37,7 +58,8 @@ def _decode_bytes(value):
     return str(value)
 
 
-def command_result_from_events(events):
+def command_result_from_events(events, on_stdout=None, on_stderr=None,
+                               on_pty=None):
     pid = 0
     stdout = ''
     stderr = ''
@@ -51,8 +73,18 @@ def command_result_from_events(events):
         if start:
             pid = start.get('pid') or pid
         if data:
-            stdout += _decode_bytes(data.get('stdout'))
-            stderr += _decode_bytes(data.get('stderr'))
+            stdout_chunk = _decode_bytes(data.get('stdout'))
+            stderr_chunk = _decode_bytes(data.get('stderr'))
+            pty_chunk = _decode_bytes(data.get('pty'))
+            if stdout_chunk and on_stdout:
+                on_stdout(stdout_chunk)
+            if stderr_chunk and on_stderr:
+                on_stderr(stderr_chunk)
+            if pty_chunk and on_pty:
+                on_pty(pty_chunk)
+            stdout += stdout_chunk
+            stderr += stderr_chunk
+            stdout += pty_chunk
         if end:
             exit_code = 0 if end.get(
                 'exitCode') is None else end.get('exitCode')
@@ -61,15 +93,31 @@ def command_result_from_events(events):
 
 
 class CommandHandle(object):
-    def __init__(self, commands, result, throw_on_error=False):
+    def __init__(self, commands, result=None, throw_on_error=False,
+                 events=None):
         self.commands = commands
+        result = result or CommandResult()
         self.result = result
         self.pid = result.pid
         self.stdout = result.stdout
         self.stderr = result.stderr
         self.throw_on_error = throw_on_error
+        self._events = events
 
-    def wait(self):
+    def wait(self, on_stdout=None, on_stderr=None):
+        if self._events is not None:
+            result = command_result_from_events(
+                self._events,
+                on_stdout=on_stdout,
+                on_stderr=on_stderr,
+            )
+            if not result.pid:
+                result.pid = self.pid
+            self.result = result
+            self.pid = result.pid
+            self.stdout = result.stdout
+            self.stderr = result.stderr
+            self._events = None
         if self.throw_on_error and self.result.exit_code:
             raise CommandExitError(self.result)
         return self.result
@@ -84,7 +132,8 @@ class Commands(object):
 
     def run(self, cmd, cwd=None, envs=None, user=None, stdin=False,
             tag=None, background=False, throw_on_error=False,
-            timeout=None, **opts):
+            timeout=None, request_timeout=None, on_stdout=None,
+            on_stderr=None, **opts):
         handle = self.start(
             cmd,
             cwd=cwd,
@@ -93,13 +142,16 @@ class Commands(object):
             stdin=stdin,
             tag=tag,
             throw_on_error=throw_on_error,
-            timeout=timeout,
+            timeout=request_timeout if request_timeout is not None else timeout,
+            on_stdout=on_stdout,
+            on_stderr=on_stderr,
             **opts
         )
         return handle if background else handle.wait()
 
     def start(self, cmd, cwd=None, envs=None, user=None, stdin=False,
-              tag=None, throw_on_error=False, timeout=None, **opts):
+              tag=None, throw_on_error=False, timeout=None, on_stdout=None,
+              on_stderr=None, **opts):
         process = {
             'cmd': '/bin/bash',
             'args': ['-l', '-c', cmd],
@@ -121,7 +173,11 @@ class Commands(object):
             user=user,
             timeout=timeout,
         )
-        result = command_result_from_events(events)
+        result = command_result_from_events(
+            events,
+            on_stdout=on_stdout,
+            on_stderr=on_stderr,
+        )
         return CommandHandle(self, result, throw_on_error=throw_on_error)
 
     def list(self, user=None, timeout=None):
@@ -135,15 +191,38 @@ class Commands(object):
         result = []
         for process in processes:
             config = process.get('config') or {}
-            result.append({
-                'pid': process.get('pid'),
-                'tag': process.get('tag'),
-                'cmd': config.get('cmd'),
-                'args': config.get('args'),
-                'envs': config.get('envs'),
-                'cwd': config.get('cwd'),
-            })
+            result.append(ProcessInfo(
+                pid=process.get('pid'),
+                tag=process.get('tag'),
+                cmd=config.get('cmd'),
+                args=config.get('args'),
+                envs=config.get('envs'),
+                cwd=config.get('cwd'),
+            ))
         return result
+
+    def connect(self, pid, tag=None, user=None, timeout=None,
+                throw_on_error=False):
+        selector = {'pid': pid}
+        if tag is not None:
+            selector = {'tag': tag}
+        events = connect_stream_rpc(
+            self.sandbox,
+            '/process.Process/Connect',
+            {'process': {'selector': selector}},
+            user=user,
+            timeout=timeout,
+            stream=True,
+        )
+        events = iter(events)
+        first_event = next(events)
+        result = command_result_from_events([first_event])
+        return CommandHandle(
+            self,
+            result,
+            events=events,
+            throw_on_error=throw_on_error,
+        )
 
     def send_stdin(self, pid, data, user=None, timeout=None):
         if not isinstance(data, bytes):
@@ -163,8 +242,13 @@ class Commands(object):
     closeStdin = close_stdin
 
     def kill(self, pid, user=None, timeout=None):
-        connect_rpc(self.sandbox, '/process.Process/SendSignal', {
-            'process': {'selector': {'pid': pid}},
-            'signal': 'SIGNAL_SIGKILL',
-        }, user=user, timeout=timeout)
-        return None
+        try:
+            connect_rpc(self.sandbox, '/process.Process/SendSignal', {
+                'process': {'selector': {'pid': pid}},
+                'signal': 'SIGNAL_SIGKILL',
+            }, user=user, timeout=timeout)
+            return True
+        except SandboxError as err:
+            if err.status_code == 404:
+                return False
+            raise

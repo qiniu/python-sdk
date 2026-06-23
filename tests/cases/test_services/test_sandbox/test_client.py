@@ -12,6 +12,7 @@ except ImportError:
 from qiniu.services.sandbox import (
     DEFAULT_ENDPOINT,
     ENVD_PORT,
+    Git,
     KodoResource,
     Sandbox,
     SandboxClient,
@@ -217,3 +218,63 @@ def test_template_builder_outputs_build_config():
         ],
         'startCmd': 'python /app/app.py',
     }
+
+
+class RecordingCommands(object):
+    def __init__(self):
+        self.calls = []
+
+    def run(self, cmd, **opts):
+        self.calls.append((cmd, opts))
+        return type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'origin https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+        })()
+
+
+def test_git_helpers_align_with_e2b_method_names():
+    commands = RecordingCommands()
+    git = Git(commands)
+
+    git.remote_add('/repo', 'origin', 'https://github.com/qiniu/repo.git')
+    git.remote_get('/repo', 'origin')
+    git.branches('/repo')
+    git.create_branch('/repo', 'feature')
+    git.checkout_branch('/repo', 'main')
+    git.delete_branch('/repo', 'old')
+    git.reset('/repo', 'HEAD~1', mode='hard')
+    git.restore('/repo', paths=['a.txt', 'b.txt'])
+    git.set_config('/repo', 'user.name', 'tester')
+    git.get_config('/repo', 'user.name')
+
+    assert commands.calls[0][0] == (
+        'git remote add origin https://github.com/qiniu/repo.git')
+    assert commands.calls[1][0] == 'git remote get-url origin'
+    assert commands.calls[2][0] == 'git branch --list'
+    assert commands.calls[3][0] == 'git branch feature'
+    assert commands.calls[4][0] == 'git checkout main'
+    assert commands.calls[5][0] == 'git branch -D old'
+    assert commands.calls[6][0] == "git reset --hard 'HEAD~1'"
+    assert commands.calls[7][0] == 'git restore a.txt b.txt'
+    assert commands.calls[8][0] == 'git config user.name tester'
+    assert commands.calls[9][0] == 'git config --get user.name'
+
+
+def test_git_dangerously_authenticate_aligns_with_e2b():
+    commands = RecordingCommands()
+    git = Git(commands)
+
+    git.dangerously_authenticate(
+        username='git-user',
+        password='secret-token',
+        host='github.com',
+        protocol='https',
+    )
+
+    assert commands.calls[0][0] == 'git config --global credential.helper store'
+    assert commands.calls[1][0] == (
+        "printf 'protocol=https\nhost=github.com\n"
+        "username=git-user\npassword=secret-token\n\n' | "
+        'git credential approve'
+    )

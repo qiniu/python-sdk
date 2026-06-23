@@ -79,22 +79,67 @@ def decode_connect_envelopes(data):
     return messages
 
 
-def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None):
+def iter_connect_envelopes(chunks):
+    buffer = b''
+    for chunk in chunks:
+        if not chunk:
+            continue
+        if not isinstance(chunk, bytes):
+            chunk = chunk.encode('utf-8')
+        buffer += chunk
+        while len(buffer) >= 5:
+            flags, length = struct.unpack('>BI', buffer[:5])
+            if length > MAX_CONNECT_ENVELOPE_BYTES:
+                raise SandboxError(
+                    'Sandbox envd stream envelope too large: {0}'.format(
+                        length)
+                )
+            if len(buffer) < 5 + length:
+                break
+            payload = buffer[5:5 + length]
+            buffer = buffer[5 + length:]
+            if flags & 2:
+                if payload:
+                    error = json.loads(payload.decode('utf-8')).get('error')
+                    if error:
+                        raise SandboxError(
+                            error.get('message') or
+                            'Sandbox envd stream failed',
+                            data=error,
+                        )
+                continue
+            if payload:
+                yield json.loads(payload.decode('utf-8'))
+    if buffer:
+        raise SandboxError('Sandbox envd stream truncated unexpectedly')
+
+
+def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
+                       stream=False):
     url = sandbox.envd_url() + procedure
     headers = envd_headers(sandbox, user, {
         'Content-Type': 'application/connect+json',
         'Keepalive-Ping-Interval': '50',
     })
-    response = sandbox.client.session.post(
-        url,
-        data=encode_connect_envelope(body),
-        headers=headers,
-        timeout=timeout,
-    )
+    request_opts = {
+        'data': encode_connect_envelope(body),
+        'headers': headers,
+        'timeout': timeout,
+    }
+    if stream:
+        request_opts['stream'] = True
+    try:
+        response = sandbox.client.session.post(url, **request_opts)
+    except TypeError:
+        request_opts.pop('stream', None)
+        response = sandbox.client.session.post(url, **request_opts)
     if response.status_code < 200 or response.status_code >= 300:
         raise SandboxError(
             'Sandbox envd request failed with status {0}'.format(
                 response.status_code), response, response.text, )
+
+    if stream and hasattr(response, 'iter_content'):
+        return iter_connect_envelopes(response.iter_content(chunk_size=8192))
 
     content_type = response.headers.get('Content-Type', '')
     if 'application/connect+json' in content_type:
