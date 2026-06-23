@@ -78,7 +78,10 @@ def _to_utf8_bytes(value):
 
 
 def file_basename(path):
-    return posixpath.basename(path.rstrip('/')) or 'file'
+    basename = posixpath.basename(path.rstrip('/')) or 'file'
+    if is_py2 and isinstance(basename, text_type):
+        return basename.encode('utf-8')
+    return basename
 
 
 def shell_quote(value):

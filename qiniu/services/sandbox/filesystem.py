@@ -20,6 +20,8 @@ class _EncodedTextReader(object):
         return chunk
 
     def __getattr__(self, name):
+        if name in ('seek', 'tell', 'getvalue', 'len'):
+            raise AttributeError(name)
         return getattr(self.stream, name)
 
 

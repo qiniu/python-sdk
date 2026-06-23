@@ -22,6 +22,7 @@ from qiniu.services.sandbox.envd import (
     iter_connect_envelopes,
 )
 from qiniu.services.sandbox.commands import command_result_from_events
+import qiniu.services.sandbox.util as sandbox_util
 
 
 class DummyResponse(object):
@@ -316,6 +317,16 @@ def test_filesystem_write_accepts_unicode_text():
     stream_upload = session.requests[2]['kwargs']['files']['file']
     assert stream_upload[0] == 'text-stream.txt'
     assert stream_upload[1].read() == u'你好'.encode('utf-8')
+    for attr in ('seek', 'tell', 'getvalue', 'len'):
+        with pytest.raises(AttributeError):
+            getattr(stream_upload[1], attr)
+
+
+def test_file_basename_encodes_unicode_on_python2(monkeypatch):
+    monkeypatch.setattr(sandbox_util, 'is_py2', True)
+
+    assert sandbox_util.file_basename(u'/tmp/文件.txt') == (
+        u'文件.txt'.encode('utf-8'))
 
 
 def test_filesystem_write_accepts_duck_typed_file_like_objects():
