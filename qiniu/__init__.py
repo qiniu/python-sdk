@@ -26,6 +26,7 @@ from .services.processing.pfop import PersistentFop
 from .services.processing.cmd import build_op, pipe_cmd, op_save
 from .services.compute.app import AccountClient
 from .services.compute.qcos_api import QcosClient
+from .services.sandbox import Sandbox, SandboxClient, Template, KodoResource, GitRepositoryResource
 from .services.sms.sms import Sms
 from .services.pili.rtc_server_manager import RtcServer, get_room_token
 from .utils import urlsafe_base64_encode, urlsafe_base64_decode, etag, entry, decode_entry, canonical_mime_header_key

@@ -1,0 +1,121 @@
+# -*- coding: utf-8 -*-
+import json
+import struct
+
+from .constants import DEFAULT_USER
+from .errors import SandboxError
+from .util import basic_auth
+
+
+MAX_CONNECT_ENVELOPE_BYTES = 10 * 1024 * 1024
+
+
+def envd_headers(sandbox, user=None, extra=None):
+    headers = {
+        'Authorization': basic_auth(user or DEFAULT_USER),
+    }
+    if sandbox.envd_access_token:
+        headers['X-Access-Token'] = sandbox.envd_access_token
+    if extra:
+        headers.update(extra)
+    return headers
+
+
+def connect_rpc(sandbox, procedure, body=None, user=None, timeout=None):
+    url = sandbox.envd_url() + procedure
+    headers = envd_headers(sandbox, user, {'Content-Type': 'application/json'})
+    response = sandbox.client.session.post(
+        url,
+        data=json.dumps(body or {}, separators=(',', ':')),
+        headers=headers,
+        timeout=timeout,
+    )
+    if response.status_code < 200 or response.status_code >= 300:
+        raise SandboxError(
+            'Sandbox envd request failed with status {0}'.format(
+                response.status_code), response, response.text, )
+    if not response.content:
+        return None
+    data = response.json()
+    if isinstance(data, dict) and 'result' in data:
+        return data.get('result')
+    return data
+
+
+def encode_connect_envelope(message):
+    payload = json.dumps(message or {}, separators=(',', ':')).encode('utf-8')
+    return struct.pack('>BI', 0, len(payload)) + payload
+
+
+def decode_connect_envelopes(data):
+    if not data:
+        return []
+    if not isinstance(data, bytes):
+        data = data.encode('utf-8')
+    messages = []
+    offset = 0
+    while offset + 5 <= len(data):
+        flags, length = struct.unpack('>BI', data[offset:offset + 5])
+        offset += 5
+        if length > MAX_CONNECT_ENVELOPE_BYTES:
+            raise SandboxError(
+                'Sandbox envd stream envelope too large: {0}'.format(length)
+            )
+        if offset + length > len(data):
+            raise SandboxError('Sandbox envd stream truncated unexpectedly')
+        payload = data[offset:offset + length]
+        offset += length
+        if flags & 2:
+            if payload:
+                error = json.loads(payload.decode('utf-8')).get('error')
+                if error:
+                    raise SandboxError(
+                        error.get('message') or 'Sandbox envd stream failed',
+                        data=error,
+                    )
+            continue
+        if payload:
+            messages.append(json.loads(payload.decode('utf-8')))
+    return messages
+
+
+def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None):
+    url = sandbox.envd_url() + procedure
+    headers = envd_headers(sandbox, user, {
+        'Content-Type': 'application/connect+json',
+        'Keepalive-Ping-Interval': '50',
+    })
+    response = sandbox.client.session.post(
+        url,
+        data=encode_connect_envelope(body),
+        headers=headers,
+        timeout=timeout,
+    )
+    if response.status_code < 200 or response.status_code >= 300:
+        raise SandboxError(
+            'Sandbox envd request failed with status {0}'.format(
+                response.status_code), response, response.text, )
+
+    content_type = response.headers.get('Content-Type', '')
+    if 'application/connect+json' in content_type:
+        return decode_connect_envelopes(response.content)
+
+    if not response.content:
+        return []
+    data = response.json()
+    if isinstance(data, dict) and 'result' in data:
+        data = data.get('result')
+    if isinstance(data, dict) and 'events' in data:
+        return data.get('events')
+    if isinstance(data, dict) and 'event' in data:
+        return [data]
+    return data
+
+
+def raw_envd_request(sandbox, method, url, **kwargs):
+    response = sandbox.client.session.request(method, url, **kwargs)
+    if response.status_code < 200 or response.status_code >= 300:
+        raise SandboxError(
+            'Sandbox envd request failed with status {0}'.format(
+                response.status_code), response, response.text, )
+    return response
