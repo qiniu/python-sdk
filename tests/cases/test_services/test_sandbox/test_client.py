@@ -725,8 +725,8 @@ def test_git_helpers_align_with_e2b_method_names():
     git.delete_branch('/repo', 'old')
     git.reset('/repo', 'HEAD~1', mode='hard')
     git.restore('/repo', paths=['a.txt', 'b.txt'])
-    git.set_config('/repo', 'user.name', 'tester')
-    git.get_config('/repo', 'user.name')
+    git.set_config('user.name', 'tester', scope='local', path='/repo')
+    git.get_config('user.name', scope='local', path='/repo')
 
     assert commands.calls[0][0] == (
         'git remote add origin https://github.com/qiniu/repo.git')
@@ -738,8 +738,10 @@ def test_git_helpers_align_with_e2b_method_names():
     assert commands.calls[5][0] == 'git branch -D old'
     assert commands.calls[6][0] == "git reset --hard 'HEAD~1'"
     assert commands.calls[7][0] == 'git restore a.txt b.txt'
-    assert commands.calls[8][0] == 'git config user.name tester'
-    assert commands.calls[9][0] == 'git config --get user.name'
+    assert commands.calls[8][0] == 'git config --local user.name tester'
+    assert commands.calls[8][1]['cwd'] == '/repo'
+    assert commands.calls[9][0] == 'git config --local --get user.name'
+    assert commands.calls[9][1]['cwd'] == '/repo'
 
 
 def test_git_remote_add_supports_overwrite_and_fetch_options():

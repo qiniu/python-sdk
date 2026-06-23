@@ -718,25 +718,8 @@ class Git(object):
             args.append(shell_quote(path))
         return self._run_git(repo_path, args, **opts)
 
-    def set_config(self, *args, **opts):
-        """Set a Git config value.
-
-        Supports both set_config(repo_path, key, value, global_config=False)
-        and set_config(key, value, scope='global', path=None).
-        """
-        global_config = opts.pop('global_config', False)
-        scope = opts.pop('scope', None)
-        path = opts.pop('path', None)
-        if len(args) == 3:
-            repo_path, key, value = args
-            args_list = ['config']
-            if global_config:
-                args_list.append('--global')
-            args_list.extend([shell_quote(key), shell_quote(value)])
-            return self._run_git(repo_path, args_list, **opts)
-        if len(args) != 2:
-            raise TypeError('set_config expects key and value')
-        key, value = args
+    def set_config(self, key, value, scope='global', path=None, **opts):
+        """Set a Git config value."""
         scope_flag, repo_path = self._resolve_config_scope(scope, path)
         args = ['config']
         if scope_flag:
@@ -746,25 +729,8 @@ class Git(object):
 
     setConfig = set_config
 
-    def get_config(self, *args, **opts):
-        """Get a Git config value.
-
-        Supports both get_config(repo_path, key, global_config=False) and
-        get_config(key, scope='global', path=None).
-        """
-        global_config = opts.pop('global_config', False)
-        scope = opts.pop('scope', None)
-        path = opts.pop('path', None)
-        if len(args) == 2:
-            repo_path, key = args
-            args_list = ['config']
-            if global_config:
-                args_list.append('--global')
-            args_list.extend(['--get', shell_quote(key)])
-            return self._run_git(repo_path, args_list, **opts)
-        if len(args) != 1:
-            raise TypeError('get_config expects key')
-        key = args[0]
+    def get_config(self, key, scope='global', path=None, **opts):
+        """Get a Git config value."""
         scope_flag, repo_path = self._resolve_config_scope(scope, path)
         args = ['config']
         if scope_flag:
@@ -777,11 +743,12 @@ class Git(object):
     def _resolve_config_scope(self, scope=None, path=None):
         scope_name = (scope or 'global').strip().lower()
         if scope_name not in ('global', 'local', 'system'):
-            raise ValueError(
+            raise InvalidArgumentException(
                 'Git config scope must be global, local, or system')
         if scope_name == 'local':
             if not path:
-                raise ValueError('Repository path is required for local scope')
+                raise InvalidArgumentException(
+                    'Repository path is required for local scope')
             return '--local', path
         if scope_name == 'system':
             return '--system', None
