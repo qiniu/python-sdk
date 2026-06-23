@@ -358,13 +358,8 @@ class Git(object):
         if getattr(set_result, 'exit_code', 0):
             return set_result
 
-        operation_error = None
-        result = None
-        restore_result = None
         try:
             result = operation()
-        except Exception as err:
-            operation_error = err
         finally:
             restore_result = self._run_git(repo_path, [
                 'remote',
@@ -381,12 +376,7 @@ class Git(object):
                 getattr(restore_result, 'stdout', '') or
                 getattr(restore_result, 'error', '')
             )
-            if operation_error:
-                message += '; original operation error: {0}'.format(
-                    operation_error)
             raise SandboxError(message)
-        if operation_error:
-            raise operation_error
         return result
 
     def _raise_known_result_error(

@@ -5,6 +5,7 @@ import time
 import requests
 
 from qiniu.auth import QiniuMacAuth, QiniuMacRequestsAuth
+from qiniu.compat import basestring
 
 from .constants import DEFAULT_TEMPLATE
 from .errors import SandboxError, TemplateBuildError
@@ -18,6 +19,12 @@ from .util import (
 
 
 _UNSET = object()
+
+
+try:
+    from time import monotonic as _monotonic_time
+except ImportError:
+    _monotonic_time = time.time
 
 
 def _to_dict(value):
@@ -197,7 +204,7 @@ class SandboxClient(object):
                     response_data,
                     dict) and response_data.get('message'):
                 message += ': {0}'.format(response_data.get('message'))
-            elif isinstance(response_data, str) and response_data:
+            elif isinstance(response_data, basestring) and response_data:
                 message += ': {0}'.format(response_data)
             raise SandboxError(message, response, response_data)
         if empty:
@@ -339,7 +346,7 @@ class SandboxClient(object):
             values = [values]
         ids = []
         for value in values:
-            if isinstance(value, str):
+            if isinstance(value, basestring):
                 ids.append(value)
             elif isinstance(value, dict):
                 ids.append(value.get('sandboxId') or value.get(
@@ -535,7 +542,7 @@ class SandboxClient(object):
     deleteInjectionRule = delete_injection_rule
 
     def wait_for_build(self, template_id, build_id, interval=1, timeout=60):
-        start = time.time()
+        start = _monotonic_time()
         while True:
             info = self.get_template_build_status(template_id, build_id)
             if info and info.get('status') in ('ready', 'error'):
@@ -551,7 +558,7 @@ class SandboxClient(object):
                     )
                     raise TemplateBuildError(message, data=info)
                 return info
-            if time.time() - start >= timeout:
+            if _monotonic_time() - start >= timeout:
                 raise SandboxError('Sandbox template build polling timed out')
             time.sleep(interval)
 

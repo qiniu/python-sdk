@@ -31,6 +31,7 @@ from qiniu.services.sandbox import (
     wait_for_timeout,
     wait_for_url,
 )
+from qiniu.services.sandbox.util import encode_path, file_signature
 
 
 class DummyResponse(object):
@@ -117,6 +118,17 @@ def test_client_uses_default_endpoint_and_api_key_headers():
         'timeout': 60,
         'envVars': {'A': 'B'},
     }
+
+
+def test_util_helpers_encode_unicode_values_safely():
+    assert encode_path(u'目录/文件.txt')
+    assert file_signature(
+        u'/tmp/文件.txt',
+        'read',
+        u'用户',
+        u'token',
+        1893456000,
+    ).startswith('v1_')
 
 
 def test_create_with_kodo_resource_requires_qiniu_credentials():
@@ -308,6 +320,20 @@ def test_sandbox_envd_and_file_urls_are_signed_when_token_is_available():
     assert query['username'] == ['user']
     assert query['signature_expiration'] == ['1893456000']
     assert query['signature'][0]
+
+
+def test_file_url_accepts_none_signature_expiration():
+    sandbox = Sandbox(info={
+        'sandboxID': 'sbx123',
+        'domain': 'example.test',
+        'envdAccessToken': 'token',
+    })
+
+    url = sandbox.download_url('/tmp/hello.txt', signatureExpiration=None)
+    query = parse_qs(urlparse(url).query)
+
+    assert query['signature'][0]
+    assert 'signature_expiration' not in query
 
 
 def test_wait_for_ready_passes_request_timeout_to_health_check():

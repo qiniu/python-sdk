@@ -294,7 +294,7 @@ class Sandbox(object):
         }
         if self.envd_access_token:
             expiration = opts.get('signatureExpiration', signature_expiration)
-            if expiration < 1000000000:
+            if expiration is not None and expiration < 1000000000:
                 expiration = utc_timestamp_after(expiration)
             query['signature'] = file_signature(
                 path,

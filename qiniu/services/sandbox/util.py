@@ -6,7 +6,8 @@ import os
 import posixpath
 import time
 
-from qiniu.compat import urlencode, urlparse
+from qiniu.compat import bytes as bytes_type
+from qiniu.compat import is_py2, str as text_type, urlencode, urlparse
 
 from .constants import DEFAULT_ENDPOINT, DEFAULT_USER
 
@@ -23,12 +24,16 @@ def normalize_endpoint(endpoint=None):
 
 
 def encode_path(value):
-    from qiniu.compat import is_py2
     if is_py2:
         from urllib import quote
+        if isinstance(value, text_type):
+            value = value.encode('utf-8')
+        else:
+            value = str(value)
     else:
         from urllib.parse import quote
-    return quote(str(value), safe='')
+        value = str(value)
+    return quote(value, safe='')
 
 
 def append_query(path, query=None):
@@ -56,10 +61,18 @@ def basic_auth(user=None):
 
 
 def file_signature(path, operation, user, access_token, expiration):
-    raw = '{0}:{1}:{2}:{3}:{4}'.format(
-        path, operation, user, access_token, expiration
-    )
-    return 'v1_{0}'.format(hashlib.sha256(raw.encode('utf-8')).hexdigest())
+    components = [path, operation, user, access_token, expiration]
+    raw = b':'.join([_to_utf8_bytes(component)
+                     for component in components])
+    return 'v1_{0}'.format(hashlib.sha256(raw).hexdigest())
+
+
+def _to_utf8_bytes(value):
+    if isinstance(value, bytes_type):
+        return value
+    if isinstance(value, text_type):
+        return value.encode('utf-8')
+    return str(value).encode('utf-8')
 
 
 def file_basename(path):

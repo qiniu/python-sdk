@@ -71,6 +71,8 @@ def decode_connect_envelopes(data):
             _raise_connect_error(payload)
         if payload:
             messages.append(json.loads(payload.decode('utf-8')))
+    if offset < len(data):
+        raise SandboxError('Sandbox envd stream truncated unexpectedly')
     return messages
 
 

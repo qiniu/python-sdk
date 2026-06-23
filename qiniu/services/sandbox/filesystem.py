@@ -147,6 +147,14 @@ def to_upload_body(data, encoding='utf-8'):
         'Unsupported data type for filesystem write: {0}'.format(type(data)))
 
 
+def _response_stream(response, chunk_size=8192):
+    try:
+        for chunk in response.iter_content(chunk_size=chunk_size):
+            yield chunk
+    finally:
+        response.close()
+
+
 class WatchHandle(object):
     def __init__(self, filesystem, watcher_id):
         self.filesystem = filesystem
@@ -212,8 +220,10 @@ class Filesystem(object):
         )
         if fmt == 'stream':
             if hasattr(response, 'iter_content'):
-                return response.iter_content(chunk_size=opts.get(
-                    'chunk_size', 8192))
+                return _response_stream(
+                    response,
+                    chunk_size=opts.get('chunk_size', 8192),
+                )
             return iter([response.content])
         if fmt == 'bytes':
             return bytearray(response.content)

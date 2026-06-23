@@ -120,12 +120,16 @@ class EnvdSession(object):
     def request(self, method, url, **kwargs):
         self.requests.append({'method': method, 'url': url, 'kwargs': kwargs})
         if method == 'GET':
-            return DummyResponse(raw=b'hello')
-        return DummyResponse(body=[{
+            response = DummyResponse(raw=b'hello')
+            self.requests[-1]['response'] = response
+            return response
+        response = DummyResponse(body=[{
             'name': 'hello.txt',
             'type': 'FILE',
             'path': '/tmp/hello.txt',
         }])
+        self.requests[-1]['response'] = response
+        return response
 
 
 def sandbox_with_envd_session():
@@ -157,6 +161,16 @@ def test_iter_connect_envelopes_decodes_chunked_stream_frames():
             'stdout': base64.b64encode(b'hello').decode('ascii'),
         }}},
     ]
+
+
+def test_decode_connect_envelopes_rejects_trailing_bytes():
+    raw = encode_connect_envelope({'event': {'start': {'pid': 12}}}) + b'x'
+
+    try:
+        decode_connect_envelopes(raw)
+        assert False, 'expected SandboxError'
+    except SandboxError as err:
+        assert str(err) == 'Sandbox envd stream truncated unexpectedly'
 
 
 def test_iter_connect_envelopes_closes_stream_response():
@@ -398,6 +412,7 @@ def test_filesystem_returns_e2b_style_entry_objects_and_streams():
     entries = sandbox.files.list('/tmp')
 
     assert b''.join(stream) == b'hello'
+    assert session.requests[0]['response'].closed is True
     assert written.name == 'hello.txt'
     assert written.path == '/tmp/hello.txt'
     assert written.type == FileType.FILE
