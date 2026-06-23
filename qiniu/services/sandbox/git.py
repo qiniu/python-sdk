@@ -283,16 +283,9 @@ def _is_missing_upstream(result):
 
 
 def _with_credentials(url, username, password):
-    if not username and not password:
+    parsed = _validate_git_url_credentials(url, username, password)
+    if parsed is None:
         return url
-    if not username or not password:
-        raise InvalidArgumentException(
-            'Both username and password are required when using Git '
-            'credentials.')
-    parsed = urlparse(url)
-    if parsed.scheme not in ('http', 'https'):
-        raise InvalidArgumentException(
-            'Only http(s) Git URLs support username/password credentials.')
     host = parsed.hostname or ''
     if ':' in host and not host.startswith('['):
         host = '[{0}]'.format(host)
@@ -305,6 +298,20 @@ def _with_credentials(url, username, password):
             host,
         )
     ))
+
+
+def _validate_git_url_credentials(url, username, password):
+    if not username and not password:
+        return None
+    if not username or not password:
+        raise InvalidArgumentException(
+            'Both username and password are required when using Git '
+            'credentials.')
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https'):
+        raise InvalidArgumentException(
+            'Only http(s) Git URLs support username/password credentials.')
+    return parsed
 
 
 def _askpass_script():
@@ -364,7 +371,7 @@ class Git(object):
     def _with_remote_credentials(self, repo_path, remote, username, password,
                                  operation, **opts):
         original_url = self._get_remote_url(repo_path, remote, **opts)
-        _with_credentials(original_url, username, password)
+        _validate_git_url_credentials(original_url, username, password)
         sandbox = getattr(self.commands, 'sandbox', None)
         filesystem = getattr(sandbox, 'files', None)
         if filesystem is None:

@@ -98,14 +98,13 @@ def _normalize_sandbox_create_options(template=None, **opts):
             body[key] = opts.get(key)
     if opts.get('auto_pause') is not None:
         body['autoPause'] = opts.get('auto_pause')
-    if opts.get('allow_internet_access') is not None:
-        body['allow_internet_access'] = opts.get('allow_internet_access')
-    if opts.get('allowInternetAccess') is not None:
-        body['allow_internet_access'] = opts.get('allowInternetAccess')
-    if opts.get('envs') is not None:
-        body['envVars'] = opts.get('envs')
-    if opts.get('envVars') is not None:
-        body['envVars'] = opts.get('envVars')
+    allow_internet_access = _single_alias_value(
+        opts, 'allow_internet_access', 'allowInternetAccess')
+    if allow_internet_access is not None:
+        body['allow_internet_access'] = allow_internet_access
+    envs = _single_alias_value(opts, 'envs', 'envVars')
+    if envs is not None:
+        body['envVars'] = envs
     if opts.get('lifecycle') is not None:
         lifecycle = opts.get('lifecycle') or {}
         on_timeout = lifecycle.get('on_timeout') or lifecycle.get('onTimeout')
@@ -117,6 +116,17 @@ def _normalize_sandbox_create_options(template=None, **opts):
     if opts.get('resources') is not None:
         body['resources'] = _normalize_resources(opts.get('resources'))
     return body
+
+
+def _single_alias_value(opts, *names):
+    present = [name for name in names if opts.get(name) is not None]
+    if len(present) > 1:
+        raise SandboxError(
+            'Conflicting sandbox create options: {0}'.format(
+                ', '.join(present)))
+    if present:
+        return opts.get(present[0])
+    return None
 
 
 def _normalize_list_options(opts):

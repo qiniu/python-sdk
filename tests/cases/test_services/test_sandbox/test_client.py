@@ -120,6 +120,22 @@ def test_client_uses_default_endpoint_and_api_key_headers():
     }
 
 
+def test_create_sandbox_rejects_conflicting_option_aliases():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as env_err:
+        client.create_sandbox(envs={'A': 'B'}, envVars={'A': 'C'})
+    with pytest.raises(SandboxError) as network_err:
+        client.create_sandbox(
+            allow_internet_access=True,
+            allowInternetAccess=False,
+        )
+
+    assert 'envs, envVars' in str(env_err.value)
+    assert 'allow_internet_access, allowInternetAccess' in str(
+        network_err.value)
+
+
 def test_client_reads_documented_api_key_env_fallbacks(monkeypatch):
     monkeypatch.delenv('QINIU_SANDBOX_API_KEY', raising=False)
     monkeypatch.delenv('QINIU_API_KEY', raising=False)
