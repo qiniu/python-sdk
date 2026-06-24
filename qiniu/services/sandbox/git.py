@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import uuid
 
 from qiniu.compat import basestring
@@ -38,13 +39,45 @@ def _remove_credential_file(filesystem, path):
         pass
 
 
-def _cleanup_after_wait(wait, filesystem, path):
-    def wrapped_wait(*args, **kwargs):
-        try:
-            return wait(*args, **kwargs)
-        finally:
+class _CredentialCleanupHandle(object):
+    def __init__(self, handle, filesystem, path):
+        self._handle = handle
+        self._filesystem = filesystem
+        self._path = path
+        self._cleaned = [False]
+        self.wait = self._wrap_wait(
+            handle.wait, filesystem, path, self._cleaned)
+
+    def __getattr__(self, name):
+        return getattr(self._handle, name)
+
+    @staticmethod
+    def _cleanup(filesystem, path, cleaned):
+        if not cleaned[0]:
+            cleaned[0] = True
             _remove_credential_file(filesystem, path)
-    return wrapped_wait
+
+    @classmethod
+    def _wrap_wait(cls, wait, filesystem, path, cleaned):
+        def wrapped_wait(*args, **kwargs):
+            try:
+                return wait(*args, **kwargs)
+            finally:
+                cls._cleanup(filesystem, path, cleaned)
+        return wrapped_wait
+
+    def __del__(self):
+        try:
+            self._cleanup(self._filesystem, self._path, self._cleaned)
+        except Exception:
+            pass
+
+
+def _looks_git_config_key(value):
+    return bool(re.match(
+        r'^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)+$',
+        str(value or ''),
+    ))
 
 
 class GitFileStatus(object):
@@ -405,8 +438,8 @@ class Git(object):
 
             result = operation(auth_opts)
             if opts.get('background') and hasattr(result, 'wait'):
-                result.wait = _cleanup_after_wait(
-                    result.wait, filesystem, askpass_path)
+                result = _CredentialCleanupHandle(
+                    result, filesystem, askpass_path)
             else:
                 _remove_credential_file(filesystem, askpass_path)
             return result
@@ -760,7 +793,7 @@ class Git(object):
     def _normalize_set_config_args(self, key, value, scope, path, opts):
         global_config = opts.pop(
             'global_config', opts.pop('globalConfig', False))
-        if global_config or self._is_legacy_config_call(key, scope):
+        if global_config or self._is_legacy_config_call(key, value, scope):
             repo_path = key
             key = value
             value = scope
@@ -771,14 +804,14 @@ class Git(object):
     def _normalize_get_config_args(self, key, scope, path, opts):
         global_config = opts.pop(
             'global_config', opts.pop('globalConfig', False))
-        if global_config or self._is_legacy_config_call(key, scope):
+        if global_config or self._is_legacy_config_call(key, None, scope):
             repo_path = key
             key = scope
             scope = 'global' if global_config or repo_path is None else 'local'
             path = None if scope == 'global' else repo_path
         return key, scope, path
 
-    def _is_legacy_config_call(self, key, scope):
+    def _is_legacy_config_call(self, key, value, scope):
         if scope is None:
             return False
         scope_name = str(scope).strip().lower()
@@ -789,7 +822,8 @@ class Git(object):
             '/' in key_text or
             '\\' in key_text or
             key_text in ('.', '..') or
-            '.' not in key_text
+            not _looks_git_config_key(key_text) or
+            _looks_git_config_key(value)
         )
 
     def _resolve_config_scope(self, scope=None, path=None):

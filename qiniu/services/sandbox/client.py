@@ -101,12 +101,13 @@ def _normalize_sandbox_create_options(template=None, **opts):
     allow_internet_access = _single_alias_value(
         opts, 'allow_internet_access', 'allowInternetAccess')
     if allow_internet_access is not None:
-        body['allow_internet_access'] = allow_internet_access
+        body['allowInternetAccess'] = allow_internet_access
     envs = _single_alias_value(opts, 'envs', 'envVars')
     if envs is not None:
         body['envVars'] = envs
     if opts.get('lifecycle') is not None:
         lifecycle = opts.get('lifecycle') or {}
+        body['lifecycle'] = lifecycle
         on_timeout = lifecycle.get('on_timeout') or lifecycle.get('onTimeout')
         if on_timeout == 'pause':
             body['autoPause'] = True
@@ -127,6 +128,12 @@ def _single_alias_value(opts, *names):
     if present:
         return opts.get(present[0])
     return None
+
+
+def _require_sandbox_id(sandbox_id):
+    if not sandbox_id:
+        raise SandboxError('sandbox_id is required')
+    return sandbox_id
 
 
 def _normalize_list_options(opts):
@@ -275,8 +282,7 @@ class SandboxClient(object):
     create = create_sandbox
 
     def get_sandbox(self, sandbox_id):
-        if not sandbox_id:
-            raise SandboxError('sandbox_id is required')
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'GET', '/sandboxes/{0}'.format(encode_path(sandbox_id)))
 
@@ -285,8 +291,7 @@ class SandboxClient(object):
     getInfo = get_sandbox
 
     def delete_sandbox(self, sandbox_id):
-        if not sandbox_id:
-            raise SandboxError('sandbox_id is required')
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'DELETE',
             '/sandboxes/{0}'.format(encode_path(sandbox_id)),
@@ -299,8 +304,7 @@ class SandboxClient(object):
     kill = delete_sandbox
 
     def pause_sandbox(self, sandbox_id):
-        if not sandbox_id:
-            raise SandboxError('sandbox_id is required')
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'POST',
             '/sandboxes/{0}/pause'.format(encode_path(sandbox_id)),
@@ -311,8 +315,7 @@ class SandboxClient(object):
     pauseSandbox = pause_sandbox
 
     def resume_sandbox(self, sandbox_id, **opts):
-        if not sandbox_id:
-            raise SandboxError('sandbox_id is required')
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'POST',
             '/sandboxes/{0}/resume'.format(encode_path(sandbox_id)),
@@ -322,8 +325,7 @@ class SandboxClient(object):
     resumeSandbox = resume_sandbox
 
     def connect_sandbox(self, sandbox_id, timeout=15):
-        if not sandbox_id:
-            raise SandboxError('sandbox_id is required')
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'POST',
             '/sandboxes/{0}/connect'.format(encode_path(sandbox_id)),
@@ -334,6 +336,7 @@ class SandboxClient(object):
     connect = connect_sandbox
 
     def update_sandbox_timeout(self, sandbox_id, timeout=None, **opts):
+        _require_sandbox_id(sandbox_id)
         if timeout is None:
             timeout = opts.get('timeout')
         return self._request(
@@ -348,6 +351,7 @@ class SandboxClient(object):
     setTimeout = update_sandbox_timeout
 
     def refresh_sandbox(self, sandbox_id, **opts):
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'POST',
             '/sandboxes/{0}/refreshes'.format(encode_path(sandbox_id)),
@@ -358,6 +362,7 @@ class SandboxClient(object):
     refreshSandbox = refresh_sandbox
 
     def update_sandbox(self, sandbox_id, **opts):
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'PATCH',
             '/sandboxes/{0}'.format(encode_path(sandbox_id)),
@@ -367,6 +372,7 @@ class SandboxClient(object):
     updateSandbox = update_sandbox
 
     def get_sandbox_metrics(self, sandbox_id, **opts):
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'GET',
             '/sandboxes/{0}/metrics'.format(encode_path(sandbox_id)),
@@ -416,6 +422,7 @@ class SandboxClient(object):
     getSandboxesMetrics = get_sandboxes_metrics
 
     def get_sandbox_logs(self, sandbox_id, **opts):
+        _require_sandbox_id(sandbox_id)
         return self._request(
             'GET',
             '/sandboxes/{0}/logs'.format(encode_path(sandbox_id)),

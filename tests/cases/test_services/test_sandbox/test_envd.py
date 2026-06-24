@@ -226,6 +226,16 @@ def test_command_event_decode_decodes_plain_word_base64():
     assert result.stdout == 'text'
 
 
+def test_command_event_decode_keeps_invalid_base64_text():
+    result = command_result_from_events([{
+        'event': {'data': {
+            'stdout': 'not base64!',
+        }},
+    }])
+
+    assert result.stdout == 'not base64!'
+
+
 def test_command_event_decode_keeps_unknown_exit_code():
     result = command_result_from_events([{
         'event': {'end': {}},

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import gc
 import json
 
 import pytest
@@ -135,6 +136,30 @@ def test_create_sandbox_rejects_conflicting_option_aliases():
     assert 'envs, envVars' in str(env_err.value)
     assert 'allow_internet_access, allowInternetAccess' in str(
         network_err.value)
+
+
+def test_create_sandbox_uses_api_field_names_and_preserves_lifecycle():
+    session = RecordingSession([DummyResponse(201, {'sandboxID': 'sbx123'})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.create_sandbox(
+        template='base',
+        allow_internet_access=False,
+        lifecycle={
+            'onTimeout': 'pause',
+            'customRule': {'action': 'notify'},
+        },
+    )
+
+    assert body_of(session.requests[0]) == {
+        'templateID': 'base',
+        'allowInternetAccess': False,
+        'lifecycle': {
+            'onTimeout': 'pause',
+            'customRule': {'action': 'notify'},
+        },
+        'autoPause': True,
+    }
 
 
 def test_client_reads_documented_api_key_env_fallbacks(monkeypatch):
@@ -426,6 +451,18 @@ def test_sandbox_control_methods_require_sandbox_id():
         client.resume_sandbox(None)
     with pytest.raises(SandboxError):
         client.connect_sandbox('')
+    with pytest.raises(SandboxError):
+        client.update_sandbox_timeout(None, 30)
+    with pytest.raises(SandboxError):
+        client.refresh_sandbox('')
+    with pytest.raises(SandboxError):
+        client.update_sandbox(None)
+    with pytest.raises(SandboxError):
+        client.get_sandbox_metrics('')
+    with pytest.raises(SandboxError):
+        client.get_sandbox_logs(None)
+
+    assert client.session.requests == []
 
 
 def test_sandbox_connect_forwards_envd_options_to_instance():
@@ -1430,6 +1467,69 @@ def test_git_background_throw_on_error_waits_before_raising():
     assert files.removes == [(files.writes[0][0], {})]
 
 
+def test_git_background_credentials_clean_up_when_handle_is_discarded():
+    commands = RecordingCommands()
+    files = attach_recording_files(commands)
+    commands.results = [
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'origin\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': 'https://github.com/qiniu/repo.git\n',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+        type('Result', (object,), {
+            'exit_code': 0,
+            'stdout': '',
+            'stderr': '',
+            'error': '',
+        })(),
+    ]
+    git = Git(commands)
+
+    handle = git.pull(
+        '/repo',
+        branch='main',
+        username='git-user',
+        password='secret-token',
+        background=True,
+    )
+    credential_path = files.writes[0][0]
+    wait_closure = (
+        getattr(handle.wait, '__closure__', None) or
+        getattr(handle.wait, 'func_closure', None) or
+        []
+    )
+    for cell in wait_closure:
+        try:
+            assert cell.cell_contents is not handle
+        except ValueError:
+            pass
+
+    assert files.removes == []
+    del handle
+    gc.collect()
+
+    assert files.removes == [(credential_path, {})]
+
+
 def test_git_push_with_credentials_cleans_askpass_on_auth_failure():
     commands = RecordingCommands()
     files = attach_recording_files(commands)
@@ -1619,6 +1719,7 @@ def test_git_config_helpers_accept_legacy_repo_path_signatures():
     git.set_config('/repo', 'gitreview.username', 'global')
     git.set_config('repo', 'user.email', 'global')
     git.set_config('.', 'core.editor', 'global')
+    git.set_config('my.repo', 'user.signingkey', 'global')
     git.get_config('/repo', 'user.name')
 
     assert commands.calls[0][0] == "git config --global http.version HTTP/1.1"
@@ -1633,5 +1734,7 @@ def test_git_config_helpers_accept_legacy_repo_path_signatures():
     assert commands.calls[3][1]['cwd'] == 'repo'
     assert commands.calls[4][0] == 'git config --local core.editor global'
     assert commands.calls[4][1]['cwd'] == '.'
-    assert commands.calls[5][0] == 'git config --local --get user.name'
-    assert commands.calls[5][1]['cwd'] == '/repo'
+    assert commands.calls[5][0] == 'git config --local user.signingkey global'
+    assert commands.calls[5][1]['cwd'] == 'my.repo'
+    assert commands.calls[6][0] == 'git config --local --get user.name'
+    assert commands.calls[6][1]['cwd'] == '/repo'
