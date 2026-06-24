@@ -35,6 +35,9 @@ jobs:
         run: |
           MAJOR=$(echo "$PYTHON_VERSION" | cut -d'.' -f1)
           MINOR=$(echo "$PYTHON_VERSION" | cut -d'.' -f2)
+          if ! python -m pip --version >/dev/null 2>&1; then
+            conda install -y pip
+          fi
           # reinstall pip by some python(<3.7) not compatible
           if ! [[ $MAJOR -ge 3 && $MINOR -ge 7 ]]; then
             cd /tmp
@@ -137,6 +140,10 @@ jobs:
           PYTHON_VERSION: ${{ matrix.python_version }}
           PIP_BOOTSTRAP_SCRIPT_PREFIX: https://bootstrap.pypa.io/pip
         run: |
+          $null = python -m pip --version
+          if ($LASTEXITCODE -ne 0) {
+            conda install -y pip
+          }
           # reinstall pip by some python(<3.7) not compatible
           $pyversion = [Version]"$ENV:PYTHON_VERSION"
           if ($pyversion -lt [Version]"3.7") {
