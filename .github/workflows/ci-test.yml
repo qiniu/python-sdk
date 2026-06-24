@@ -226,6 +226,7 @@ jobs:
           python -m pytest ./test_qiniu.py tests --cov qiniu --cov-report=xml
       - name: Post Setup mock server
         if: ${{ always() }}
+        continue-on-error: true
         run: |
           Try {
             $mocksrvpid = Get-Content -Path "mock-server.pid"
@@ -236,6 +237,7 @@ jobs:
           }
       - name: Print mock server log
         if: ${{ failure() }}
+        continue-on-error: true
         run: |
           Get-Content -Path "py-mock-server.log" | Write-Host
       - name: Upload results to Codecov
