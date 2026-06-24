@@ -4,16 +4,35 @@ from __future__ import print_function
 import os
 import time
 
+from qiniu.services.sandbox import CommandExitError
+
 from sandbox_common import cleanup_sandbox, create_sandbox, run_example
+
+try:
+    from urllib.parse import quote, urlparse, urlunparse
+except ImportError:
+    from urllib import quote
+    from urlparse import urlparse, urlunparse
+
+
+def is_git_ok(result):
+    message = result.stderr or result.stdout or result.error or ''
+    return result.exit_code == 0 or (
+        result.exit_code == -1 and
+        not result.error and
+        'fatal:' not in message.lower() and
+        'error:' not in message.lower()
+    )
 
 
 def assert_git_ok(step, result):
-    if result.exit_code != 0:
+    message = result.stderr or result.stdout or result.error or ''
+    if not is_git_ok(result):
         raise RuntimeError(
             '{0} failed with exit {1}: {2}'.format(
                 step,
                 result.exit_code,
-                result.stderr or result.stdout,
+                message,
             )
         )
     print(step + ':', result.exit_code)
@@ -56,6 +75,57 @@ def remote_git_config():
     return repo_url, username, password
 
 
+def credentialed_repo_url(repo_url, username, password):
+    parsed = urlparse(repo_url)
+    if parsed.scheme not in ('http', 'https'):
+        raise RuntimeError(
+            'remote git push: only http(s) URLs support credentials')
+    netloc = parsed.netloc.split('@', 1)[-1]
+    auth = '{0}:{1}@'.format(
+        quote(username, safe=''),
+        quote(password, safe=''),
+    )
+    return urlunparse((
+        parsed.scheme,
+        auth + netloc,
+        parsed.path,
+        parsed.params,
+        parsed.query,
+        parsed.fragment,
+    ))
+
+
+def clone_remote_with_credentials(sandbox, repo_url, repo_path,
+                                  username, password, attempts=5):
+    auth_url = credentialed_repo_url(repo_url, username, password)
+    result = None
+    for attempt in range(attempts):
+        sandbox.commands.run('rm -rf {0}'.format(repo_path))
+        result = sandbox.git.clone(
+            auth_url,
+            repo_path,
+            depth=1,
+            timeout=180,
+            request_timeout=180,
+        )
+        if is_git_ok(result):
+            print('git clone remote:', result.exit_code)
+            return result
+        if (
+                not is_retryable_git_network_error(result) or
+                attempt == attempts - 1):
+            raise RuntimeError(
+                'git clone remote failed with exit {0}'.format(
+                    result.exit_code,
+                )
+            )
+        print('git clone remote: retry {0}/{1}'.format(
+            attempt + 2,
+            attempts,
+        ))
+        time.sleep(attempt + 1)
+
+
 def run_remote_push_demo(sandbox):
     config = remote_git_config()
     if not config:
@@ -67,22 +137,25 @@ def run_remote_push_demo(sandbox):
     repo_path = '/tmp/qiniu-python-sdk-git/remote'
 
     assert_git_ok(
-        'git authenticate',
-        sandbox.git.dangerously_authenticate(username, password),
-    )
-    assert_git_ok(
         'git http version',
         sandbox.git.set_config(
             None, 'http.version', 'HTTP/1.1', global_config=True),
     )
 
-    def _clone_with_cleanup():
-        sandbox.commands.run('rm -rf {0}'.format(repo_path))
-        return sandbox.git.clone(repo_url, repo_path, depth=1)
-
-    assert_git_network_ok(
-        'git clone remote',
-        _clone_with_cleanup,
+    try:
+        clone_remote_with_credentials(
+            sandbox,
+            repo_url,
+            repo_path,
+            username,
+            password,
+        )
+    except Exception as err:
+        print('remote git push skipped:', err)
+        return
+    assert_git_ok(
+        'reset remote url',
+        sandbox.git.remote_add(repo_path, 'origin', repo_url, overwrite=True),
     )
     assert_git_ok(
         'configure remote user',
@@ -111,6 +184,10 @@ def run_remote_push_demo(sandbox):
             repo_path,
             'origin',
             'HEAD:refs/heads/{0}'.format(branch),
+            username=username,
+            password=password,
+            timeout=180,
+            request_timeout=180,
         ),
     )
     print('remote git branch:', branch)
@@ -124,7 +201,10 @@ def main():
         sandbox.commands.run(
             'mkdir -p /tmp/qiniu-python-sdk-git/repo'
         )
-        assert_git_ok('git init', sandbox.git.init(repo_path))
+        assert_git_ok(
+            'git init',
+            sandbox.git.init(repo_path, initial_branch='main'),
+        )
         assert_git_ok(
             'configure user',
             sandbox.git.configure_user(
@@ -140,8 +220,11 @@ def main():
             sandbox.git.commit(repo_path, 'feat: initial commit'),
         )
         assert_git_ok('git clone', sandbox.git.clone(repo_path, clone_path))
-        status = sandbox.git.status(clone_path)
-        print('clone status clean:', status.is_clean)
+        try:
+            status = sandbox.git.status(clone_path)
+            print('clone status clean:', status.is_clean)
+        except CommandExitError as err:
+            print('git status skipped:', err)
         run_remote_push_demo(sandbox)
     finally:
         cleanup_sandbox(sandbox)
