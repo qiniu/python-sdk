@@ -1,5 +1,11 @@
-on: [push]
 name: Run Test Cases
+on:
+  - push
+  - pull_request
+
+permissions:
+  contents: read
+
 jobs:
   test:
     strategy:
@@ -49,7 +55,31 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -I -e ".[dev]"
+      - name: Run public cases
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        shell: bash -el {0}
+        env:
+          MOCK_SERVER_ADDRESS: "http://127.0.0.1:9000"
+        run: |
+          flake8 --show-source --max-line-length=160 ./qiniu
+          python -m pytest \
+            tests/cases/test_auth.py \
+            tests/cases/test_http/test_endpoint.py \
+            tests/cases/test_http/test_endpoints_retry_policy.py \
+            tests/cases/test_http/test_middleware.py \
+            tests/cases/test_http/test_qiniu_conf.py \
+            tests/cases/test_http/test_region.py \
+            tests/cases/test_http/test_regions_retry_policy.py \
+            tests/cases/test_http/test_resp.py \
+            tests/cases/test_http/test_single_flight.py \
+            tests/cases/test_retry \
+            tests/cases/test_utils.py \
+            tests/cases/test_services/test_sandbox/test_client.py \
+            tests/cases/test_services/test_sandbox/test_config.py \
+            tests/cases/test_services/test_sandbox/test_envd.py \
+            tests/cases/test_services/test_sandbox/test_example_config.py
       - name: Run cases
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         shell: bash -el {0}
         env:
           QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
@@ -75,6 +105,7 @@ jobs:
         run: |
           cat py-mock-server.log
       - name: Upload results to Codecov
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -117,7 +148,47 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -I -e ".[dev]"
+      - name: Run public cases
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        env:
+          MOCK_SERVER_ADDRESS: "http://127.0.0.1:9000"
+          PYTHONPATH: "$PYTHONPATH:."
+        run: |
+          Write-Host "======== Setup Mock Server ========="
+          conda create -y -n mock-server python=3.10
+          conda activate mock-server
+          python --version
+          $processOptions = @{
+            FilePath="python"
+            ArgumentList="tests\mock_server\main.py", "--port", "9000"
+            PassThru=$true
+            RedirectStandardOutput="py-mock-server.log"
+          }
+          $mocksrvp = Start-Process @processOptions
+          $mocksrvp.Id | Out-File -FilePath "mock-server.pid"
+          conda deactivate
+          Sleep 3
+          Write-Host "======== Running Public Test ========="
+          python --version
+          flake8 --show-source --max-line-length=160 ./qiniu
+          python -m pytest `
+            tests/cases/test_auth.py `
+            tests/cases/test_http/test_endpoint.py `
+            tests/cases/test_http/test_endpoints_retry_policy.py `
+            tests/cases/test_http/test_middleware.py `
+            tests/cases/test_http/test_qiniu_conf.py `
+            tests/cases/test_http/test_region.py `
+            tests/cases/test_http/test_regions_retry_policy.py `
+            tests/cases/test_http/test_resp.py `
+            tests/cases/test_http/test_single_flight.py `
+            tests/cases/test_retry `
+            tests/cases/test_utils.py `
+            tests/cases/test_services/test_sandbox/test_client.py `
+            tests/cases/test_services/test_sandbox/test_config.py `
+            tests/cases/test_services/test_sandbox/test_envd.py `
+            tests/cases/test_services/test_sandbox/test_example_config.py
       - name: Run cases
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         env:
           QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
           QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
@@ -161,6 +232,7 @@ jobs:
         run: |
           Get-Content -Path "py-mock-server.log" | Write-Host
       - name: Upload results to Codecov
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
