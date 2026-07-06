@@ -117,9 +117,18 @@ def test_git_remote_push_when_credentials_are_configured():
     repo_path = '/tmp/qiniu-python-sdk-remote-git'
     try:
         sandbox = create_integration_sandbox('remote_git')
+        try:
+            auth_result = sandbox.git.dangerously_authenticate(
+                username,
+                password,
+            )
+        except SandboxError as err:
+            if is_unsupported_runtime_error(err):
+                pytest.skip('envd does not support process stdin')
+            raise
         assert_command_ok(
             'git authenticate',
-            sandbox.git.dangerously_authenticate(username, password),
+            auth_result,
         )
         assert_command_ok(
             'git http version',

@@ -43,6 +43,10 @@ def _normalize_injection(injection):
         data['api_key'] = data.pop('apiKey')
     if 'baseUrl' in data and 'base_url' not in data:
         data['base_url'] = data.pop('baseUrl')
+    if 'ifHeaders' in data and 'if_headers' not in data:
+        data['if_headers'] = data.pop('ifHeaders')
+    if 'ifQueries' in data and 'if_queries' not in data:
+        data['if_queries'] = data.pop('ifQueries')
     if 'ruleId' in data and 'ruleID' not in data:
         data['ruleID'] = data.pop('ruleId')
     if 'rule_id' in data and 'ruleID' not in data:

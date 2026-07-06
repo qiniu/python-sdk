@@ -244,6 +244,22 @@ def test_command_event_decode_keeps_unknown_exit_code():
     assert result.exit_code == -1
 
 
+def test_command_event_decode_handles_status_exit_code():
+    result = command_result_from_events([{
+        'event': {'end': {'exited': True, 'status': 'exit status 7'}},
+    }])
+
+    assert result.exit_code == 7
+
+
+def test_command_event_decode_handles_snake_case_exit_code():
+    result = command_result_from_events([{
+        'event': {'end': {'exit_code': 3}},
+    }])
+
+    assert result.exit_code == 3
+
+
 def test_command_event_decode_handles_bytes_values():
     result = command_result_from_events([{
         'event': {'data': {

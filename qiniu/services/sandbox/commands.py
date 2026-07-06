@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
 import binascii
+import re
 
 from qiniu.compat import basestring, bytes as bytes_type, str as text_type
 
@@ -93,6 +94,15 @@ def command_result_from_events(events, on_stdout=None, on_stderr=None,
         if end:
             if end.get('exitCode') is not None:
                 exit_code = end.get('exitCode')
+            elif end.get('exit_code') is not None:
+                exit_code = end.get('exit_code')
+            else:
+                status_match = re.match(
+                    r'^exit status (\d+)$',
+                    text_type(end.get('status') or ''),
+                )
+                if status_match:
+                    exit_code = int(status_match.group(1))
             error = end.get('error') or ''
     return CommandResult(pid, exit_code, stdout, stderr, error)
 

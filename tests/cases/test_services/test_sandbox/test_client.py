@@ -201,7 +201,9 @@ def test_util_helpers_encode_unicode_values_safely():
     ).startswith('v1_')
 
 
-def test_create_with_kodo_resource_requires_qiniu_credentials():
+def test_create_with_kodo_resource_requires_qiniu_credentials(monkeypatch):
+    monkeypatch.delenv('QINIU_SANDBOX_ACCESS_KEY', raising=False)
+    monkeypatch.delenv('QINIU_SANDBOX_SECRET_KEY', raising=False)
     client = SandboxClient(api_key='api-key', session=RecordingSession())
 
     with pytest.raises(SandboxError) as err:
@@ -241,7 +243,10 @@ def test_create_with_kodo_resource_uses_qiniu_signature():
     }]
 
 
-def test_create_with_saved_injection_rule_requires_qiniu_credentials():
+def test_create_with_saved_injection_rule_requires_qiniu_credentials(
+        monkeypatch):
+    monkeypatch.delenv('QINIU_SANDBOX_ACCESS_KEY', raising=False)
+    monkeypatch.delenv('QINIU_SANDBOX_SECRET_KEY', raising=False)
     client = SandboxClient(api_key='api-key', session=RecordingSession())
 
     with pytest.raises(SandboxError) as err:
@@ -285,6 +290,55 @@ def test_create_with_saved_injection_rule_accepts_snake_case_rule_id():
         'type': 'id',
         'ruleID': 'rule-1',
     }]
+
+
+def test_create_sandbox_normalizes_inline_injection_match_conditions():
+    session = RecordingSession(
+        [DummyResponse(201, {'sandboxID': 'sbx123', 'templateID': 'base'})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.create_sandbox(injections=[{
+        'type': 'openai',
+        'apiKey': 'openai-key',
+        'baseUrl': 'https://api.openai.com/v1/*',
+        'ifHeaders': {'X-Tenant': 'tenant-1'},
+        'ifQueries': {'model': 'gpt-4o-mini'},
+    }])
+
+    assert body_of(session.requests[0])['injections'] == [{
+        'type': 'openai',
+        'api_key': 'openai-key',
+        'base_url': 'https://api.openai.com/v1/*',
+        'if_headers': {'X-Tenant': 'tenant-1'},
+        'if_queries': {'model': 'gpt-4o-mini'},
+    }]
+
+
+def test_injection_rule_requests_normalize_match_conditions():
+    session = RecordingSession([DummyResponse(201, {'ruleID': 'rule-1'})])
+    client = SandboxClient(access_key='ak', secret_key='sk', session=session)
+
+    client.create_injection_rule(
+        name='conditional-openai',
+        injection={
+            'type': 'openai',
+            'apiKey': 'openai-key',
+            'baseUrl': 'https://api.openai.com/v1/*',
+            'ifHeaders': {'X-Tenant': 'tenant-1'},
+            'ifQueries': {'model': 'gpt-4o-mini'},
+        },
+    )
+
+    assert body_of(session.requests[0]) == {
+        'name': 'conditional-openai',
+        'injection': {
+            'type': 'openai',
+            'api_key': 'openai-key',
+            'base_url': 'https://api.openai.com/v1/*',
+            'if_headers': {'X-Tenant': 'tenant-1'},
+            'if_queries': {'model': 'gpt-4o-mini'},
+        },
+    }
 
 
 def test_sandbox_create_signature_matches_e2b_style():
