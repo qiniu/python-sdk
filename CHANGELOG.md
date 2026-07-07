@@ -1,5 +1,5 @@
 # Changelog
-## Unreleased
+## 7.18.1
 * Sandbox 注入规则支持 `if_headers` / `if_queries` 条件匹配字段，并兼容 `ifHeaders` / `ifQueries` 入参别名
 
 ## 7.18.0
