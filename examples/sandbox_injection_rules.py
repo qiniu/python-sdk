@@ -12,7 +12,9 @@ def main():
             name='python-sdk-example',
             injection={
                 'type': 'http',
-                'base_url': 'https://api.example.com',
+                'base_url': 'https://api.example.com/v1/*',
+                'if_headers': {'X-Qiniu-Sandbox': 'enabled'},
+                'if_queries': {'tenant': 'demo'},
                 'headers': {'X-From-Sandbox': 'qiniu-python-sdk'},
             },
         )
@@ -25,9 +27,11 @@ def main():
             rule_id,
             name='python-sdk-example-updated',
             injection={
-                'type': 'http',
-                'base_url': 'https://api.example.com',
-                'headers': {'X-Updated-From-Sandbox': 'qiniu-python-sdk'},
+                'type': 'openai',
+                'base_url': 'https://api.openai.com/v1/*',
+                'if_headers': {'X-Qiniu-Sandbox': 'enabled'},
+                'if_queries': {'model': 'gpt-4o-mini'},
+                'api_key': 'replace-with-openai-api-key',
             },
         ))
     finally:

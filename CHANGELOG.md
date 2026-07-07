@@ -1,4 +1,7 @@
 # Changelog
+## Unreleased
+* Sandbox 注入规则支持 `if_headers` / `if_queries` 条件匹配字段，并兼容 `ifHeaders` / `ifQueries` 入参别名
+
 ## 7.18.0
 * 新增 Qiniu Sandbox Python SDK 模块，支持生命周期、命令执行、文件系统、Git、PTY、模板、资源挂载和注入规则等能力
 
