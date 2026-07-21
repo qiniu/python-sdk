@@ -811,6 +811,27 @@ def test_list_sandboxes_v2_explicit_options_override_extra_query_values():
     assert query['template'] == ['python']
 
 
+def test_list_sandboxes_v2_explicit_none_options_override_query_values():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(
+        metadata=None,
+        state=None,
+        template=None,
+        query={
+            'metadata': {'app': 'tests'},
+            'state': ['paused'],
+            'template': ['node'],
+        },
+    )
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert 'metadata' not in query
+    assert 'state' not in query
+    assert 'template' not in query
+
+
 def test_list_sandboxes_v2_serializes_non_string_filter_values():
     session = RecordingSession([DummyResponse(200, {'items': []})])
     client = SandboxClient(api_key='api-key', session=session)
@@ -963,6 +984,16 @@ def test_update_sandbox_injections_rejects_string_value():
     with pytest.raises(SandboxError) as err:
         client.update_sandbox_injections(
             'sbx123', 'invalid-string-injection')
+
+    assert 'injections must be a list, dict, or rule object' in str(err.value)
+    assert client.session.requests == []
+
+
+def test_update_sandbox_injections_rejects_non_iterable_scalar():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.update_sandbox_injections('sbx123', 123)
 
     assert 'injections must be a list, dict, or rule object' in str(err.value)
     assert client.session.requests == []

@@ -149,7 +149,7 @@ def _normalize_list_options(opts):
     opts = dict(opts or {})
     query = opts.pop('query', None) or {}
     metadata = query.get('metadata')
-    if metadata is not None:
+    if metadata is not None and 'metadata' not in opts:
         opts['metadata'] = metadata
     if isinstance(opts.get('metadata'), dict):
         opts['metadata'] = urlencode(opts.get('metadata'))
@@ -160,7 +160,7 @@ def _normalize_list_options(opts):
                 value is not None):
             opts[key] = value
     for key in ('state', 'template'):
-        if query.get(key) is not None and opts.get(key) is None:
+        if query.get(key) is not None and key not in opts:
             opts[key] = query.get(key)
         value = opts.get(key)
         if isinstance(value, bytes_type):
@@ -418,6 +418,12 @@ class SandboxClient(object):
                 'injections must be a list, dict, or rule object')
         if isinstance(injections, dict) or hasattr(injections, 'to_dict'):
             injections = [injections]
+        else:
+            try:
+                iter(injections)
+            except TypeError:
+                raise SandboxError(
+                    'injections must be a list, dict, or rule object')
         return self._request(
             'PUT',
             '/sandboxes/{0}/injections'.format(encode_path(sandbox_id)),
