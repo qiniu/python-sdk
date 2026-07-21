@@ -957,6 +957,17 @@ def test_update_sandbox_injections_requires_rules_value():
     assert client.session.requests == []
 
 
+def test_update_sandbox_injections_rejects_string_value():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.update_sandbox_injections(
+            'sbx123', 'invalid-string-injection')
+
+    assert 'injections must be a list, dict, or rule object' in str(err.value)
+    assert client.session.requests == []
+
+
 def test_update_sandbox_github_token_uses_api_field_name():
     session = RecordingSession([DummyResponse(204)])
     client = SandboxClient(api_key='api-key', session=session)

@@ -413,6 +413,9 @@ class SandboxClient(object):
         _require_sandbox_id(sandbox_id)
         if injections is None:
             raise SandboxError('injections is required')
+        if isinstance(injections, basestring):
+            raise SandboxError(
+                'injections must be a list, dict, or rule object')
         if isinstance(injections, dict) or hasattr(injections, 'to_dict'):
             injections = [injections]
         return self._request(
