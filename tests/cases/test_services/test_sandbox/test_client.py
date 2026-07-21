@@ -779,11 +779,25 @@ def test_list_sandboxes_v2_serializes_array_filters_from_query_options():
     client.list_sandboxes_v2(query={
         'template': ['python', 'team/node'],
         'state': ['running', 'paused'],
+        'limit': 10,
+        'nextToken': 'next-page',
     })
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['template'] == ['python,team/node']
     assert query['state'] == ['running,paused']
+    assert query['limit'] == ['10']
+    assert query['nextToken'] == ['next-page']
+
+
+def test_list_sandboxes_v2_explicit_options_override_extra_query_values():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(limit=20, query={'limit': 10})
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['limit'] == ['20']
 
 
 def test_list_sandboxes_v2_serializes_non_string_filter_values():
