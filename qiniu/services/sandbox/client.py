@@ -160,7 +160,7 @@ def _normalize_list_options(opts):
                 value is not None):
             opts[key] = value
     for key in ('state', 'template'):
-        if query.get(key) is not None:
+        if query.get(key) is not None and opts.get(key) is None:
             opts[key] = query.get(key)
         value = opts.get(key)
         if isinstance(value, bytes_type):

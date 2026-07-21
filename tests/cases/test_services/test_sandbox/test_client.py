@@ -794,10 +794,21 @@ def test_list_sandboxes_v2_explicit_options_override_extra_query_values():
     session = RecordingSession([DummyResponse(200, {'items': []})])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(limit=20, query={'limit': 10})
+    client.list_sandboxes_v2(
+        limit=20,
+        state=['running'],
+        template=['python'],
+        query={
+            'limit': 10,
+            'state': ['paused'],
+            'template': ['node'],
+        },
+    )
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['limit'] == ['20']
+    assert query['state'] == ['running']
+    assert query['template'] == ['python']
 
 
 def test_list_sandboxes_v2_serializes_non_string_filter_values():
