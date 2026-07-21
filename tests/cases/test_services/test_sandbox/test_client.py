@@ -978,12 +978,15 @@ def test_update_sandbox_injections_requires_rules_value():
     assert client.session.requests == []
 
 
-def test_update_sandbox_injections_rejects_string_value():
+@pytest.mark.parametrize('injections', [
+    'invalid-string-injection',
+    b'invalid-bytes-injection',
+])
+def test_update_sandbox_injections_rejects_string_value(injections):
     client = SandboxClient(api_key='api-key', session=RecordingSession())
 
     with pytest.raises(SandboxError) as err:
-        client.update_sandbox_injections(
-            'sbx123', 'invalid-string-injection')
+        client.update_sandbox_injections('sbx123', injections)
 
     assert 'injections must be a list, dict, or rule object' in str(err.value)
     assert client.session.requests == []
