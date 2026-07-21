@@ -52,6 +52,7 @@ def test_examples_cover_primary_sandbox_surfaces():
         'sandbox_lifecycle.py',
         'sandbox_observability.py',
         'sandbox_resources.py',
+        'sandbox_runtime_configuration.py',
         'sandbox_runtime.py',
         'sandbox_template_lifecycle.py',
         'sandbox_templates.py',
@@ -121,6 +122,19 @@ def test_examples_cover_primary_sandbox_surfaces():
             'push_branch_with_credentials',
             'KodoResource',
             'read_only=True',
+        ],
+        'sandbox_runtime_configuration.py': [
+            'get_injections',
+            'update_injections',
+            'update_github_token',
+            "os.getenv('GITHUB_TOKEN')",
+            'list_sandboxes_v2(',
+            'template=[sandbox.template_id]',
+        ],
+        'sandbox_templates.py': [
+            'get_template',
+            "details.get('names')",
+            "details.get('isOwner')",
         ],
     }
 

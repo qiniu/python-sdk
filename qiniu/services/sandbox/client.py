@@ -148,8 +148,12 @@ def _normalize_list_options(opts):
         opts['metadata'] = metadata
     if isinstance(opts.get('metadata'), dict):
         opts['metadata'] = urlencode(opts.get('metadata'))
-    if query.get('state') is not None:
-        opts['state'] = query.get('state')
+    for key in ('state', 'template'):
+        if query.get(key) is not None:
+            opts[key] = query.get(key)
+        value = opts.get(key)
+        if value is not None and not isinstance(value, basestring):
+            opts[key] = ','.join(value)
     return opts
 
 
@@ -374,6 +378,49 @@ class SandboxClient(object):
         )
 
     updateSandbox = update_sandbox
+
+    def get_sandbox_injections(self, sandbox_id):
+        _require_sandbox_id(sandbox_id)
+        return self._request(
+            'GET',
+            '/sandboxes/{0}/injections'.format(encode_path(sandbox_id)),
+        )
+
+    getSandboxInjections = get_sandbox_injections
+
+    def update_sandbox_injections(self, sandbox_id, injections):
+        _require_sandbox_id(sandbox_id)
+        if injections is None:
+            raise SandboxError('injections is required')
+        return self._request(
+            'PUT',
+            '/sandboxes/{0}/injections'.format(encode_path(sandbox_id)),
+            body={
+                'injections': [
+                    _normalize_injection(item) for item in injections
+                ],
+            },
+            empty=True,
+        )
+
+    updateSandboxInjections = update_sandbox_injections
+
+    def update_sandbox_github_token(
+            self, sandbox_id, authorization_token=None, **opts):
+        _require_sandbox_id(sandbox_id)
+        if authorization_token is None:
+            authorization_token = (
+                opts.get('authorizationToken') or opts.get('token'))
+        if not authorization_token:
+            raise SandboxError('authorization_token is required')
+        return self._request(
+            'PUT',
+            '/sandboxes/{0}/github-token'.format(encode_path(sandbox_id)),
+            body={'authorization_token': authorization_token},
+            empty=True,
+        )
+
+    updateSandboxGithubToken = update_sandbox_github_token
 
     def get_sandbox_metrics(self, sandbox_id, **opts):
         _require_sandbox_id(sandbox_id)
