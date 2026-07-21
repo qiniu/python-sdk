@@ -5,7 +5,7 @@ import time
 import requests
 
 from qiniu.auth import QiniuMacAuth, QiniuMacRequestsAuth
-from qiniu.compat import basestring, urlencode
+from qiniu.compat import basestring, str as text_type, urlencode
 
 from .constants import DEFAULT_TEMPLATE
 from .errors import SandboxError, TemplateBuildError
@@ -154,9 +154,9 @@ def _normalize_list_options(opts):
         value = opts.get(key)
         if value is not None and not isinstance(value, basestring):
             try:
-                opts[key] = ','.join(str(item) for item in value)
+                opts[key] = ','.join(text_type(item) for item in value)
             except TypeError:
-                opts[key] = str(value)
+                opts[key] = text_type(value)
     return opts
 
 

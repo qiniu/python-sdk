@@ -797,6 +797,20 @@ def test_list_sandboxes_v2_serializes_non_string_filter_values():
     assert query['state'] == ['7']
 
 
+def test_list_sandboxes_v2_preserves_bytes_and_unicode_filter_values():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(
+        template=[u'团队/模板'],
+        state=b'running',
+    )
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['template'] == [u'团队/模板']
+    assert query['state'] == ['running']
+
+
 def test_template_responses_preserve_names_and_ownership_metadata():
     session = RecordingSession([DummyResponse(200, {
         'templateID': 'tmpl123',
