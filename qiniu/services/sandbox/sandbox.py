@@ -251,6 +251,23 @@ class Sandbox(object):
 
     updateNetwork = update_network
 
+    def get_injections(self):
+        return self.client.get_sandbox_injections(self.sandbox_id)
+
+    getInjections = get_injections
+
+    def update_injections(self, injections):
+        return self.client.update_sandbox_injections(
+            self.sandbox_id, injections)
+
+    updateInjections = update_injections
+
+    def update_github_token(self, authorization_token=None, **opts):
+        return self.client.update_sandbox_github_token(
+            self.sandbox_id, authorization_token, **opts)
+
+    updateGithubToken = update_github_token
+
     def get_info(self):
         return self.client.get_sandbox(self.sandbox_id)
 

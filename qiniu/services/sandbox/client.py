@@ -5,7 +5,12 @@ import time
 import requests
 
 from qiniu.auth import QiniuMacAuth, QiniuMacRequestsAuth
-from qiniu.compat import basestring, urlencode
+from qiniu.compat import (
+    basestring,
+    bytes as bytes_type,
+    str as text_type,
+    urlencode,
+)
 
 from .constants import DEFAULT_TEMPLATE
 from .errors import SandboxError, TemplateBuildError
@@ -144,12 +149,30 @@ def _normalize_list_options(opts):
     opts = dict(opts or {})
     query = opts.pop('query', None) or {}
     metadata = query.get('metadata')
-    if metadata is not None:
+    if metadata is not None and 'metadata' not in opts:
         opts['metadata'] = metadata
     if isinstance(opts.get('metadata'), dict):
         opts['metadata'] = urlencode(opts.get('metadata'))
-    if query.get('state') is not None:
-        opts['state'] = query.get('state')
+    for key, value in query.items():
+        if (
+                key != 'metadata' and
+                key not in opts and
+                value is not None):
+            opts[key] = value
+    for key in ('state', 'template'):
+        value = opts.get(key)
+        if isinstance(value, bytes_type):
+            opts[key] = value.decode('utf-8')
+        elif hasattr(value, '__iter__') and not isinstance(
+                value, (basestring, dict)):
+            opts[key] = text_type(',').join(
+                item.decode('utf-8')
+                if isinstance(item, bytes_type)
+                else text_type(item)
+                for item in value
+            )
+        elif value is not None and not isinstance(value, basestring):
+            opts[key] = text_type(value)
     return opts
 
 
@@ -374,6 +397,60 @@ class SandboxClient(object):
         )
 
     updateSandbox = update_sandbox
+
+    def get_sandbox_injections(self, sandbox_id):
+        _require_sandbox_id(sandbox_id)
+        return self._request(
+            'GET',
+            '/sandboxes/{0}/injections'.format(encode_path(sandbox_id)),
+        )
+
+    getSandboxInjections = get_sandbox_injections
+
+    def update_sandbox_injections(self, sandbox_id, injections):
+        _require_sandbox_id(sandbox_id)
+        if injections is None:
+            raise SandboxError('injections is required')
+        if isinstance(injections, (basestring, bytes_type)):
+            raise SandboxError(
+                'injections must be a list, dict, or rule object')
+        if isinstance(injections, dict) or hasattr(injections, 'to_dict'):
+            injections = [injections]
+        else:
+            try:
+                iter(injections)
+            except TypeError:
+                raise SandboxError(
+                    'injections must be a list, dict, or rule object')
+        return self._request(
+            'PUT',
+            '/sandboxes/{0}/injections'.format(encode_path(sandbox_id)),
+            body={
+                'injections': [
+                    _normalize_injection(item) for item in injections
+                ],
+            },
+            empty=True,
+        )
+
+    updateSandboxInjections = update_sandbox_injections
+
+    def update_sandbox_github_token(
+            self, sandbox_id, authorization_token=None, **opts):
+        _require_sandbox_id(sandbox_id)
+        if authorization_token is None:
+            authorization_token = (
+                opts.get('authorizationToken') or opts.get('token'))
+        if not authorization_token:
+            raise SandboxError('authorization_token is required')
+        return self._request(
+            'PUT',
+            '/sandboxes/{0}/github-token'.format(encode_path(sandbox_id)),
+            body={'authorization_token': authorization_token},
+            empty=True,
+        )
+
+    updateSandboxGithubToken = update_sandbox_github_token
 
     def get_sandbox_metrics(self, sandbox_id, **opts):
         _require_sandbox_id(sandbox_id)

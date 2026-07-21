@@ -762,6 +762,377 @@ def test_list_sandboxes_v2_accepts_metadata_string():
     assert query['metadata'] == ['user=abc&app=prod']
 
 
+def test_list_sandboxes_v2_serializes_template_filters_as_comma_string():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(template=['python', 'team/node'])
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['template'] == ['python,team/node']
+
+
+def test_list_sandboxes_v2_serializes_array_filters_from_query_options():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(query={
+        'template': ['python', 'team/node'],
+        'state': ['running', 'paused'],
+        'limit': 10,
+        'nextToken': 'next-page',
+    })
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['template'] == ['python,team/node']
+    assert query['state'] == ['running,paused']
+    assert query['limit'] == ['10']
+    assert query['nextToken'] == ['next-page']
+
+
+def test_list_sandboxes_v2_explicit_options_override_extra_query_values():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(
+        limit=20,
+        state=['running'],
+        template=['python'],
+        query={
+            'limit': 10,
+            'state': ['paused'],
+            'template': ['node'],
+        },
+    )
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['limit'] == ['20']
+    assert query['state'] == ['running']
+    assert query['template'] == ['python']
+
+
+def test_list_sandboxes_v2_explicit_none_options_override_query_values():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(
+        metadata=None,
+        state=None,
+        template=None,
+        query={
+            'metadata': {'app': 'tests'},
+            'state': ['paused'],
+            'template': ['node'],
+        },
+    )
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert 'metadata' not in query
+    assert 'state' not in query
+    assert 'template' not in query
+
+
+def test_list_sandboxes_v2_serializes_non_string_filter_values():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(template=[123, 456], state=7)
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['template'] == ['123,456']
+    assert query['state'] == ['7']
+
+
+def test_list_sandboxes_v2_does_not_join_mapping_keys():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(template={'template': 'python'})
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['template'] == ["{'template': 'python'}"]
+
+
+def test_list_sandboxes_v2_preserves_bytes_and_unicode_filter_values():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(
+        template=[u'团队/模板', b'team/node'],
+        state=[b'running'],
+    )
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    template_value = query['template'][0]
+    if not isinstance(template_value, type(u'')):
+        template_value = template_value.decode('utf-8')
+    assert template_value == u'团队/模板,team/node'
+    assert query['state'] == ['running']
+
+
+def test_template_responses_preserve_names_and_ownership_metadata():
+    session = RecordingSession([DummyResponse(200, {
+        'templateID': 'tmpl123',
+        'aliases': ['python'],
+        'names': ['qiniu/python'],
+        'isOwner': False,
+        'builds': [],
+    })])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    template = client.get_template('tmpl123')
+
+    assert template['aliases'] == ['python']
+    assert template['names'] == ['qiniu/python']
+    assert template['isOwner'] is False
+    assert template['builds'] == []
+
+
+def test_get_sandbox_injections_returns_current_rules():
+    session = RecordingSession([DummyResponse(200, {
+        'injections': [{'type': 'id', 'ruleID': 'rule123'}],
+    })])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    result = client.get_sandbox_injections('sandbox/id')
+
+    assert result == {
+        'injections': [{'type': 'id', 'ruleID': 'rule123'}],
+    }
+    request = session.requests[0]
+    assert request.method == 'GET'
+    assert request.url == (
+        DEFAULT_ENDPOINT + '/sandboxes/sandbox%2Fid/injections')
+
+
+def test_update_sandbox_injections_replaces_normalized_rules():
+    session = RecordingSession([DummyResponse(204)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    result = client.update_sandbox_injections('sbx123', [{
+        'type': 'openai',
+        'baseUrl': 'https://api.openai.com/v1/*',
+        'apiKey': 'secret',
+    }])
+
+    assert result is None
+    request = session.requests[0]
+    assert request.method == 'PUT'
+    assert request.url == DEFAULT_ENDPOINT + '/sandboxes/sbx123/injections'
+    assert body_of(request) == {'injections': [{
+        'type': 'openai',
+        'base_url': 'https://api.openai.com/v1/*',
+        'api_key': 'secret',
+    }]}
+
+
+def test_update_sandbox_injections_accepts_empty_replacement():
+    session = RecordingSession([DummyResponse(204)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    assert client.update_sandbox_injections('sbx123', []) is None
+    assert body_of(session.requests[0]) == {'injections': []}
+
+
+def test_update_sandbox_injections_wraps_single_rule():
+    session = RecordingSession([DummyResponse(204)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.update_sandbox_injections('sbx123', {
+        'type': 'http',
+        'baseUrl': 'https://api.example.com/*',
+    })
+
+    assert body_of(session.requests[0]) == {'injections': [{
+        'type': 'http',
+        'base_url': 'https://api.example.com/*',
+    }]}
+
+
+def test_update_sandbox_injections_wraps_single_rule_object():
+    class InjectionRule(object):
+        def to_dict(self):
+            return {
+                'type': 'openai',
+                'apiKey': 'secret',
+            }
+
+    session = RecordingSession([DummyResponse(204)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.update_sandbox_injections('sbx123', InjectionRule())
+
+    assert body_of(session.requests[0]) == {'injections': [{
+        'type': 'openai',
+        'api_key': 'secret',
+    }]}
+
+
+def test_update_sandbox_injections_requires_rules_value():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.update_sandbox_injections('sbx123', None)
+
+    assert 'injections is required' in str(err.value)
+    assert client.session.requests == []
+
+
+@pytest.mark.parametrize('injections', [
+    'invalid-string-injection',
+    b'invalid-bytes-injection',
+])
+def test_update_sandbox_injections_rejects_string_value(injections):
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.update_sandbox_injections('sbx123', injections)
+
+    assert 'injections must be a list, dict, or rule object' in str(err.value)
+    assert client.session.requests == []
+
+
+def test_update_sandbox_injections_rejects_non_iterable_scalar():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.update_sandbox_injections('sbx123', 123)
+
+    assert 'injections must be a list, dict, or rule object' in str(err.value)
+    assert client.session.requests == []
+
+
+def test_update_sandbox_github_token_uses_api_field_name():
+    session = RecordingSession([DummyResponse(204)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    result = client.update_sandbox_github_token(
+        'sbx123', authorization_token='github-token')
+
+    assert result is None
+    request = session.requests[0]
+    assert request.method == 'PUT'
+    assert request.url == DEFAULT_ENDPOINT + '/sandboxes/sbx123/github-token'
+    assert body_of(request) == {'authorization_token': 'github-token'}
+
+
+def test_update_sandbox_github_token_accepts_camel_case_alias():
+    session = RecordingSession([DummyResponse(204)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.update_sandbox_github_token(
+        'sbx123', authorizationToken='github-token')
+
+    assert body_of(session.requests[0]) == {
+        'authorization_token': 'github-token',
+    }
+
+
+def test_update_sandbox_github_token_requires_token():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        client.update_sandbox_github_token('sbx123')
+
+    assert 'authorization_token is required' in str(err.value)
+    assert client.session.requests == []
+
+
+@pytest.mark.parametrize('method,args', [
+    ('get_sandbox_injections', ()),
+    ('update_sandbox_injections', ([],)),
+    ('update_sandbox_github_token', ('github-token',)),
+])
+def test_runtime_configuration_methods_require_sandbox_id(method, args):
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(SandboxError) as err:
+        getattr(client, method)(None, *args)
+
+    assert 'sandbox_id is required' in str(err.value)
+    assert client.session.requests == []
+
+
+def test_runtime_configuration_camel_case_aliases():
+    session = RecordingSession([
+        DummyResponse(200, {'injections': []}),
+        DummyResponse(204),
+        DummyResponse(204),
+    ])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    assert client.getSandboxInjections('sbx123') == {'injections': []}
+    assert client.updateSandboxInjections('sbx123', []) is None
+    assert client.updateSandboxGithubToken('sbx123', 'github-token') is None
+
+    assert [request.method for request in session.requests] == [
+        'GET', 'PUT', 'PUT',
+    ]
+
+
+def test_sandbox_runtime_configuration_helpers_delegate_to_client():
+    class RuntimeConfigClient(object):
+        def __init__(self):
+            self.calls = []
+
+        def get_sandbox_injections(self, sandbox_id):
+            self.calls.append(('get', sandbox_id))
+            return {'injections': []}
+
+        def update_sandbox_injections(self, sandbox_id, injections):
+            self.calls.append(('injections', sandbox_id, injections))
+
+        def update_sandbox_github_token(self, sandbox_id, token):
+            self.calls.append(('github', sandbox_id, token))
+
+    client = RuntimeConfigClient()
+    sandbox = Sandbox(client=client, sandbox_id='sbx123')
+
+    assert sandbox.get_injections() == {'injections': []}
+    assert sandbox.update_injections([{'type': 'id', 'ruleID': 'rule123'}]) \
+        is None
+    assert sandbox.update_github_token('github-token') is None
+    assert client.calls == [
+        ('get', 'sbx123'),
+        ('injections', 'sbx123', [{'type': 'id', 'ruleID': 'rule123'}]),
+        ('github', 'sbx123', 'github-token'),
+    ]
+
+
+def test_sandbox_runtime_configuration_camel_case_aliases_delegate():
+    class RuntimeConfigClient(object):
+        def get_sandbox_injections(self, sandbox_id):
+            return {'sandboxID': sandbox_id, 'injections': []}
+
+        def update_sandbox_injections(self, sandbox_id, injections):
+            return sandbox_id, injections
+
+        def update_sandbox_github_token(self, sandbox_id, token):
+            return sandbox_id, token
+
+    sandbox = Sandbox(client=RuntimeConfigClient(), sandbox_id='sbx123')
+
+    assert sandbox.getInjections()['sandboxID'] == 'sbx123'
+    assert sandbox.updateInjections([]) == ('sbx123', [])
+    assert sandbox.updateGithubToken('token') == ('sbx123', 'token')
+
+
+def test_sandbox_github_token_helper_forwards_keyword_aliases():
+    class RuntimeConfigClient(object):
+        def update_sandbox_github_token(
+                self, sandbox_id, authorization_token=None, **opts):
+            return sandbox_id, authorization_token, opts
+
+    sandbox = Sandbox(client=RuntimeConfigClient(), sandbox_id='sbx123')
+
+    assert sandbox.update_github_token(token='token') == (
+        'sbx123', None, {'token': 'token'},
+    )
+    assert sandbox.updateGithubToken(authorizationToken='camel-token') == (
+        'sbx123', None, {'authorizationToken': 'camel-token'},
+    )
+
+
 def test_wait_for_build_retries_transient_sandbox_errors(monkeypatch):
     class BuildClient(SandboxClient):
         def __init__(self):

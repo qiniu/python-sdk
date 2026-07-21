@@ -31,6 +31,9 @@ def main():
             created.get('id')
         )
         print('template:', created)
+        details = client.get_template(template_id)
+        print('names:', details.get('names'))
+        print('owned by requesting team:', details.get('isOwner'))
     finally:
         if template_id:
             try:
