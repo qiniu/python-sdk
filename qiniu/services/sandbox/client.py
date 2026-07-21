@@ -5,7 +5,12 @@ import time
 import requests
 
 from qiniu.auth import QiniuMacAuth, QiniuMacRequestsAuth
-from qiniu.compat import basestring, str as text_type, urlencode
+from qiniu.compat import (
+    basestring,
+    bytes as bytes_type,
+    str as text_type,
+    urlencode,
+)
 
 from .constants import DEFAULT_TEMPLATE
 from .errors import SandboxError, TemplateBuildError
@@ -152,9 +157,16 @@ def _normalize_list_options(opts):
         if query.get(key) is not None:
             opts[key] = query.get(key)
         value = opts.get(key)
-        if value is not None and not isinstance(value, basestring):
+        if isinstance(value, bytes_type):
+            opts[key] = value.decode('utf-8')
+        elif value is not None and not isinstance(value, basestring):
             try:
-                opts[key] = ','.join(text_type(item) for item in value)
+                opts[key] = text_type(',').join(
+                    item.decode('utf-8')
+                    if isinstance(item, bytes_type)
+                    else text_type(item)
+                    for item in value
+                )
             except TypeError:
                 opts[key] = text_type(value)
     return opts
@@ -395,6 +407,8 @@ class SandboxClient(object):
         _require_sandbox_id(sandbox_id)
         if injections is None:
             raise SandboxError('injections is required')
+        if isinstance(injections, dict):
+            injections = [injections]
         return self._request(
             'PUT',
             '/sandboxes/{0}/injections'.format(encode_path(sandbox_id)),

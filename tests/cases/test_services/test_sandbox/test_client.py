@@ -802,12 +802,15 @@ def test_list_sandboxes_v2_preserves_bytes_and_unicode_filter_values():
     client = SandboxClient(api_key='api-key', session=session)
 
     client.list_sandboxes_v2(
-        template=[u'团队/模板'],
-        state=b'running',
+        template=[u'团队/模板', b'team/node'],
+        state=[b'running'],
     )
 
     query = parse_qs(urlparse(session.requests[0].url).query)
-    assert query['template'] == [u'团队/模板']
+    template_value = query['template'][0]
+    if not isinstance(template_value, type(u'')):
+        template_value = template_value.decode('utf-8')
+    assert template_value == u'团队/模板,team/node'
     assert query['state'] == ['running']
 
 
@@ -873,6 +876,21 @@ def test_update_sandbox_injections_accepts_empty_replacement():
 
     assert client.update_sandbox_injections('sbx123', []) is None
     assert body_of(session.requests[0]) == {'injections': []}
+
+
+def test_update_sandbox_injections_wraps_single_rule():
+    session = RecordingSession([DummyResponse(204)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.update_sandbox_injections('sbx123', {
+        'type': 'http',
+        'baseUrl': 'https://api.example.com/*',
+    })
+
+    assert body_of(session.requests[0]) == {'injections': [{
+        'type': 'http',
+        'base_url': 'https://api.example.com/*',
+    }]}
 
 
 def test_update_sandbox_injections_requires_rules_value():
