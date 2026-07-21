@@ -155,13 +155,11 @@ def _normalize_list_options(opts):
         opts['metadata'] = urlencode(opts.get('metadata'))
     for key, value in query.items():
         if (
-                key not in ('metadata', 'state', 'template') and
+                key != 'metadata' and
                 key not in opts and
                 value is not None):
             opts[key] = value
     for key in ('state', 'template'):
-        if query.get(key) is not None and key not in opts:
-            opts[key] = query.get(key)
         value = opts.get(key)
         if isinstance(value, bytes_type):
             opts[key] = value.decode('utf-8')
