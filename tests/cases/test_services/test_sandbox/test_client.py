@@ -797,6 +797,16 @@ def test_list_sandboxes_v2_serializes_non_string_filter_values():
     assert query['state'] == ['7']
 
 
+def test_list_sandboxes_v2_does_not_join_mapping_keys():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(template={'template': 'python'})
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['template'] == ["{'template': 'python'}"]
+
+
 def test_list_sandboxes_v2_preserves_bytes_and_unicode_filter_values():
     session = RecordingSession([DummyResponse(200, {'items': []})])
     client = SandboxClient(api_key='api-key', session=session)
@@ -890,6 +900,25 @@ def test_update_sandbox_injections_wraps_single_rule():
     assert body_of(session.requests[0]) == {'injections': [{
         'type': 'http',
         'base_url': 'https://api.example.com/*',
+    }]}
+
+
+def test_update_sandbox_injections_wraps_single_rule_object():
+    class InjectionRule(object):
+        def to_dict(self):
+            return {
+                'type': 'openai',
+                'apiKey': 'secret',
+            }
+
+    session = RecordingSession([DummyResponse(204)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.update_sandbox_injections('sbx123', InjectionRule())
+
+    assert body_of(session.requests[0]) == {'injections': [{
+        'type': 'openai',
+        'api_key': 'secret',
     }]}
 
 

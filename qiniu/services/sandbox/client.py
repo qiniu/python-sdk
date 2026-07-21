@@ -159,16 +159,16 @@ def _normalize_list_options(opts):
         value = opts.get(key)
         if isinstance(value, bytes_type):
             opts[key] = value.decode('utf-8')
+        elif hasattr(value, '__iter__') and not isinstance(
+                value, (basestring, dict)):
+            opts[key] = text_type(',').join(
+                item.decode('utf-8')
+                if isinstance(item, bytes_type)
+                else text_type(item)
+                for item in value
+            )
         elif value is not None and not isinstance(value, basestring):
-            try:
-                opts[key] = text_type(',').join(
-                    item.decode('utf-8')
-                    if isinstance(item, bytes_type)
-                    else text_type(item)
-                    for item in value
-                )
-            except TypeError:
-                opts[key] = text_type(value)
+            opts[key] = text_type(value)
     return opts
 
 
@@ -407,7 +407,7 @@ class SandboxClient(object):
         _require_sandbox_id(sandbox_id)
         if injections is None:
             raise SandboxError('injections is required')
-        if isinstance(injections, dict):
+        if isinstance(injections, dict) or hasattr(injections, 'to_dict'):
             injections = [injections]
         return self._request(
             'PUT',
