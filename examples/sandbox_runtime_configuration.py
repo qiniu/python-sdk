@@ -22,16 +22,13 @@ def main():
         }])
         print('updated injections:', sandbox.get_injections())
 
-        github_token = (
-            os.getenv('QINIU_SANDBOX_GITHUB_TOKEN') or
-            os.getenv('GITHUB_TOKEN')
-        )
+        github_token = os.getenv('QINIU_SANDBOX_GITHUB_TOKEN')
         if github_token:
             sandbox.update_github_token(github_token)
             print('updated GitHub token')
         else:
             print('GitHub token update skipped: '
-                  'QINIU_SANDBOX_GITHUB_TOKEN/GITHUB_TOKEN is not set')
+                  'QINIU_SANDBOX_GITHUB_TOKEN is not set')
     finally:
         cleanup_sandbox(sandbox)
 

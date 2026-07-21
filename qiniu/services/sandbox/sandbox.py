@@ -262,9 +262,9 @@ class Sandbox(object):
 
     updateInjections = update_injections
 
-    def update_github_token(self, authorization_token):
+    def update_github_token(self, authorization_token=None, **opts):
         return self.client.update_sandbox_github_token(
-            self.sandbox_id, authorization_token)
+            self.sandbox_id, authorization_token, **opts)
 
     updateGithubToken = update_github_token
 

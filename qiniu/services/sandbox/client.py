@@ -153,7 +153,10 @@ def _normalize_list_options(opts):
             opts[key] = query.get(key)
         value = opts.get(key)
         if value is not None and not isinstance(value, basestring):
-            opts[key] = ','.join(value)
+            try:
+                opts[key] = ','.join(str(item) for item in value)
+            except TypeError:
+                opts[key] = str(value)
     return opts
 
 

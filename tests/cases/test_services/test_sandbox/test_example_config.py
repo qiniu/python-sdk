@@ -25,6 +25,8 @@ def test_examples_handle_runtime_branches_in_code():
     connect = read_project_file('examples', 'sandbox_connect.py')
     resources = read_project_file('examples', 'sandbox_resources.py')
     runtime = read_project_file('examples', 'sandbox_runtime.py')
+    runtime_configuration = read_project_file(
+        'examples', 'sandbox_runtime_configuration.py')
     integration = read_project_file(
         'tests',
         'cases',
@@ -37,6 +39,7 @@ def test_examples_handle_runtime_branches_in_code():
     assert 'QINIU_SANDBOX_KODO_READ_ONLY' not in resources
     assert 'QINIU_SANDBOX_RUN_INTEGRATION' not in runtime
     assert 'QINIU_SANDBOX_TEST_TIMEOUT' not in runtime
+    assert "os.getenv('GITHUB_TOKEN')" not in runtime_configuration
     assert 'QINIU_SANDBOX_RUN_INTEGRATION' not in integration
     assert 'QINIU_SANDBOX_TEST_TIMEOUT' not in integration
 
@@ -127,7 +130,7 @@ def test_examples_cover_primary_sandbox_surfaces():
             'get_injections',
             'update_injections',
             'update_github_token',
-            "os.getenv('GITHUB_TOKEN')",
+            "os.getenv('QINIU_SANDBOX_GITHUB_TOKEN')",
             'list_sandboxes_v2(',
             'template=[sandbox.template_id]',
         ],

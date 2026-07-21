@@ -786,6 +786,17 @@ def test_list_sandboxes_v2_serializes_array_filters_from_query_options():
     assert query['state'] == ['running,paused']
 
 
+def test_list_sandboxes_v2_serializes_non_string_filter_values():
+    session = RecordingSession([DummyResponse(200, {'items': []})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes_v2(template=[123, 456], state=7)
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['template'] == ['123,456']
+    assert query['state'] == ['7']
+
+
 def test_template_responses_preserve_names_and_ownership_metadata():
     session = RecordingSession([DummyResponse(200, {
         'templateID': 'tmpl123',
@@ -973,6 +984,22 @@ def test_sandbox_runtime_configuration_camel_case_aliases_delegate():
     assert sandbox.getInjections()['sandboxID'] == 'sbx123'
     assert sandbox.updateInjections([]) == ('sbx123', [])
     assert sandbox.updateGithubToken('token') == ('sbx123', 'token')
+
+
+def test_sandbox_github_token_helper_forwards_keyword_aliases():
+    class RuntimeConfigClient(object):
+        def update_sandbox_github_token(
+                self, sandbox_id, authorization_token=None, **opts):
+            return sandbox_id, authorization_token, opts
+
+    sandbox = Sandbox(client=RuntimeConfigClient(), sandbox_id='sbx123')
+
+    assert sandbox.update_github_token(token='token') == (
+        'sbx123', None, {'token': 'token'},
+    )
+    assert sandbox.updateGithubToken(authorizationToken='camel-token') == (
+        'sbx123', None, {'authorizationToken': 'camel-token'},
+    )
 
 
 def test_wait_for_build_retries_transient_sandbox_errors(monkeypatch):
