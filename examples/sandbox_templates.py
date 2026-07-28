@@ -18,6 +18,17 @@ def main():
         .set_env('PYTHONUNBUFFERED', '1')
     )
 
+    default_templates = client.list_default_templates()
+    print('default templates:', len(default_templates))
+    for default_template in default_templates:
+        print(
+            '  - {0} (names: {1}, build status: {2})'.format(
+                default_template.get('templateID'),
+                default_template.get('names') or [],
+                default_template.get('buildStatus'),
+            )
+        )
+
     try:
         created = client.create_template(
             name='qiniu-python-sdk-example-{0}'.format(

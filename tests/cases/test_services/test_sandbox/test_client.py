@@ -544,6 +544,53 @@ def test_delete_template_requires_template_id():
     assert 'template_id is required' in str(err.value)
 
 
+def test_list_default_templates_uses_public_endpoint():
+    templates = [
+        {
+            'templateID': 'tmpl-default-1',
+            'names': ['qiniu/code-interpreter'],
+            'buildStatus': 'ready',
+        },
+        {
+            'templateID': 'tmpl-default-2',
+            'names': ['qiniu/python'],
+            'buildStatus': 'ready',
+        },
+    ]
+    session = RecordingSession([DummyResponse(200, templates)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    result = client.list_default_templates()
+
+    assert result == templates
+    request = session.requests[0]
+    assert request.method == 'GET'
+    assert request.url == DEFAULT_ENDPOINT + '/default-templates'
+
+
+def test_list_default_templates_raises_sandbox_error_on_api_error():
+    session = RecordingSession([
+        DummyResponse(401, {'message': 'unauthorized'}),
+    ])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    with pytest.raises(SandboxError) as err:
+        client.list_default_templates()
+
+    assert 'status 401: unauthorized' in str(err.value)
+    assert err.value.response.status_code == 401
+    assert err.value.data == {'message': 'unauthorized'}
+
+
+def test_list_default_templates_camel_case_alias():
+    templates = [{'templateID': 'tmpl-default'}]
+    session = RecordingSession([DummyResponse(200, templates)])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    assert client.listDefaultTemplates() == templates
+    assert session.requests[0].url == DEFAULT_ENDPOINT + '/default-templates'
+
+
 def test_sandbox_envd_and_file_urls_are_signed_when_token_is_available():
     sandbox = Sandbox(info={
         'sandboxID': 'sbx123',
