@@ -49,6 +49,7 @@ def test_examples_cover_primary_sandbox_surfaces():
         'sandbox_commands.py',
         'sandbox_connect.py',
         'sandbox_create.py',
+        'sandbox_default_templates.py',
         'sandbox_filesystem.py',
         'sandbox_git.py',
         'sandbox_injection_rules.py',
@@ -71,6 +72,13 @@ def test_examples_cover_primary_sandbox_surfaces():
             'commands.close_stdin',
             'commands.kill',
             'commands.connect',
+        ],
+        'sandbox_default_templates.py': [
+            'run_example(main)',
+            'list_default_templates',
+            "template.get('templateID')",
+            "template.get('names')",
+            "template.get('buildStatus')",
         ],
         'sandbox_filesystem.py': [
             'files.make_dir',
@@ -135,6 +143,7 @@ def test_examples_cover_primary_sandbox_surfaces():
             'template=[sandbox.template_id]',
         ],
         'sandbox_templates.py': [
+            'list_default_templates',
             'get_template',
             "details.get('names')",
             "details.get('isOwner')",

@@ -87,6 +87,16 @@ def remote_git_credentials():
     return repo_url, username, password
 
 
+def test_list_default_templates():
+    templates = integration_client().list_default_templates()
+
+    assert isinstance(templates, list)
+    assert templates
+    for template in templates:
+        assert isinstance(template, dict)
+        assert template.get('templateID')
+
+
 def test_create_run_filesystem_and_kill_sandbox():
     sandbox = None
     client = integration_client()
