@@ -2,10 +2,11 @@
 
 
 class SandboxError(Exception):
-    def __init__(self, message, response=None, data=None):
+    def __init__(self, message, response=None, data=None, cause=None):
         super(SandboxError, self).__init__(message)
         self.response = response
         self.data = data
+        self.cause = cause
         self.status_code = getattr(response, 'status_code', None)
 
 

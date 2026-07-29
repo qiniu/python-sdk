@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import numbers
 import os
 import random
 import time
@@ -186,6 +187,28 @@ def _sandbox_api_key_from_env():
     )
 
 
+def _normalize_max_retries(value, source, allow_string=False):
+    if isinstance(value, bool):
+        raise SandboxError(
+            '{0} must be a non-negative integer'.format(source))
+    if isinstance(value, basestring):
+        if not allow_string:
+            raise SandboxError(
+                '{0} must be a non-negative integer'.format(source))
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            raise SandboxError(
+                '{0} must be a non-negative integer'.format(source))
+    elif not isinstance(value, numbers.Integral):
+        raise SandboxError(
+            '{0} must be a non-negative integer'.format(source))
+    if value < 0:
+        raise SandboxError(
+            '{0} must be a non-negative integer'.format(source))
+    return int(value)
+
+
 class SandboxClient(object):
     def __init__(self, endpoint=None, api_url=None, api_key=None,
                  access_token=None, mac=None, access_key=None,
@@ -205,11 +228,15 @@ class SandboxClient(object):
             self.mac = QiniuMacAuth(access_key, secret_key)
         self.session = session or requests.Session()
         self.timeout = timeout if timeout is not None else 30
-        if max_retries is not None:
-            self.max_retries = max_retries
-        else:
+        if max_retries is None:
             env_val = os.getenv('SANDBOX_RETRY_MAX')
-            self.max_retries = int(env_val) if env_val and env_val.isdigit() else 5
+            self.max_retries = (
+                _normalize_max_retries(
+                    env_val, 'SANDBOX_RETRY_MAX', allow_string=True)
+                if env_val else 5)
+        else:
+            self.max_retries = _normalize_max_retries(
+                max_retries, 'max_retries')
 
     def _headers(self, auth_type=None):
         headers = {'Content-Type': 'application/json'}
@@ -260,7 +287,8 @@ class SandboxClient(object):
         try:
             response = self.session.send(prepared, timeout=self.timeout)
         except requests.RequestException as err:
-            raise SandboxError('Sandbox API request failed: {0}'.format(err))
+            raise SandboxError(
+                'Sandbox API request failed: {0}'.format(err), cause=err)
         if response.status_code < 200 or response.status_code >= 300:
             response_data = None
             try:
@@ -291,26 +319,13 @@ class SandboxClient(object):
 
     def _is_retryable(self, err):
         if isinstance(err, SandboxError):
-            sc = getattr(err, 'status_code', None) or 0
+            sc = getattr(err, 'status_code', None)
             if sc == 408:
                 return True
-            if sc >= 500 and sc != 501:
+            if sc is not None and sc >= 500 and sc != 501:
                 return True
-            if sc == 0:
-                return self._is_retryable_message(str(err))
-            return False
-        return self._is_retryable_message(str(err))
-
-    def _is_retryable_message(self, msg):
-        msg = msg.lower()
-        for pattern in (
-            'connection refused', 'connection reset', 'broken pipe',
-            'no such host', 'unexpected eof', 'use of closed',
-            'timed out', 'timeout', 'failed to resolve',
-        ):
-            if pattern in msg:
-                return True
-        return False
+            err = getattr(err, 'cause', None)
+        return isinstance(err, (requests.ConnectionError, requests.Timeout))
 
     def _retry_call(self, fn):
         for attempt in range(self.max_retries + 1):

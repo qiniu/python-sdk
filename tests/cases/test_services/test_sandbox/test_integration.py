@@ -304,10 +304,10 @@ def test_list_and_connect_existing_sandbox():
 def test_create_retry_with_git_clone():
     """挂载大仓库时 clone 可能超时返回 408，幂等键保证重试不会重复创建沙箱。"""
     client = integration_client()
-    repo_url = os.getenv('GITHUB_REPO_URL')
+    repo_url = os.getenv('GIT_REPO_URL')
     token = os.getenv('GITHUB_TOKEN')
     if not repo_url or not token:
-        pytest.skip('GITHUB_REPO_URL / GITHUB_TOKEN 未设置')
+        pytest.skip('GIT_REPO_URL / GITHUB_TOKEN 未设置')
 
     print('\n仓库: {}, 幂等键: sdk-retry-git-{}'.format(
         repo_url, int(time.time())))
