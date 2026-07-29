@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import time
+import uuid
 
 import requests
 
@@ -187,7 +188,8 @@ def _sandbox_api_key_from_env():
 class SandboxClient(object):
     def __init__(self, endpoint=None, api_url=None, api_key=None,
                  access_token=None, mac=None, access_key=None,
-                 secret_key=None, session=None, timeout=None, **opts):
+                 secret_key=None, session=None, timeout=None,
+                 max_retries=None, **opts):
         access_key = access_key or os.getenv('QINIU_SANDBOX_ACCESS_KEY')
         secret_key = secret_key or os.getenv('QINIU_SANDBOX_SECRET_KEY')
         if (access_key and not secret_key) or (secret_key and not access_key):
@@ -202,6 +204,11 @@ class SandboxClient(object):
             self.mac = QiniuMacAuth(access_key, secret_key)
         self.session = session or requests.Session()
         self.timeout = timeout if timeout is not None else 30
+        if max_retries is not None:
+            self.max_retries = max_retries
+        else:
+            env_val = os.getenv('SANDBOX_RETRY_MAX')
+            self.max_retries = int(env_val) if env_val and env_val.isdigit() else 5
 
     def _headers(self, auth_type=None):
         headers = {'Content-Type': 'application/json'}
@@ -233,10 +240,12 @@ class SandboxClient(object):
         return None
 
     def _request(self, method, path, params=None, body=_UNSET,
-                 auth_type=None, empty=False):
+                 auth_type=None, empty=False, extra_headers=None):
         url = self.endpoint + path
         data = None if body is _UNSET else json_dumps(body)
         headers = self._headers(auth_type)
+        if extra_headers:
+            headers.update(extra_headers)
         auth = self._auth(auth_type)
         request = requests.Request(
             method=method,
@@ -279,6 +288,33 @@ class SandboxClient(object):
             return None
         return parse_json_response(response)
 
+    def _is_retryable(self, err):
+        if isinstance(err, SandboxError):
+            sc = getattr(err, 'status_code', None) or 0
+            if sc == 408:
+                return True
+            if sc >= 500 and sc != 501:
+                return True
+            return False
+        msg = str(err).lower()
+        for pattern in (
+            'connection refused', 'connection reset', 'broken pipe',
+            'no such host', 'unexpected eof', 'use of closed',
+            'timed out', 'timeout',
+        ):
+            if pattern in msg:
+                return True
+        return False
+
+    def _retry_call(self, fn):
+        for attempt in range(self.max_retries + 1):
+            try:
+                return fn()
+            except (SandboxError, requests.RequestException) as err:
+                if attempt < self.max_retries and self._is_retryable(err):
+                    continue
+                raise
+
     def list_sandboxes(self, **opts):
         return self._request('GET', '/sandboxes', params=opts)
 
@@ -299,11 +335,18 @@ class SandboxClient(object):
             _has_kodo_resource(body.get('resources')) or
             _has_saved_injection_rule(body.get('injections'))
         ) else None
-        return self._request(
-            'POST',
-            '/sandboxes',
-            body=body,
-            auth_type=auth_type)
+        idempotency_key = opts.get('idempotency_key') or opts.get('idempotencyKey')
+        if not idempotency_key:
+            idempotency_key = str(uuid.uuid4())
+        return self._retry_call(
+            lambda: self._request(
+                'POST',
+                '/sandboxes',
+                body=body,
+                auth_type=auth_type,
+                extra_headers={'Idempotency-Key': idempotency_key},
+            )
+        )
 
     createSandbox = create_sandbox
     create = create_sandbox
@@ -353,10 +396,12 @@ class SandboxClient(object):
 
     def connect_sandbox(self, sandbox_id, timeout=15):
         _require_sandbox_id(sandbox_id)
-        return self._request(
-            'POST',
-            '/sandboxes/{0}/connect'.format(encode_path(sandbox_id)),
-            body={'timeout': timeout},
+        return self._retry_call(
+            lambda: self._request(
+                'POST',
+                '/sandboxes/{0}/connect'.format(encode_path(sandbox_id)),
+                body={'timeout': timeout},
+            )
         )
 
     connectSandbox = connect_sandbox
