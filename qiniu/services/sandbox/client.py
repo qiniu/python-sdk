@@ -296,8 +296,13 @@ class SandboxClient(object):
                 return True
             if sc >= 500 and sc != 501:
                 return True
+            if sc == 0:
+                return self._is_retryable_message(str(err))
             return False
-        msg = str(err).lower()
+        return self._is_retryable_message(str(err))
+
+    def _is_retryable_message(self, msg):
+        msg = msg.lower()
         for pattern in (
             'connection refused', 'connection reset', 'broken pipe',
             'no such host', 'unexpected eof', 'use of closed',
