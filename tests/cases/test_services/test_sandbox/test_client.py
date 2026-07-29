@@ -188,6 +188,28 @@ def test_sandbox_client_allows_zero_max_retries():
     assert client.max_retries == 0
 
 
+def test_sandbox_create_forwards_max_retries(monkeypatch):
+    created_clients = []
+
+    class CapturingClient(object):
+        def __init__(self, **opts):
+            self.max_retries = opts.get('max_retries')
+            created_clients.append(self)
+
+        def create_sandbox(self, *args, **opts):
+            return {'sandboxID': 'sbx123'}
+
+        def get_sandbox(self, sandbox_id):
+            return {'sandboxID': sandbox_id, 'envdAccessToken': 'token'}
+
+    monkeypatch.setattr(sandbox_module, 'SandboxClient', CapturingClient)
+
+    sandbox = Sandbox.create('base', max_retries=0)
+
+    assert sandbox.sandbox_id == 'sbx123'
+    assert created_clients[0].max_retries == 0
+
+
 def test_create_sandbox_rejects_conflicting_option_aliases():
     client = SandboxClient(api_key='api-key', session=RecordingSession())
 

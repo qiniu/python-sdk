@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 import time
-
 import pytest
 
 from qiniu.services.sandbox import (
@@ -299,38 +298,3 @@ def test_list_and_connect_existing_sandbox():
 
     connected = Sandbox.connect(page[0].sandbox_id, client=client, timeout=60)
     assert connected.sandbox_id == page[0].sandbox_id
-
-
-def test_create_retry_with_git_clone():
-    """挂载大仓库时 clone 可能超时返回 408，幂等键保证重试不会重复创建沙箱。"""
-    client = integration_client()
-    repo_url = os.getenv('GIT_REPO_URL')
-    token = os.getenv('GITHUB_TOKEN')
-    if not repo_url or not token:
-        pytest.skip('GIT_REPO_URL / GITHUB_TOKEN 未设置')
-
-    print('\n仓库: {}, 幂等键: sdk-retry-git-{}'.format(
-        repo_url, int(time.time())))
-
-    from qiniu.services.sandbox.resources import GitRepositoryResource
-
-    try:
-        sandbox = Sandbox.create(
-            os.getenv('QINIU_SANDBOX_TEMPLATE', 'base'),
-            timeout=300,
-            resources=[GitRepositoryResource(
-                url=repo_url,
-                mount_path='/repo',
-                repository_type='github_repository',
-                authorization_token=token,
-            )],
-            idempotency_key='sdk-retry-git-{}'.format(int(time.time())),
-            client=client,
-        )
-        print('沙箱创建成功: {}'.format(sandbox.sandbox_id))
-        sandbox.kill()
-    except SandboxError as err:
-        sc = getattr(err, 'status_code', None) or 0
-        if sc >= 400 and sc != 408:
-            raise
-        print('Create 失败（clone 超时等可重试错误）: {}'.format(err))

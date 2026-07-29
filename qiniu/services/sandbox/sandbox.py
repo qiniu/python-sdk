@@ -142,7 +142,8 @@ class Sandbox(object):
                idempotency_key=None, **opts):
         client_opts = {}
         for key in ('endpoint', 'api_url', 'api_key', 'access_token',
-                    'mac', 'access_key', 'secret_key', 'session'):
+                    'mac', 'access_key', 'secret_key', 'session',
+                    'max_retries'):
             if key in opts:
                 client_opts[key] = opts.pop(key)
         client = client or SandboxClient(**client_opts)
