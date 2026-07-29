@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import random
 import time
 import uuid
 
@@ -312,6 +313,8 @@ class SandboxClient(object):
                 return fn()
             except (SandboxError, requests.RequestException) as err:
                 if attempt < self.max_retries and self._is_retryable(err):
+                    base = min(0.5 * (2 ** attempt), 10)
+                    time.sleep(base + random.random() * base / 2)
                     continue
                 raise
 
