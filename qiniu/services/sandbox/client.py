@@ -306,7 +306,7 @@ class SandboxClient(object):
         for pattern in (
             'connection refused', 'connection reset', 'broken pipe',
             'no such host', 'unexpected eof', 'use of closed',
-            'timed out', 'timeout',
+            'timed out', 'timeout', 'failed to resolve',
         ):
             if pattern in msg:
                 return True

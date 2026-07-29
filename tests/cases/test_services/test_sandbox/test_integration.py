@@ -331,6 +331,6 @@ def test_create_retry_with_git_clone():
         sandbox.kill()
     except SandboxError as err:
         sc = getattr(err, 'status_code', None) or 0
-        if sc >= 400 and sc < 500:
+        if sc >= 400 and sc != 408:
             raise
         print('Create 失败（clone 超时等可重试错误）: {}'.format(err))
