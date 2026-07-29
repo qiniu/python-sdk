@@ -4,6 +4,7 @@ import json
 
 import pytest
 import requests
+import qiniu.services.sandbox.client as sandbox_client_module
 import qiniu.services.sandbox.sandbox as sandbox_module
 
 try:
@@ -120,6 +121,93 @@ def test_client_uses_default_endpoint_and_api_key_headers():
         'timeout': 60,
         'envVars': {'A': 'B'},
     }
+
+
+@pytest.mark.parametrize('status_code', [408, 500])
+def test_create_sandbox_retries_retryable_status_and_reuses_idempotency_key(
+        monkeypatch, status_code):
+    session = RecordingSession([
+        ErrorResponse(status_code),
+        DummyResponse(201, {'sandboxID': 'sbx123'}),
+    ])
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    client = SandboxClient(
+        api_key='api-key', session=session, max_retries=1)
+
+    result = client.create_sandbox(
+        template='base', idempotency_key='retry-key')
+
+    assert result['sandboxID'] == 'sbx123'
+    assert len(session.requests) == 2
+    assert [request.headers['Idempotency-Key'] for request in session.requests] == [
+        'retry-key', 'retry-key']
+
+
+@pytest.mark.parametrize(
+    'error_type', [requests.ConnectionError, requests.exceptions.SSLError])
+def test_create_sandbox_retries_transport_error_and_reuses_idempotency_key(
+        monkeypatch, error_type):
+    session = RecordingSession([
+        error_type('[Errno 101] Network is unreachable'),
+        DummyResponse(201, {'sandboxID': 'sbx123'}),
+    ])
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    client = SandboxClient(
+        api_key='api-key', session=session, max_retries=1)
+
+    result = client.create_sandbox(
+        template='base', idempotency_key='retry-key')
+
+    assert result['sandboxID'] == 'sbx123'
+    assert len(session.requests) == 2
+    assert [request.headers['Idempotency-Key'] for request in session.requests] == [
+        'retry-key', 'retry-key']
+
+
+@pytest.mark.parametrize('max_retries', [-1, '1', 1.5, True])
+def test_sandbox_client_rejects_invalid_max_retries(max_retries):
+    with pytest.raises(SandboxError, match='max_retries'):
+        SandboxClient(
+            api_key='api-key', session=RecordingSession(),
+            max_retries=max_retries)
+
+
+@pytest.mark.parametrize('max_retries', ['-1', 'invalid'])
+def test_sandbox_client_rejects_invalid_retry_environment(
+        monkeypatch, max_retries):
+    monkeypatch.setenv('SANDBOX_RETRY_MAX', max_retries)
+
+    with pytest.raises(SandboxError, match='SANDBOX_RETRY_MAX'):
+        SandboxClient(api_key='api-key', session=RecordingSession())
+
+
+def test_sandbox_client_allows_zero_max_retries():
+    client = SandboxClient(
+        api_key='api-key', session=RecordingSession(), max_retries=0)
+
+    assert client.max_retries == 0
+
+
+def test_sandbox_create_forwards_max_retries(monkeypatch):
+    created_clients = []
+
+    class CapturingClient(object):
+        def __init__(self, **opts):
+            self.max_retries = opts.get('max_retries')
+            created_clients.append(self)
+
+        def create_sandbox(self, *args, **opts):
+            return {'sandboxID': 'sbx123'}
+
+        def get_sandbox(self, sandbox_id):
+            return {'sandboxID': sandbox_id, 'envdAccessToken': 'token'}
+
+    monkeypatch.setattr(sandbox_module, 'SandboxClient', CapturingClient)
+
+    sandbox = Sandbox.create('base', max_retries=0)
+
+    assert sandbox.sandbox_id == 'sbx123'
+    assert created_clients[0].max_retries == 0
 
 
 def test_create_sandbox_rejects_conflicting_option_aliases():

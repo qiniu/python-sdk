@@ -139,10 +139,11 @@ class Sandbox(object):
     def create(cls, template=None, client=None, timeout=None, metadata=None,
                envs=None, secure=True, allow_internet_access=True, mcp=None,
                network=None, lifecycle=None, resources=None, injections=None,
-               **opts):
+               idempotency_key=None, **opts):
         client_opts = {}
         for key in ('endpoint', 'api_url', 'api_key', 'access_token',
-                    'mac', 'access_key', 'secret_key', 'session'):
+                    'mac', 'access_key', 'secret_key', 'session',
+                    'max_retries'):
             if key in opts:
                 client_opts[key] = opts.pop(key)
         client = client or SandboxClient(**client_opts)
@@ -158,6 +159,7 @@ class Sandbox(object):
             lifecycle=lifecycle,
             resources=resources,
             injections=injections,
+            idempotency_key=idempotency_key,
             **opts
         )
         sandbox = cls(client=client, info=info)

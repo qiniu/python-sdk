@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 import time
-
 import pytest
 
 from qiniu.services.sandbox import (
