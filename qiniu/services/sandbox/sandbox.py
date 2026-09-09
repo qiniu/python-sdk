@@ -258,6 +258,18 @@ class Sandbox(object):
 
     getInjections = get_injections
 
+    def get_resources(self):
+        return self.client.get_sandbox_resources(self.sandbox_id)
+
+    getResources = get_resources
+
+    def update_git_repository_resource_token(
+            self, resource_id, authorization_token):
+        return self.client.update_git_repository_resource_token(
+            self.sandbox_id, resource_id, authorization_token)
+
+    updateGitRepositoryResourceToken = update_git_repository_resource_token
+
     def update_injections(self, injections):
         return self.client.update_sandbox_injections(
             self.sandbox_id, injections)

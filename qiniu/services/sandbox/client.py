@@ -65,15 +65,27 @@ def _normalize_injection(injection):
 def _normalize_resources(resources):
     if resources is None:
         return None
-    return [_to_dict(resource) for resource in resources]
+    normalized = [_to_dict(resource) for resource in resources]
+    for resource in normalized:
+        if not isinstance(resource, dict) or resource.get('type') != 'kodo':
+            continue
+        if (resource.get('access_key') is None) != (
+                resource.get('secret_key') is None):
+            raise ValueError(
+                'access_key and secret_key must be provided together')
+        if (resource.get('access_key') is not None and
+                (not resource.get('access_key') or
+                 not resource.get('secret_key'))):
+            raise ValueError(
+                'access_key and secret_key must not be empty')
+    return normalized
 
 
 def _has_kodo_resource(resources):
     for resource in resources or []:
-        if isinstance(resource, KodoResource):
-            return True
         data = _to_dict(resource)
-        if isinstance(data, dict) and data.get('type') == 'kodo':
+        if (isinstance(data, dict) and data.get('type') == 'kodo' and
+                (not data.get('access_key') or not data.get('secret_key'))):
             return True
     return False
 
@@ -177,6 +189,17 @@ def _normalize_list_options(opts):
         elif value is not None and not isinstance(value, basestring):
             opts[key] = text_type(value)
     return opts
+
+
+def _normalize_template_create_options(opts):
+    body = dict(opts or {})
+    disk_size_mb = _single_alias_value(
+        body, 'disk_size_mb', 'diskSizeMB')
+    body.pop('disk_size_mb', None)
+    body.pop('diskSizeMB', None)
+    if disk_size_mb is not None:
+        body['diskSizeMB'] = disk_size_mb
+    return body
 
 
 def _sandbox_api_key_from_env():
@@ -475,6 +498,32 @@ class SandboxClient(object):
 
     getSandboxInjections = get_sandbox_injections
 
+    def get_sandbox_resources(self, sandbox_id):
+        _require_sandbox_id(sandbox_id)
+        return self._request(
+            'GET',
+            '/sandboxes/{0}/resources'.format(encode_path(sandbox_id)),
+        )
+
+    getSandboxResources = get_sandbox_resources
+
+    def update_git_repository_resource_token(
+            self, sandbox_id, resource_id, authorization_token):
+        _require_sandbox_id(sandbox_id)
+        if not resource_id:
+            raise SandboxError('resource_id is required')
+        if not authorization_token:
+            raise SandboxError('authorization_token is required')
+        return self._request(
+            'PATCH',
+            '/sandboxes/{0}/resources/{1}'.format(
+                encode_path(sandbox_id), encode_path(resource_id)),
+            body={'authorization_token': authorization_token},
+            empty=True,
+        )
+
+    updateGitRepositoryResourceToken = update_git_repository_resource_token
+
     def update_sandbox_injections(self, sandbox_id, injections):
         _require_sandbox_id(sandbox_id)
         if injections is None:
@@ -583,7 +632,11 @@ class SandboxClient(object):
     getLogs = get_sandbox_logs
 
     def create_template(self, **opts):
-        return self._request('POST', '/v3/templates', body=opts)
+        return self._request(
+            'POST',
+            '/v3/templates',
+            body=_normalize_template_create_options(opts),
+        )
 
     createTemplate = create_template
     createTemplateV3 = create_template

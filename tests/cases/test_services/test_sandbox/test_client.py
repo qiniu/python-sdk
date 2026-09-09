@@ -123,6 +123,52 @@ def test_client_uses_default_endpoint_and_api_key_headers():
     }
 
 
+def test_create_template_maps_disk_size_mb_to_api_field():
+    session = RecordingSession([DummyResponse(202, {
+        'templateID': 'tpl123',
+        'buildID': 'build123',
+    })])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.create_template(name='disk-size-test', disk_size_mb=15360)
+
+    req = session.requests[0]
+    assert req.method == 'POST'
+    assert req.url == DEFAULT_ENDPOINT + '/v3/templates'
+    assert body_of(req) == {
+        'name': 'disk-size-test',
+        'diskSizeMB': 15360,
+    }
+
+
+def test_sandbox_resource_apis_list_and_update_git_token():
+    session = RecordingSession([
+        DummyResponse(200, {'resources': [{
+            'type': 'github_repository',
+            'resource_id': 'res123',
+            'url': 'https://github.com/qiniu/python-sdk.git',
+            'mount_path': '/workspace/repo',
+        }]}),
+        DummyResponse(204),
+    ])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    resources = client.get_sandbox_resources('sbx/123')
+    client.update_git_repository_resource_token(
+        'sbx/123', 'res/123', 'new-token')
+
+    assert resources['resources'][0]['resource_id'] == 'res123'
+    assert session.requests[0].method == 'GET'
+    assert session.requests[0].url == (
+        DEFAULT_ENDPOINT + '/sandboxes/sbx%2F123/resources')
+    assert session.requests[1].method == 'PATCH'
+    assert session.requests[1].url == (
+        DEFAULT_ENDPOINT + '/sandboxes/sbx%2F123/resources/res%2F123')
+    assert body_of(session.requests[1]) == {
+        'authorization_token': 'new-token',
+    }
+
+
 @pytest.mark.parametrize('status_code', [408, 500])
 def test_create_sandbox_retries_retryable_status_and_reuses_idempotency_key(
         monkeypatch, status_code):
@@ -329,6 +375,36 @@ def test_create_with_kodo_resource_uses_qiniu_signature():
         'bucket': 'bucket',
         'mount_path': '/mnt/bucket',
     }]
+
+
+def test_create_with_inline_kodo_credentials_uses_api_key_auth():
+    session = RecordingSession(
+        [DummyResponse(201, {'sandboxID': 'sbx123', 'templateID': 'base'})])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.create_sandbox(resources=[KodoResource(
+        bucket='bucket',
+        mount_path='/mnt/bucket',
+        access_key='resource-ak',
+        secret_key='resource-sk',
+    )])
+
+    req = session.requests[0]
+    assert req.headers['Authorization'] == 'Bearer api-key'
+    assert body_of(req)['resources'][0]['access_key'] == 'resource-ak'
+    assert body_of(req)['resources'][0]['secret_key'] == 'resource-sk'
+
+
+def test_create_rejects_partial_inline_kodo_credentials():
+    client = SandboxClient(api_key='api-key', session=RecordingSession())
+
+    with pytest.raises(ValueError, match='access_key and secret_key'):
+        client.create_sandbox(resources=[{
+            'type': 'kodo',
+            'bucket': 'bucket',
+            'mount_path': '/mnt/bucket',
+            'access_key': 'resource-ak',
+        }])
 
 
 def test_create_with_saved_injection_rule_requires_qiniu_credentials(
