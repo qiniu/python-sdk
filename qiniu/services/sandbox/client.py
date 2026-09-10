@@ -17,7 +17,6 @@ from qiniu.compat import (
 
 from .constants import DEFAULT_TEMPLATE
 from .errors import SandboxError, TemplateBuildError
-from .resources import KodoResource
 from .util import (
     encode_path,
     json_dumps,
