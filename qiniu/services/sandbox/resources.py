@@ -21,11 +21,14 @@ class GitRepositoryResource(object):
 
 
 class KodoResource(object):
-    def __init__(self, bucket, mount_path, prefix=None, read_only=None):
+    def __init__(self, bucket, mount_path, prefix=None, read_only=None,
+                 access_key=None, secret_key=None):
         self.bucket = bucket
         self.mount_path = mount_path
         self.prefix = prefix
         self.read_only = read_only
+        self.access_key = access_key
+        self.secret_key = secret_key
 
     def to_dict(self):
         data = {
@@ -37,4 +40,11 @@ class KodoResource(object):
             data['prefix'] = self.prefix
         if self.read_only is not None:
             data['read_only'] = self.read_only
+        if (self.access_key is None) != (self.secret_key is None):
+            raise ValueError('access_key and secret_key must be provided together')
+        if self.access_key is not None:
+            if not self.access_key or not self.secret_key:
+                raise ValueError('access_key and secret_key must not be empty')
+            data['access_key'] = self.access_key
+            data['secret_key'] = self.secret_key
         return data
