@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from qiniu import http, Auth
+from qiniu import http, QiniuMacAuth
 import json
 
 
@@ -54,7 +54,7 @@ class RtcServer(object):
 
 
 def get_room_token(access_key, secret_key, room_access):
-    auth = Auth(access_key, secret_key)
+    auth = QiniuMacAuth(access_key, secret_key)
     room_access_str = json.dumps(room_access)
     room_token = auth.token_with_data(room_access_str)
     return room_token
