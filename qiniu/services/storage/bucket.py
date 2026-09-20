@@ -69,8 +69,8 @@ class BucketManager(object):
 
         Returns:
             一个dict变量，类似 {"hash": "<Hash string>", "key": "<Key string>"}
-            一个ResponseInfo对象
-            一个EOF信息。
+            一个EOF信息
+            一个ResponseInfo对象。
         """
         options = {
             'bucket': bucket,
