@@ -58,6 +58,7 @@ def test_examples_cover_primary_sandbox_surfaces():
         'sandbox_resources.py',
         'sandbox_runtime_configuration.py',
         'sandbox_runtime.py',
+        'sandbox_snapshots.py',
         'sandbox_template_lifecycle.py',
         'sandbox_templates.py',
     ]
@@ -108,6 +109,9 @@ def test_examples_cover_primary_sandbox_surfaces():
             'update_template',
             'assign_template_tags',
             'delete_template_tags',
+            'list_template_tags',
+            'min_disk_mb=10240',
+            'min_free_disk_mb=1024',
             'get_template_build_status',
             'get_template_build_logs',
             'start_template_build',
@@ -126,7 +130,11 @@ def test_examples_cover_primary_sandbox_surfaces():
             'refresh',
             'pause',
             'resume',
-            'update_network',
+            "network={'allowPublicTraffic': True}",
+        ],
+        'sandbox_snapshots.py': [
+            'create_snapshot', 'list_snapshots', 'next_token=next_token',
+            'list_template_tags', 'delete_template',
         ],
         'sandbox_resources.py': [
             'GitRepositoryResource',

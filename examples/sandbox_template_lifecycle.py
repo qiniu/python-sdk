@@ -56,7 +56,8 @@ def main():
     ])
 
     try:
-        created = client.create_template(name=target)
+        created = client.create_template(
+            name=target, min_disk_mb=10240, min_free_disk_mb=1024)
         template_id = pick(
             created,
             'templateID',
@@ -110,6 +111,7 @@ def main():
             tags=['example'],
         )
         print('tagged:', template_id)
+        print('tags:', client.list_template_tags(template_id))
         client.delete_template_tags(name=name, tags=['example'])
         print('untagged:', template_id)
     except SandboxError as err:

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import gc
 import json
+import threading
 
 import pytest
 import requests
@@ -11,6 +12,11 @@ try:
     from urllib.parse import parse_qs, urlparse
 except ImportError:
     from urlparse import parse_qs, urlparse
+
+try:
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+except ImportError:
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 from qiniu.services.sandbox import (
     CommandExitError,
@@ -123,21 +129,22 @@ def test_client_uses_default_endpoint_and_api_key_headers():
     }
 
 
-def test_create_template_maps_disk_size_mb_to_api_field():
+def test_create_template_maps_minimum_disk_sizes_to_api_fields():
     session = RecordingSession([DummyResponse(202, {
         'templateID': 'tpl123',
         'buildID': 'build123',
     })])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.create_template(name='disk-size-test', disk_size_mb=15360)
+    client.create_template(name='disk-size-test', min_disk_mb=15360, min_free_disk_mb=5120)
 
     req = session.requests[0]
     assert req.method == 'POST'
     assert req.url == DEFAULT_ENDPOINT + '/v3/templates'
     assert body_of(req) == {
         'name': 'disk-size-test',
-        'diskSizeMB': 15360,
+        'minDiskMb': 15360,
+        'minFreeDiskMb': 5120,
     }
 
 
@@ -647,7 +654,7 @@ def test_sandbox_instance_lifecycle_methods_call_control_plane():
     assert session.requests[0].url.endswith('/sandboxes/sbx123')
     assert session.requests[1].url.endswith('/sandboxes/sbx123/timeout')
     assert body_of(session.requests[1]) == {'timeout': 30}
-    assert session.requests[2].url.endswith('/sandboxes/sbx123/connect')
+    assert session.requests[2].url.endswith('/v2/sandboxes/sbx123/connect')
     assert body_of(session.requests[2]) == {'timeout': 45}
 
 
@@ -696,7 +703,7 @@ def test_sandbox_connect_forwards_envd_options_to_instance():
 
     assert sandbox.envd_url() == 'http://envd.local'
     assert sandbox.envdAccessToken == 'envd-token'
-    assert body_of(session.requests[0]) == {'timeout': 15}
+    assert body_of(session.requests[0]) == {}
 
 
 def test_delete_template_requires_template_id():
@@ -2374,3 +2381,301 @@ def test_git_config_helpers_accept_legacy_repo_path_signatures():
     assert commands.calls[5][1]['cwd'] == 'my.repo'
     assert commands.calls[6][0] == 'git config --local --get user.name'
     assert commands.calls[6][1]['cwd'] == '/repo'
+
+
+@pytest.mark.parametrize('opts,expected', [
+    ({}, {}),
+    ({'min_disk_mb': 0}, {'minDiskMb': 0}),
+    ({'min_free_disk_mb': 0}, {'minFreeDiskMb': 0}),
+    ({'minDiskMb': 10240, 'minFreeDiskMb': 2048},
+     {'minDiskMb': 10240, 'minFreeDiskMb': 2048}),
+    ({'min_disk_mb': None, 'min_free_disk_mb': None}, {}),
+    ({'disk_size_mb': None, 'diskSizeMB': None}, {}),
+])
+def test_template_disk_constraints_preserve_zero_and_omission(opts, expected):
+    session = RecordingSession()
+    SandboxClient(api_key='key', session=session).create_template(**opts)
+    assert body_of(session.requests[0]) == expected
+
+
+@pytest.mark.parametrize('opts', [
+    {'disk_size_mb': 10240}, {'diskSizeMB': 10240},
+    {'min_disk_mb': 0, 'minDiskMb': 10240},
+    {'min_free_disk_mb': 0, 'minFreeDiskMb': 10240},
+])
+def test_template_disk_constraints_reject_legacy_or_conflicting_options(opts):
+    client = SandboxClient(api_key='key', session=RecordingSession())
+    with pytest.raises(SandboxError):
+        client.create_template(**opts)
+    assert client.session.requests == []
+
+
+@pytest.mark.parametrize('opts,expected', [
+    ({}, {}),
+    ({'auto_pause_memory': False, 'auto_resume': False},
+     {'autoPauseMemory': False, 'autoResume': {'enabled': False}}),
+    ({'autoPause': True, 'autoPauseMemory': True,
+      'autoResume': {'enabled': True}},
+     {'autoPause': True, 'autoPauseMemory': True,
+      'autoResume': {'enabled': True}}),
+    ({'lifecycle': {'on_timeout': 'pause', 'keep_memory': False,
+                    'auto_resume': False}},
+     {'autoPause': True, 'autoPauseMemory': False,
+      'autoResume': {'enabled': False}}),
+    ({'lifecycle': {'onTimeout': 'pause', 'keepMemory': True,
+                    'autoResume': True}},
+     {'autoPause': True, 'autoPauseMemory': True,
+      'autoResume': {'enabled': True}}),
+])
+def test_create_auto_pause_and_resume_fields(opts, expected):
+    session = RecordingSession()
+    SandboxClient(api_key='key', session=session).create_sandbox(**opts)
+    body = body_of(session.requests[0])
+    assert {key: value for key, value in body.items()
+            if key.startswith('auto')} == expected
+
+
+@pytest.mark.parametrize('opts', [
+    {'auto_pause_memory': False, 'auto_resume': True},
+    {'autoPauseMemory': False, 'autoResume': {'enabled': True}},
+    {'auto_resume': True, 'autoResume': False},
+    {'lifecycle': {'on_timeout': 'pause', 'keep_memory': False,
+                   'auto_resume': True}},
+    {'auto_pause_memory': True, 'lifecycle': {'keep_memory': False}},
+])
+def test_create_rejects_conflicting_auto_resume_options(opts):
+    client = SandboxClient(api_key='key', session=RecordingSession())
+    with pytest.raises(SandboxError):
+        client.create_sandbox(**opts)
+    assert client.session.requests == []
+
+
+@pytest.mark.parametrize('memory,expected', [
+    (None, {}), (False, {'memory': False}), (True, {'memory': True}),
+])
+def test_pause_supports_memory_choice(memory, expected):
+    session = RecordingSession([DummyResponse(204)])
+    sandbox = Sandbox(sandbox_id='sb/id', client=SandboxClient(
+        api_key='key', session=session))
+    assert sandbox.pause(memory=memory) is None
+    assert session.requests[0].method == 'POST'
+    assert session.requests[0].url == DEFAULT_ENDPOINT + '/sandboxes/sb%2Fid/pause'
+    assert body_of(session.requests[0]) == expected
+
+
+@pytest.mark.parametrize('status', [200, 201])
+@pytest.mark.parametrize('timeout,expected', [(None, {}), (60, {'timeout': 60})])
+def test_connect_uses_v2_and_server_default(status, timeout, expected):
+    session = RecordingSession([DummyResponse(status, {
+        'sandboxID': 'sb/id', 'envdAccessToken': 'new-token',
+    })])
+    client = SandboxClient(api_key='key', session=session)
+    sandbox = Sandbox.connect('sb/id', client=client, timeout=timeout)
+    assert sandbox.envd_access_token == 'new-token'
+    assert session.requests[0].method == 'POST'
+    assert session.requests[0].url == DEFAULT_ENDPOINT + '/v2/sandboxes/sb%2Fid/connect'
+    assert body_of(session.requests[0]) == expected
+
+
+@pytest.mark.parametrize('failure', [
+    DummyResponse(408), DummyResponse(502), DummyResponse(504),
+    DummyResponse(503, {'error_code': 'api_shutdown'}),
+    requests.Timeout('unknown capture outcome'),
+    requests.ConnectionError('connection lost'),
+])
+def test_snapshot_retry_reuses_key_and_body(monkeypatch, failure):
+    sleeps = []
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleeps.append)
+    session = RecordingSession([failure, DummyResponse(201, {
+        'snapshotID': 'snapshot-1', 'names': ['team/demo:v1'],
+    })])
+    sandbox = Sandbox(client=SandboxClient(api_key='key', session=session),
+                      sandbox_id='source/id')
+    result = sandbox.create_snapshot('capture-1', memory=False, name='demo:v1')
+    assert result['snapshotID'] == 'snapshot-1'
+    assert len(session.requests) == 2
+    assert len(sleeps) == 1
+    for req in session.requests:
+        assert req.method == 'POST'
+        assert req.url == DEFAULT_ENDPOINT + '/sandboxes/source%2Fid/snapshots'
+        assert req.headers['Idempotency-Key'] == b'capture-1'
+        assert body_of(req) == {'memory': False, 'name': 'demo:v1'}
+
+
+@pytest.mark.parametrize('status,code', [
+    (400, None), (404, None), (409, None), (500, None),
+    (503, None), (503, 'capture_failed'),
+])
+def test_snapshot_does_not_retry_terminal_errors(monkeypatch, status, code):
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    session = RecordingSession([DummyResponse(status, {'error_code': code})])
+    client = SandboxClient(api_key='key', session=session)
+    with pytest.raises(SandboxError) as err:
+        client.create_sandbox_snapshot('sb', 'key')
+    assert err.value.error_code == code
+    assert len(session.requests) == 1
+
+
+@pytest.mark.parametrize('value,expected', [
+    ('7', 7), ('0', 0), ('bad', None), ('-1', None),
+])
+def test_snapshot_honors_valid_retry_after(monkeypatch, value, expected):
+    sleeps = []
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleeps.append)
+    failed = DummyResponse(408)
+    failed.headers['Retry-After'] = value
+    client = SandboxClient(api_key='key', session=RecordingSession([
+        failed, DummyResponse(201, {'snapshotID': 'snapshot-1', 'names': []})]))
+    client.create_sandbox_snapshot('sb', 'key')
+    assert len(sleeps) == 1
+    if expected is not None:
+        assert sleeps == [expected]
+    else:
+        assert 0.5 <= sleeps[0] <= 0.75
+
+
+def test_snapshot_unknown_outcome_can_be_replayed_after_retry_exhaustion():
+    session = RecordingSession([
+        requests.Timeout('still processing'),
+        DummyResponse(201, {'snapshotID': 'original', 'names': []}),
+    ])
+    client = SandboxClient(api_key='key', session=session, max_retries=0)
+    with pytest.raises(SandboxError):
+        client.create_snapshot('sb', 'persisted-key', memory=False)
+    assert client.create_snapshot('sb', 'persisted-key', memory=False) == {
+        'snapshotID': 'original', 'names': [],
+    }
+    assert session.requests[0].body == session.requests[1].body
+    assert all(req.headers['Idempotency-Key'] == b'persisted-key'
+               for req in session.requests)
+
+
+@pytest.mark.parametrize('key', [None, '', 'x' * 129, 123])
+def test_snapshot_requires_caller_owned_idempotency_key(key):
+    client = SandboxClient(api_key='key', session=RecordingSession())
+    with pytest.raises(SandboxError, match='idempotency_key'):
+        client.create_snapshot('sb', key)
+    assert client.session.requests == []
+
+
+def test_snapshot_default_body_and_pagination():
+    first = DummyResponse(200, [{'snapshotID': 'snap-1', 'names': ['team/demo']}])
+    first.headers['X-Next-Token'] = 'cursor&next'
+    session = RecordingSession([DummyResponse(201, {'snapshotID': 'snap-1'}),
+                                first, DummyResponse(200, [])])
+    client = SandboxClient(api_key='key', session=session)
+    client.createSandboxSnapshot('source', 'capture')
+    assert body_of(session.requests[0]) == {}
+    page = client.list_snapshots(sandbox_id='source/id', name='team/demo:v1', limit=1)
+    assert page['items'][0]['snapshotID'] == 'snap-1'
+    assert page['nextToken'] == 'cursor&next'
+    last = client.listSnapshots(next_token=page['nextToken'])
+    assert last == {'items': [], 'nextToken': None}
+    assert session.requests[1].method == 'GET'
+    assert parse_qs(urlparse(session.requests[1].url).query) == {
+        'sandboxID': ['source/id'], 'name': ['team/demo:v1'], 'limit': ['1'],
+    }
+    assert parse_qs(urlparse(session.requests[2].url).query) == {
+        'nextToken': ['cursor&next'],
+    }
+
+
+def test_list_template_tags_returns_assignments_and_encodes_path():
+    tags = [{'tag': 'v1', 'buildID': 'build-1', 'createdAt': '2026-11-12T00:00:00Z'}]
+    session = RecordingSession([DummyResponse(200, tags)])
+    client = SandboxClient(api_key='key', session=session)
+    assert client.listTemplateTags('template/id') == tags
+    assert session.requests[0].method == 'GET'
+    assert session.requests[0].url == DEFAULT_ENDPOINT + '/templates/template%2Fid/tags'
+
+
+@pytest.mark.parametrize('operation', ['create', 'replace', 'rule', 'update_rule'])
+def test_http_body_injections_are_serialized_for_all_write_apis(operation):
+    session = RecordingSession()
+    client = SandboxClient(api_key='key', access_key='ak', secret_key='sk',
+                           session=session)
+    injection = {'type': 'http', 'baseUrl': 'https://api.example.com/v1/*',
+                 'ifBody': {'model': 'demo'}, 'body': {'api_key': 'secret'}}
+    expected = {'type': 'http', 'base_url': 'https://api.example.com/v1/*',
+                'if_body': {'model': 'demo'}, 'body': {'api_key': 'secret'}}
+    if operation == 'create':
+        client.create_sandbox(injections=[injection])
+    elif operation == 'replace':
+        client.update_sandbox_injections('sb', [injection])
+    elif operation == 'rule':
+        client.create_injection_rule(name='demo', injection=injection)
+    else:
+        client.update_injection_rule('rule', injection=injection)
+    body = body_of(session.requests[0])
+    assert body.get('injection', (body.get('injections') or [None])[0]) == expected
+    assert injection['ifBody'] == {'model': 'demo'}
+
+
+@pytest.mark.parametrize('key', ['x' * 128, b'capture-bytes'])
+def test_snapshot_accepts_boundary_and_bytes_idempotency_keys(key):
+    session = RecordingSession()
+    client = SandboxClient(api_key='key', session=session)
+    client.create_snapshot('sb', key)
+    expected_key = key if isinstance(key, bytes) else key.encode('utf-8')
+    assert session.requests[0].headers['Idempotency-Key'] == expected_key
+
+
+@pytest.mark.parametrize('key', [u'快照-1', u'caf\u00e9', b'capture-bytes'])
+def test_snapshot_sends_utf8_idempotency_key_over_http(monkeypatch, key):
+    received = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            header = self.headers.get('Idempotency-Key')
+            if not isinstance(header, bytes):
+                header = header.encode('latin-1')
+            body = self.rfile.read(int(self.headers.get('Content-Length')))
+            received.append((self.path, header, body))
+            response = json.dumps({
+                'snapshotID': 'snapshot-1', 'names': [],
+            }).encode('utf-8')
+            self.send_response(408 if len(received) == 1 else 201)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(response)))
+            self.end_headers()
+            self.wfile.write(response)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    thread = threading.Thread(
+        target=lambda: server.serve_forever(poll_interval=0.01))
+    thread.daemon = True
+    thread.start()
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    session = requests.Session()
+    session.trust_env = False
+    try:
+        client = SandboxClient(
+            endpoint='http://127.0.0.1:{0}'.format(server.server_port),
+            api_key='key', session=session, timeout=2, max_retries=1)
+        result = client.create_snapshot('sb', key, memory=False)
+        assert result['snapshotID'] == 'snapshot-1'
+        expected_key = key if isinstance(key, bytes) else key.encode('utf-8')
+        assert len(received) == 2
+        for path, header, body in received:
+            assert path == '/sandboxes/sb/snapshots'
+            assert header == expected_key
+            assert json.loads(body.decode('utf-8')) == {'memory': False}
+    finally:
+        session.close()
+        server.shutdown()
+        thread.join(timeout=2)
+        server.server_close()
+
+
+@pytest.mark.parametrize('method,args', [
+    ('create_sandbox_snapshot', ('', 'key')),
+    ('list_template_tags', ('',)),
+])
+def test_new_control_methods_require_identifiers(method, args):
+    client = SandboxClient(api_key='key', session=RecordingSession())
+    with pytest.raises(SandboxError):
+        getattr(client, method)(*args)
+    assert client.session.requests == []

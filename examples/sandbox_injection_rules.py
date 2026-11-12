@@ -15,6 +15,8 @@ def main():
                 'base_url': 'https://api.example.com/v1/*',
                 'if_headers': {'X-Qiniu-Sandbox': 'enabled'},
                 'if_queries': {'tenant': 'demo'},
+                'if_body': {'model': 'demo'},
+                'body': {'api_key': 'replace-with-service-api-key'},
                 'headers': {'X-From-Sandbox': 'qiniu-python-sdk'},
             },
         )
