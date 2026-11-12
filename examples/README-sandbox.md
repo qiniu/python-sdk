@@ -28,7 +28,7 @@ python examples/sandbox_injection_rules.py
 
 每次新捕获必须使用新的幂等键（1–128 字节），包括同名快照的新版本。调用前应持久保存键与请求体；等待超时或网络中断后用原键、原沙箱 ID 和原请求体重试。取消客户端等待不会取消已接受的捕获，服务端会重放终态结果，包括失败。幂等记录在完成后保留 35 分钟；结果未知时先按来源或名称查询核对，不能直接换键或在记录过期后假定重试仍然安全。
 
-快照自动重试网络错误、408、502、504 和 `error_code=api_shutdown` 的 503，遵循有效的整数 `Retry-After`；500 和其他 503 直接返回。`SandboxError.error_code` 可读取语义错误码，完整响应保留在 `data` / `response`。`SANDBOX_RETRY_MAX` 控制重试次数（默认 5，0 禁用）。
+快照自动重试网络错误（包括响应体传输中断）、408、502、504 和 `error_code=api_shutdown` 的 503，遵循有效的 ASCII 非负整数 `Retry-After`；无效或超出支持范围的值回退到指数退避，500 和其他 503 直接返回。自动重试从首次请求开始最多持续 35 分钟，包含请求耗时和等待；若下次重试将超出窗口，则抛出结果可能未知的 `SandboxError`，保留原始错误供排查。该限制不会中断正在进行的请求；重试窗口耗尽后应先查询快照核对结果。`SandboxError.error_code` 可读取语义错误码，完整响应保留在 `data` / `response`。`SANDBOX_RETRY_MAX` 控制重试次数（默认 5，0 禁用）。
 
 `client.list_snapshots(sandbox_id=None, name=None, limit=None, next_token=None)` 返回 `{'items': [...], 'nextToken': ...}`，游标来自响应的 `X-Next-Token`。持续传入 `next_token` 直到返回值为空，避免遗漏快照。`name` 可带命名空间和标签，创建快照时的 `name` 只能是别名和可选标签，不能带 `/`。
 

@@ -14,9 +14,9 @@ except ImportError:
     from urlparse import parse_qs, urlparse
 
 try:
-    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from socketserver import StreamRequestHandler, TCPServer
 except ImportError:
-    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    from SocketServer import StreamRequestHandler, TCPServer
 
 from qiniu.services.sandbox import (
     CommandExitError,
@@ -2482,6 +2482,7 @@ def test_connect_uses_v2_and_server_default(status, timeout, expected):
     DummyResponse(503, {'error_code': 'api_shutdown'}),
     requests.Timeout('unknown capture outcome'),
     requests.ConnectionError('connection lost'),
+    requests.exceptions.ChunkedEncodingError('response interrupted'),
 ])
 def test_snapshot_retry_reuses_key_and_body(monkeypatch, failure):
     sleeps = []
@@ -2517,7 +2518,10 @@ def test_snapshot_does_not_retry_terminal_errors(monkeypatch, status, code):
 
 
 @pytest.mark.parametrize('value,expected', [
-    ('7', 7), ('0', 0), ('bad', None), ('-1', None),
+    ('7', 7), ('0', 0), (' 7 ', 7), (b'7', 7),
+    ('bad', None), ('-1', None), ('', None), (None, None),
+    (u'\u00b2', None), (u'\u0667', None), (b'\xff', None),
+    ('9' * 5000, None), ('2147483648', None),
 ])
 def test_snapshot_honors_valid_retry_after(monkeypatch, value, expected):
     sleeps = []
@@ -2532,6 +2536,99 @@ def test_snapshot_honors_valid_retry_after(monkeypatch, value, expected):
         assert sleeps == [expected]
     else:
         assert 0.5 <= sleeps[0] <= 0.75
+
+
+@pytest.mark.parametrize('retry_after', ['2100', '2161', '2147483647'])
+def test_snapshot_rejects_retry_after_beyond_retention(monkeypatch, retry_after):
+    sleeps = []
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleeps.append)
+    monkeypatch.setattr(sandbox_client_module, '_monotonic_time', lambda: 0)
+    failed = DummyResponse(408, {'message': 'still capturing'})
+    failed.headers['Retry-After'] = retry_after
+    session = RecordingSession([failed])
+    client = SandboxClient(api_key='key', session=session)
+    with pytest.raises(SandboxError, match='outcome may be unknown') as err:
+        client.create_snapshot('sb', 'persisted-key')
+    assert len(session.requests) == 1
+    assert sleeps == []
+    assert err.value.response is failed
+    assert err.value.data == {'message': 'still capturing'}
+    assert err.value.cause.status_code == 408
+
+
+@pytest.mark.parametrize('durations,oversleep,expected_sleeps', [
+    ([2100], 0, []),
+    ([2099.5], 0, []),
+    ([1000, 1099.5], 0, [0.5]),
+    ([0], 2100, [0.5]),
+])
+def test_snapshot_retry_budget_includes_requests_and_sleeps(
+        monkeypatch, durations, oversleep, expected_sleeps):
+    clock = [0]
+    sleeps = []
+    monkeypatch.setattr(sandbox_client_module, '_monotonic_time', lambda: clock[0])
+    monkeypatch.setattr(sandbox_client_module.random, 'random', lambda: 0)
+
+    def sleep(delay):
+        sleeps.append(delay)
+        clock[0] += delay + oversleep
+
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleep)
+    session = RecordingSession([requests.Timeout('unknown outcome')
+                                for _ in durations])
+    send = session.send
+
+    def timed_send(request, **kwargs):
+        clock[0] += durations[len(session.requests)]
+        return send(request, **kwargs)
+
+    monkeypatch.setattr(session, 'send', timed_send)
+    client = SandboxClient(api_key='key', session=session, max_retries=10000)
+    with pytest.raises(SandboxError, match='outcome may be unknown') as err:
+        client.create_snapshot('sb', 'persisted-key', memory=False)
+    assert isinstance(err.value.cause.cause, requests.Timeout)
+    assert len(session.requests) == len(durations)
+    assert sleeps == expected_sleeps
+    assert all(req.headers['Idempotency-Key'] == b'persisted-key'
+               for req in session.requests)
+    assert all(body_of(req) == {'memory': False} for req in session.requests)
+
+
+def test_snapshot_retry_can_succeed_within_budget(monkeypatch):
+    clock = [0]
+    monkeypatch.setattr(sandbox_client_module, '_monotonic_time', lambda: clock[0])
+
+    def sleep(delay):
+        clock[0] += delay
+
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleep)
+    session = RecordingSession([requests.Timeout('unknown outcome'),
+                                DummyResponse(201, {'snapshotID': 'original'})])
+    send = session.send
+
+    def timed_send(request, **kwargs):
+        clock[0] += 1000
+        return send(request, **kwargs)
+
+    monkeypatch.setattr(session, 'send', timed_send)
+    client = SandboxClient(api_key='key', session=session)
+    assert client.create_snapshot('sb', 'persisted-key')['snapshotID'] == 'original'
+    assert 2000 < clock[0] < 2100
+    assert len(session.requests) == 2
+    assert session.requests[0].body == session.requests[1].body
+    assert session.requests[0].headers['Idempotency-Key'] == session.requests[1].headers['Idempotency-Key']
+
+
+def test_snapshot_large_retry_count_with_zero_retry_after(monkeypatch):
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    monkeypatch.setattr(sandbox_client_module, '_monotonic_time', lambda: 0)
+    failed = DummyResponse(408)
+    failed.headers['Retry-After'] = '0'
+    session = RecordingSession([failed] * 1100 + [
+        DummyResponse(201, {'snapshotID': 'original'})])
+    client = SandboxClient(api_key='key', session=session, max_retries=1100)
+    assert client.create_snapshot('sb', 'persisted-key')['snapshotID'] == 'original'
+    assert len(session.requests) == 1101
 
 
 def test_snapshot_unknown_outcome_can_be_replayed_after_retry_exhaustion():
@@ -2620,54 +2717,85 @@ def test_snapshot_accepts_boundary_and_bytes_idempotency_keys(key):
     assert session.requests[0].headers['Idempotency-Key'] == expected_key
 
 
-@pytest.mark.parametrize('key', [u'快照-1', u'caf\u00e9', b'capture-bytes'])
-def test_snapshot_sends_utf8_idempotency_key_over_http(monkeypatch, key):
+@pytest.fixture
+def snapshot_http_server():
     received = []
+    responses = []
 
-    class Handler(BaseHTTPRequestHandler):
-        def do_POST(self):
-            header = self.headers.get('Idempotency-Key')
-            if not isinstance(header, bytes):
-                header = header.encode('latin-1')
-            body = self.rfile.read(int(self.headers.get('Content-Length')))
-            received.append((self.path, header, body))
-            response = json.dumps({
-                'snapshotID': 'snapshot-1', 'names': [],
-            }).encode('utf-8')
-            self.send_response(408 if len(received) == 1 else 201)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', str(len(response)))
-            self.end_headers()
-            self.wfile.write(response)
+    class Handler(StreamRequestHandler):
+        def handle(self):
+            # Parse CRLF-delimited bytes: legacy HTTPServer treats UTF-8 NEL
+            # bytes as a Unicode line break after decoding header values.
+            path = self.rfile.readline().split(b' ')[1]
+            headers = {}
+            while True:
+                line = self.rfile.readline()
+                if line in (b'\r\n', b''):
+                    break
+                name, value = line.rstrip(b'\r\n').split(b':', 1)
+                headers[name.lower()] = value.strip()
+            body = self.rfile.read(int(headers[b'content-length']))
+            received.append((path, headers[b'idempotency-key'], body))
+            self.wfile.write(responses.pop(0))
 
-        def log_message(self, *args):
-            pass
-
-    server = HTTPServer(('127.0.0.1', 0), Handler)
+    server = TCPServer(('127.0.0.1', 0), Handler)
     thread = threading.Thread(
         target=lambda: server.serve_forever(poll_interval=0.01))
     thread.daemon = True
     thread.start()
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
     session = requests.Session()
     session.trust_env = False
     try:
-        client = SandboxClient(
-            endpoint='http://127.0.0.1:{0}'.format(server.server_port),
-            api_key='key', session=session, timeout=2, max_retries=1)
-        result = client.create_snapshot('sb', key, memory=False)
-        assert result['snapshotID'] == 'snapshot-1'
-        expected_key = key if isinstance(key, bytes) else key.encode('utf-8')
-        assert len(received) == 2
-        for path, header, body in received:
-            assert path == '/sandboxes/sb/snapshots'
-            assert header == expected_key
-            assert json.loads(body.decode('utf-8')) == {'memory': False}
+        yield ('http://127.0.0.1:{0}'.format(server.server_address[1]),
+               session, received, responses)
     finally:
         session.close()
         server.shutdown()
         thread.join(timeout=2)
         server.server_close()
+
+
+def snapshot_http_response(status):
+    body = b'{"snapshotID":"snapshot-1","names":[]}'
+    return (b'HTTP/1.1 ' + status + b'\r\nContent-Type: application/json\r\n'
+            b'Content-Length: ' + str(len(body)).encode('ascii') +
+            b'\r\nConnection: close\r\n\r\n' + body)
+
+
+@pytest.mark.parametrize('key', [u'快照-1', u'caf\u00e9', b'capture-bytes'])
+def test_snapshot_sends_utf8_idempotency_key_over_http(
+        monkeypatch, key, snapshot_http_server):
+    endpoint, session, received, responses = snapshot_http_server
+    responses.extend([snapshot_http_response(b'408 Request Timeout'),
+                      snapshot_http_response(b'201 Created')])
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    client = SandboxClient(endpoint=endpoint, api_key='key', session=session,
+                           timeout=2, max_retries=1)
+    result = client.create_snapshot('sb', key, memory=False)
+    assert result['snapshotID'] == 'snapshot-1'
+    expected_key = key if isinstance(key, bytes) else key.encode('utf-8')
+    assert len(received) == 2
+    for path, header, body in received:
+        assert path == b'/sandboxes/sb/snapshots'
+        assert header == expected_key
+        assert json.loads(body.decode('utf-8')) == {'memory': False}
+
+
+def test_snapshot_retries_interrupted_http_response(monkeypatch, snapshot_http_server):
+    endpoint, session, received, responses = snapshot_http_server
+    responses.extend([
+        b'HTTP/1.1 201 Created\r\nTransfer-Encoding: chunked\r\n'
+        b'Connection: close\r\n\r\n20\r\n{"snapshotID":',
+        snapshot_http_response(b'201 Created'),
+    ])
+    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    client = SandboxClient(endpoint=endpoint, api_key='key', session=session,
+                           timeout=2, max_retries=1)
+    assert client.create_snapshot('sb', 'capture', memory=False)['snapshotID'] == 'snapshot-1'
+    assert len(received) == 2
+    assert received[0] == received[1]
+    assert received[0][1] == b'capture'
+    assert json.loads(received[0][2].decode('utf-8')) == {'memory': False}
 
 
 @pytest.mark.parametrize('method,args', [

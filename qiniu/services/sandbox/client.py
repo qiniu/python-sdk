@@ -26,6 +26,7 @@ from .util import (
 
 
 _UNSET = object()
+_SNAPSHOT_RETRY_WINDOW = 35 * 60
 
 
 try:
@@ -38,6 +39,25 @@ def _to_dict(value):
     if hasattr(value, 'to_dict'):
         return value.to_dict()
     return value
+
+
+def _retry_after_seconds(err):
+    response = getattr(err, 'response', None)
+    value = getattr(response, 'headers', {}).get('Retry-After')
+    if not isinstance(value, basestring):
+        return None
+    if isinstance(value, bytes_type):
+        try:
+            value = value.decode('ascii')
+        except UnicodeDecodeError:
+            return None
+    value = value.strip()
+    # Bound conversion and accept only the ASCII decimal HTTP field syntax.
+    if (not value or len(value) > 10 or
+            any(char < '0' or char > '9' for char in value)):
+        return None
+    seconds = int(value)
+    return seconds if seconds <= 2147483647 else None
 
 
 def _normalize_injection(injection):
@@ -386,21 +406,34 @@ class SandboxClient(object):
             err = getattr(err, 'cause', None)
         return isinstance(err, (requests.ConnectionError, requests.Timeout))
 
-    def _retry_call(self, fn, retryable=None, retry_after=False):
+    def _retry_call(self, fn, retryable=None, retry_after=False,
+                    retry_budget=None):
         retryable = retryable or self._is_retryable
+        deadline = (None if retry_budget is None else
+                    _monotonic_time() + retry_budget)
         for attempt in range(self.max_retries + 1):
             try:
                 return fn()
             except (SandboxError, requests.RequestException) as err:
                 if attempt < self.max_retries and retryable(err):
-                    base = min(0.5 * (2 ** attempt), 10)
+                    base = min(0.5 * (2 ** min(attempt, 5)), 10)
                     delay = base + random.random() * base / 2
                     if retry_after:
-                        value = getattr(err, 'response', None)
-                        value = getattr(value, 'headers', {}).get('Retry-After')
-                        if value and value.strip().isdigit():
-                            delay = int(value)
-                    time.sleep(delay)
+                        value = _retry_after_seconds(err)
+                        if value is not None:
+                            delay = value
+                    within_budget = (deadline is None or
+                                     _monotonic_time() + delay < deadline)
+                    if within_budget:
+                        time.sleep(delay)
+                    if deadline is not None and (
+                            not within_budget or _monotonic_time() >= deadline):
+                        raise SandboxError(
+                            'Snapshot automatic retry window exhausted; outcome '
+                            'may be unknown. Inspect snapshots before retrying '
+                            'or starting a new capture.',
+                            response=getattr(err, 'response', None),
+                            data=getattr(err, 'data', None), cause=err)
                     continue
                 raise
 
@@ -504,7 +537,9 @@ class SandboxClient(object):
         if isinstance(err, SandboxError) and err.status_code is not None:
             return (err.status_code in (408, 502, 504) or
                     (err.status_code == 503 and err.error_code == 'api_shutdown'))
-        return self._is_retryable(err)
+        cause = err.cause if isinstance(err, SandboxError) else err
+        return (isinstance(cause, requests.exceptions.ChunkedEncodingError) or
+                self._is_retryable(err))
 
     def create_sandbox_snapshot(self, sandbox_id, idempotency_key,
                                 memory=None, name=None):
@@ -513,6 +548,7 @@ class SandboxClient(object):
         Reuse the key and body after an unknown outcome; a new capture needs a
         new key. Cancellation does not cancel capture. Records expire 35 minutes
         after completion, so investigate an unknown outcome before changing keys.
+        Automatic retries stop within 35 minutes, including requests and sleeps.
         """
         _require_sandbox_id(sandbox_id)
         key_bytes = idempotency_key
@@ -530,7 +566,8 @@ class SandboxClient(object):
             lambda: self._request(
                 'POST', '/sandboxes/{0}/snapshots'.format(encode_path(sandbox_id)),
                 body=body, extra_headers={'Idempotency-Key': key_bytes}),
-            retryable=self._is_snapshot_retryable, retry_after=True)
+            retryable=self._is_snapshot_retryable, retry_after=True,
+            retry_budget=_SNAPSHOT_RETRY_WINDOW)
 
     createSandboxSnapshot = create_sandbox_snapshot
     create_snapshot = create_sandbox_snapshot
