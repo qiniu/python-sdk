@@ -43,6 +43,15 @@ from qiniu.services.sandbox import (
 from qiniu.services.sandbox.util import encode_path, file_signature
 
 
+def patch_retry_sleep(monkeypatch, sleep):
+    # Keep other threads (including Python 2 ThreadPool workers) on real time.
+    class RetryTime(object):
+        pass
+
+    RetryTime.sleep = staticmethod(sleep)
+    monkeypatch.setattr(sandbox_client_module, 'time', RetryTime)
+
+
 class DummyResponse(object):
     def __init__(self, status_code=200, body=None):
         self.status_code = status_code
@@ -183,7 +192,7 @@ def test_create_sandbox_retries_retryable_status_and_reuses_idempotency_key(
         ErrorResponse(status_code),
         DummyResponse(201, {'sandboxID': 'sbx123'}),
     ])
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    patch_retry_sleep(monkeypatch, lambda _: None)
     client = SandboxClient(
         api_key='api-key', session=session, max_retries=1)
 
@@ -204,7 +213,7 @@ def test_create_sandbox_retries_transport_error_and_reuses_idempotency_key(
         error_type('[Errno 101] Network is unreachable'),
         DummyResponse(201, {'sandboxID': 'sbx123'}),
     ])
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    patch_retry_sleep(monkeypatch, lambda _: None)
     client = SandboxClient(
         api_key='api-key', session=session, max_retries=1)
 
@@ -2486,7 +2495,7 @@ def test_connect_uses_v2_and_server_default(status, timeout, expected):
 ])
 def test_snapshot_retry_reuses_key_and_body(monkeypatch, failure):
     sleeps = []
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleeps.append)
+    patch_retry_sleep(monkeypatch, sleeps.append)
     session = RecordingSession([failure, DummyResponse(201, {
         'snapshotID': 'snapshot-1', 'names': ['team/demo:v1'],
     })])
@@ -2508,7 +2517,7 @@ def test_snapshot_retry_reuses_key_and_body(monkeypatch, failure):
     (503, None), (503, 'capture_failed'),
 ])
 def test_snapshot_does_not_retry_terminal_errors(monkeypatch, status, code):
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    patch_retry_sleep(monkeypatch, lambda _: None)
     session = RecordingSession([DummyResponse(status, {'error_code': code})])
     client = SandboxClient(api_key='key', session=session)
     with pytest.raises(SandboxError) as err:
@@ -2525,7 +2534,7 @@ def test_snapshot_does_not_retry_terminal_errors(monkeypatch, status, code):
 ])
 def test_snapshot_honors_valid_retry_after(monkeypatch, value, expected):
     sleeps = []
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleeps.append)
+    patch_retry_sleep(monkeypatch, sleeps.append)
     failed = DummyResponse(408)
     failed.headers['Retry-After'] = value
     client = SandboxClient(api_key='key', session=RecordingSession([
@@ -2541,7 +2550,7 @@ def test_snapshot_honors_valid_retry_after(monkeypatch, value, expected):
 @pytest.mark.parametrize('retry_after', ['2100', '2161', '2147483647'])
 def test_snapshot_rejects_retry_after_beyond_retention(monkeypatch, retry_after):
     sleeps = []
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleeps.append)
+    patch_retry_sleep(monkeypatch, sleeps.append)
     monkeypatch.setattr(sandbox_client_module, '_monotonic_time', lambda: 0)
     failed = DummyResponse(408, {'message': 'still capturing'})
     failed.headers['Retry-After'] = retry_after
@@ -2573,7 +2582,7 @@ def test_snapshot_retry_budget_includes_requests_and_sleeps(
         sleeps.append(delay)
         clock[0] += delay + oversleep
 
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleep)
+    patch_retry_sleep(monkeypatch, sleep)
     session = RecordingSession([requests.Timeout('unknown outcome')
                                 for _ in durations])
     send = session.send
@@ -2601,7 +2610,7 @@ def test_snapshot_retry_can_succeed_within_budget(monkeypatch):
     def sleep(delay):
         clock[0] += delay
 
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', sleep)
+    patch_retry_sleep(monkeypatch, sleep)
     session = RecordingSession([requests.Timeout('unknown outcome'),
                                 DummyResponse(201, {'snapshotID': 'original'})])
     send = session.send
@@ -2620,7 +2629,7 @@ def test_snapshot_retry_can_succeed_within_budget(monkeypatch):
 
 
 def test_snapshot_large_retry_count_with_zero_retry_after(monkeypatch):
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    patch_retry_sleep(monkeypatch, lambda _: None)
     monkeypatch.setattr(sandbox_client_module, '_monotonic_time', lambda: 0)
     failed = DummyResponse(408)
     failed.headers['Retry-After'] = '0'
@@ -2768,7 +2777,7 @@ def test_snapshot_sends_utf8_idempotency_key_over_http(
     endpoint, session, received, responses = snapshot_http_server
     responses.extend([snapshot_http_response(b'408 Request Timeout'),
                       snapshot_http_response(b'201 Created')])
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    patch_retry_sleep(monkeypatch, lambda _: None)
     client = SandboxClient(endpoint=endpoint, api_key='key', session=session,
                            timeout=2, max_retries=1)
     result = client.create_snapshot('sb', key, memory=False)
@@ -2788,7 +2797,7 @@ def test_snapshot_retries_interrupted_http_response(monkeypatch, snapshot_http_s
         b'Connection: close\r\n\r\n20\r\n{"snapshotID":',
         snapshot_http_response(b'201 Created'),
     ])
-    monkeypatch.setattr(sandbox_client_module.time, 'sleep', lambda _: None)
+    patch_retry_sleep(monkeypatch, lambda _: None)
     client = SandboxClient(endpoint=endpoint, api_key='key', session=session,
                            timeout=2, max_retries=1)
     assert client.create_snapshot('sb', 'capture', memory=False)['snapshotID'] == 'snapshot-1'
