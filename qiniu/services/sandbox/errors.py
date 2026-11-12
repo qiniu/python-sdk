@@ -8,6 +8,7 @@ class SandboxError(Exception):
         self.data = data
         self.cause = cause
         self.status_code = getattr(response, 'status_code', None)
+        self.error_code = data.get('error_code') if isinstance(data, dict) else None
 
 
 class TemplateBuildError(SandboxError):

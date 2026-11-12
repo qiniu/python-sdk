@@ -26,6 +26,7 @@ from .util import (
 
 
 _UNSET = object()
+_SNAPSHOT_RETRY_WINDOW = 35 * 60
 
 
 try:
@@ -38,6 +39,25 @@ def _to_dict(value):
     if hasattr(value, 'to_dict'):
         return value.to_dict()
     return value
+
+
+def _retry_after_seconds(err):
+    response = getattr(err, 'response', None)
+    value = getattr(response, 'headers', {}).get('Retry-After')
+    if not isinstance(value, basestring):
+        return None
+    if isinstance(value, bytes_type):
+        try:
+            value = value.decode('ascii')
+        except UnicodeDecodeError:
+            return None
+    value = value.strip()
+    # Bound conversion and accept only the ASCII decimal HTTP field syntax.
+    if (not value or len(value) > 10 or
+            any(char < '0' or char > '9' for char in value)):
+        return None
+    seconds = int(value)
+    return seconds if seconds <= 2147483647 else None
 
 
 def _normalize_injection(injection):
@@ -54,6 +74,8 @@ def _normalize_injection(injection):
         data['if_headers'] = data.pop('ifHeaders')
     if 'ifQueries' in data and 'if_queries' not in data:
         data['if_queries'] = data.pop('ifQueries')
+    if 'ifBody' in data and 'if_body' not in data:
+        data['if_body'] = data.pop('ifBody')
     if 'ruleId' in data and 'ruleID' not in data:
         data['ruleID'] = data.pop('ruleId')
     if 'rule_id' in data and 'ruleID' not in data:
@@ -119,8 +141,13 @@ def _normalize_sandbox_create_options(template=None, **opts):
     ):
         if opts.get(key) is not None:
             body[key] = opts.get(key)
-    if opts.get('auto_pause') is not None:
-        body['autoPause'] = opts.get('auto_pause')
+    for snake, wire in (
+            ('auto_pause', 'autoPause'),
+            ('auto_pause_memory', 'autoPauseMemory'),
+            ('auto_resume', 'autoResume')):
+        value = _single_alias_value(opts, snake, wire)
+        if value is not None:
+            body[wire] = value
     allow_internet_access = _single_alias_value(
         opts, 'allow_internet_access', 'allowInternetAccess')
     if allow_internet_access is not None:
@@ -134,6 +161,23 @@ def _normalize_sandbox_create_options(template=None, **opts):
         on_timeout = lifecycle.get('on_timeout') or lifecycle.get('onTimeout')
         if on_timeout == 'pause':
             body['autoPause'] = True
+        for snake, camel, wire in (
+                ('keep_memory', 'keepMemory', 'autoPauseMemory'),
+                ('auto_resume', 'autoResume', 'autoResume')):
+            value = _single_alias_value(lifecycle, snake, camel)
+            if value is not None:
+                if wire in body:
+                    raise SandboxError('Conflicting lifecycle option: ' + wire)
+                body[wire] = value
+    if isinstance(body.get('autoResume'), bool):
+        body['autoResume'] = {'enabled': body['autoResume']}
+    if body.get('autoResume') is not None and not isinstance(
+            body['autoResume'], dict):
+        raise SandboxError('auto_resume must be a bool or config dict')
+    if (body.get('autoPauseMemory') is False and
+            (body.get('autoResume') or {}).get('enabled')):
+        raise SandboxError(
+            'auto_resume cannot be enabled with auto_pause_memory=False')
     if opts.get('injections') is not None:
         body['injections'] = [_normalize_injection(
             item) for item in opts.get('injections')]
@@ -146,7 +190,7 @@ def _single_alias_value(opts, *names):
     present = [name for name in names if opts.get(name) is not None]
     if len(present) > 1:
         raise SandboxError(
-            'Conflicting sandbox create options: {0}'.format(
+            'Conflicting options: {0}'.format(
                 ', '.join(present)))
     if present:
         return opts.get(present[0])
@@ -192,12 +236,21 @@ def _normalize_list_options(opts):
 
 def _normalize_template_create_options(opts):
     body = dict(opts or {})
-    disk_size_mb = _single_alias_value(
-        body, 'disk_size_mb', 'diskSizeMB')
+    legacy_disk = _single_alias_value(body, 'disk_size_mb', 'diskSizeMB')
     body.pop('disk_size_mb', None)
     body.pop('diskSizeMB', None)
-    if disk_size_mb is not None:
-        body['diskSizeMB'] = disk_size_mb
+    if legacy_disk is not None:
+        raise SandboxError(
+            'disk_size_mb/diskSizeMB is no longer supported; use '
+            'min_disk_mb for total size or min_free_disk_mb for free space')
+    for snake, wire in (
+            ('min_disk_mb', 'minDiskMb'),
+            ('min_free_disk_mb', 'minFreeDiskMb')):
+        value = _single_alias_value(body, snake, wire)
+        body.pop(snake, None)
+        body.pop(wire, None)
+        if value is not None:
+            body[wire] = value
     return body
 
 
@@ -290,7 +343,7 @@ class SandboxClient(object):
         return None
 
     def _request(self, method, path, params=None, body=_UNSET,
-                 auth_type=None, empty=False, extra_headers=None):
+                 auth_type=None, empty=False, extra_headers=None, page=False):
         url = self.endpoint + path
         data = None if body is _UNSET else json_dumps(body)
         headers = self._headers(auth_type)
@@ -337,7 +390,11 @@ class SandboxClient(object):
             raise SandboxError(message, response, response_data)
         if empty:
             return None
-        return parse_json_response(response)
+        data = parse_json_response(response)
+        if page:
+            return {'items': data, 'nextToken': response.headers.get(
+                'X-Next-Token')}
+        return data
 
     def _is_retryable(self, err):
         if isinstance(err, SandboxError):
@@ -349,14 +406,34 @@ class SandboxClient(object):
             err = getattr(err, 'cause', None)
         return isinstance(err, (requests.ConnectionError, requests.Timeout))
 
-    def _retry_call(self, fn):
+    def _retry_call(self, fn, retryable=None, retry_after=False,
+                    retry_budget=None):
+        retryable = retryable or self._is_retryable
+        deadline = (None if retry_budget is None else
+                    _monotonic_time() + retry_budget)
         for attempt in range(self.max_retries + 1):
             try:
                 return fn()
             except (SandboxError, requests.RequestException) as err:
-                if attempt < self.max_retries and self._is_retryable(err):
-                    base = min(0.5 * (2 ** attempt), 10)
-                    time.sleep(base + random.random() * base / 2)
+                if attempt < self.max_retries and retryable(err):
+                    base = min(0.5 * (2 ** min(attempt, 5)), 10)
+                    delay = base + random.random() * base / 2
+                    if retry_after:
+                        value = _retry_after_seconds(err)
+                        if value is not None:
+                            delay = value
+                    within_budget = (deadline is None or
+                                     _monotonic_time() + delay < deadline)
+                    if within_budget:
+                        time.sleep(delay)
+                    if deadline is not None and (
+                            not within_budget or _monotonic_time() >= deadline):
+                        raise SandboxError(
+                            'Snapshot automatic retry window exhausted; outcome '
+                            'may be unknown. Inspect snapshots before retrying '
+                            'or starting a new capture.',
+                            response=getattr(err, 'response', None),
+                            data=getattr(err, 'data', None), cause=err)
                     continue
                 raise
 
@@ -418,12 +495,13 @@ class SandboxClient(object):
     killSandbox = delete_sandbox
     kill = delete_sandbox
 
-    def pause_sandbox(self, sandbox_id):
+    def pause_sandbox(self, sandbox_id, memory=None):
+        """Pause; memory=False saves disk only and resumes with a cold boot."""
         _require_sandbox_id(sandbox_id)
         return self._request(
             'POST',
             '/sandboxes/{0}/pause'.format(encode_path(sandbox_id)),
-            body={},
+            body={} if memory is None else {'memory': memory},
             empty=True,
         )
 
@@ -439,18 +517,70 @@ class SandboxClient(object):
 
     resumeSandbox = resume_sandbox
 
-    def connect_sandbox(self, sandbox_id, timeout=15):
+    def connect_sandbox(self, sandbox_id, timeout=None):
+        """Connect through v2, extending TTL (default 300s) without shortening it."""
         _require_sandbox_id(sandbox_id)
         return self._retry_call(
             lambda: self._request(
                 'POST',
-                '/sandboxes/{0}/connect'.format(encode_path(sandbox_id)),
-                body={'timeout': timeout},
+                '/v2/sandboxes/{0}/connect'.format(encode_path(sandbox_id)),
+                body={} if timeout is None else {'timeout': timeout},
             )
         )
 
     connectSandbox = connect_sandbox
+    connect_sandbox_v2 = connect_sandbox
+    connectSandboxV2 = connect_sandbox
     connect = connect_sandbox
+
+    def _is_snapshot_retryable(self, err):
+        if isinstance(err, SandboxError) and err.status_code is not None:
+            return (err.status_code in (408, 502, 504) or
+                    (err.status_code == 503 and err.error_code == 'api_shutdown'))
+        cause = err.cause if isinstance(err, SandboxError) else err
+        return (isinstance(cause, requests.exceptions.ChunkedEncodingError) or
+                self._is_retryable(err))
+
+    def create_sandbox_snapshot(self, sandbox_id, idempotency_key,
+                                memory=None, name=None):
+        """Capture a persistent snapshot using a caller-owned idempotency key.
+
+        Reuse the key and body after an unknown outcome; a new capture needs a
+        new key. Cancellation does not cancel capture. Records expire 35 minutes
+        after completion, so investigate an unknown outcome before changing keys.
+        Automatic retries stop within 35 minutes, including requests and sleeps.
+        """
+        _require_sandbox_id(sandbox_id)
+        key_bytes = idempotency_key
+        if isinstance(idempotency_key, text_type):
+            key_bytes = idempotency_key.encode('utf-8')
+        if (not isinstance(idempotency_key, basestring) or
+                not 1 <= len(key_bytes) <= 128):
+            raise SandboxError('idempotency_key must contain 1 to 128 bytes')
+        body = {}
+        if memory is not None:
+            body['memory'] = memory
+        if name is not None:
+            body['name'] = name
+        return self._retry_call(
+            lambda: self._request(
+                'POST', '/sandboxes/{0}/snapshots'.format(encode_path(sandbox_id)),
+                body=body, extra_headers={'Idempotency-Key': key_bytes}),
+            retryable=self._is_snapshot_retryable, retry_after=True,
+            retry_budget=_SNAPSHOT_RETRY_WINDOW)
+
+    createSandboxSnapshot = create_sandbox_snapshot
+    create_snapshot = create_sandbox_snapshot
+
+    def list_snapshots(self, sandbox_id=None, name=None, limit=None,
+                       next_token=None):
+        """Return {'items': [...], 'nextToken': ...}; None marks the last page."""
+        return self._request('GET', '/snapshots', params={
+            'sandboxID': sandbox_id, 'name': name, 'limit': limit,
+            'nextToken': next_token,
+        }, page=True)
+
+    listSnapshots = list_snapshots
 
     def update_sandbox_timeout(self, sandbox_id, timeout=None, **opts):
         _require_sandbox_id(sandbox_id)
@@ -631,6 +761,12 @@ class SandboxClient(object):
     getLogs = get_sandbox_logs
 
     def create_template(self, **opts):
+        """Allocate a build with min_disk_mb and/or min_free_disk_mb in MiB.
+
+        Omitted free space uses the team default; zero requests no minimum
+        growth. Total size defaults to no minimum. Existing disks never shrink.
+        Free space growth is best effort and can fall slightly below the target.
+        """
         return self._request(
             'POST',
             '/v3/templates',
@@ -745,6 +881,15 @@ class SandboxClient(object):
             empty=True)
 
     deleteTemplateTags = delete_template_tags
+
+    def list_template_tags(self, template_id):
+        """List each tag's latest build assignment."""
+        if not template_id:
+            raise SandboxError('template_id is required')
+        return self._request(
+            'GET', '/templates/{0}/tags'.format(encode_path(template_id)))
+
+    listTemplateTags = list_template_tags
 
     def get_template_by_alias(self, alias):
         return self._request(

@@ -44,7 +44,10 @@ import qiniu
 
 ```
 更多参见SDK使用指南： https://developer.qiniu.com/kodo/sdk/python
-```
+
+### Sandbox
+
+Sandbox 的生命周期、持久快照、模板与请求注入用法见 [Sandbox 示例说明](examples/README-sandbox.md)。
 
 ## 测试
 

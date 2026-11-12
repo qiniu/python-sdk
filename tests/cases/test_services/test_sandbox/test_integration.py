@@ -298,3 +298,115 @@ def test_list_and_connect_existing_sandbox():
 
     connected = Sandbox.connect(page[0].sandbox_id, client=client, timeout=60)
     assert connected.sandbox_id == page[0].sandbox_id
+
+
+@pytest.mark.parametrize('memory', [False, True])
+def test_snapshot_lifecycle_and_connect_v2(memory):
+    import uuid
+
+    client = integration_client()
+    source = None
+    restored = None
+    snapshot_id = None
+    key = str(uuid.uuid4())
+    name = 'python-sdk-it-{0}:v1'.format(key)
+    try:
+        source = Sandbox.create(
+            os.getenv('QINIU_SANDBOX_TEMPLATE', 'base'), client=client,
+            timeout=300, auto_pause=True, auto_pause_memory=memory,
+            auto_resume={'enabled': False})
+        source.files.write('/home/user/sdk-snapshot.txt', key)
+        snapshot = source.create_snapshot(key, memory=memory, name=name)
+        snapshot_id = snapshot['snapshotID']
+        assert snapshot['names']
+        replay = source.create_snapshot(key, memory=memory, name=name)
+        assert replay['snapshotID'] == snapshot_id
+
+        page = client.list_snapshots(
+            sandbox_id=source.sandbox_id, name=name, limit=1)
+        found = []
+        while True:
+            found.extend(item['snapshotID'] for item in page['items'])
+            if not page['nextToken']:
+                break
+            page = client.list_snapshots(
+                sandbox_id=source.sandbox_id, name=name, limit=1,
+                next_token=page['nextToken'])
+        assert snapshot_id in found
+        tags = client.list_template_tags(snapshot_id)
+        assert any(tag['tag'] == 'v1' for tag in tags)
+        assert all(tag['buildID'] and tag['createdAt'] for tag in tags)
+
+        restored = Sandbox.create(snapshot_id, client=client, timeout=300)
+        restored.wait_for_ready()
+        assert restored.files.read_text('/home/user/sdk-snapshot.txt') == key
+        boot_id_command = 'cat /proc/sys/kernel/random/boot_id'
+        before_boot = source.commands.run(boot_id_command).stdout.strip()
+        assert before_boot
+        source.pause(memory=memory)
+        assert source.get_info()['state'] == 'paused'
+        source.connect()
+        source.wait_for_ready()
+        assert source.files.read_text('/home/user/sdk-snapshot.txt') == key
+        after_boot = source.commands.run(boot_id_command).stdout.strip()
+        assert after_boot
+        assert (before_boot == after_boot) is memory
+    finally:
+        try:
+            if restored is not None:
+                restored.kill()
+        finally:
+            try:
+                if source is not None:
+                    source.kill()
+            finally:
+                if snapshot_id:
+                    client.delete_template(snapshot_id)
+
+
+def test_template_disk_constraints():
+    import uuid
+
+    client = integration_client()
+    template_id = None
+    try:
+        created = client.create_template(
+            name='python-sdk-disk-{0}'.format(uuid.uuid4()),
+            min_disk_mb=10240, min_free_disk_mb=0)
+        template_id = created['templateID']
+        assert created['buildID']
+        client.start_template_build(
+            template_id, created['buildID'],
+            fromTemplate=os.getenv('QINIU_SANDBOX_TEMPLATE', 'base'))
+        final = client.wait_for_build(
+            template_id, created['buildID'], interval=3, timeout=300)
+        assert final['status'] == 'ready'
+    finally:
+        if template_id:
+            client.delete_template(template_id)
+
+
+def test_http_body_injection_configuration():
+    sandbox = None
+    injection = {
+        'type': 'http', 'base_url': 'https://api.example.com/v1/*',
+        'if_body': {'model': 'sdk-test'}, 'body': {'api_key': 'sdk-test-secret'},
+    }
+    try:
+        sandbox = Sandbox.create(
+            os.getenv('QINIU_SANDBOX_TEMPLATE', 'base'),
+            client=integration_client(), timeout=300, injections=[injection])
+        rules = sandbox.get_injections()['injections']
+        assert len(rules) == 1
+        assert rules[0]['if_body'] == {'model': 'sdk-test'}
+        assert rules[0].get('body') is None
+        injection['if_body'] = {'model': 'updated-sdk-test'}
+        sandbox.update_injections([injection])
+        rules = sandbox.get_injections()['injections']
+        assert rules[0]['if_body'] == {'model': 'updated-sdk-test'}
+        assert rules[0].get('body') is None
+        sandbox.update_injections([])
+        assert sandbox.get_injections()['injections'] == []
+    finally:
+        if sandbox is not None:
+            sandbox.kill()

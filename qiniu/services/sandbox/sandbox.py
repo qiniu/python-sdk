@@ -27,7 +27,7 @@ except ImportError:
 class _ConnectDescriptor(object):
     def __get__(self, obj, cls):
         if obj is None:
-            def class_connect(sandbox_id, client=None, timeout=15, **opts):
+            def class_connect(sandbox_id, client=None, timeout=None, **opts):
                 client = client or SandboxClient(**opts)
                 info = client.connect_sandbox(sandbox_id, timeout=timeout)
                 sandbox = cls(
@@ -40,7 +40,7 @@ class _ConnectDescriptor(object):
                 return sandbox
             return class_connect
 
-        def instance_connect(timeout=15):
+        def instance_connect(timeout=None):
             info = obj.client.connect_sandbox(
                 obj.sandbox_id, timeout=timeout)
             obj.update_info(info)
@@ -237,11 +237,17 @@ class Sandbox(object):
             opts['duration'] = duration
         return self.client.refresh_sandbox(self.sandbox_id, **opts)
 
-    def pause(self):
-        return self.client.pause_sandbox(self.sandbox_id)
+    def pause(self, memory=None):
+        return self.client.pause_sandbox(self.sandbox_id, memory=memory)
 
     beta_pause = pause
     betaPause = pause
+
+    def create_snapshot(self, idempotency_key, memory=None, name=None):
+        return self.client.create_sandbox_snapshot(
+            self.sandbox_id, idempotency_key, memory=memory, name=name)
+
+    createSnapshot = create_snapshot
 
     def resume(self, **opts):
         info = self.client.resume_sandbox(self.sandbox_id, **opts)

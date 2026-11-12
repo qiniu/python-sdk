@@ -18,7 +18,9 @@ def print_optional(label, fn):
 
 
 def main():
-    sandbox = create_sandbox(timeout=300)
+    sandbox = create_sandbox(
+        timeout=300, auto_pause=True, auto_pause_memory=True,
+        auto_resume={'enabled': True}, network={'allowPublicTraffic': True})
     try:
         print('created:', sandbox.sandbox_id)
         sandbox.set_timeout(600)
@@ -31,10 +33,10 @@ def main():
         print('paused:', sandbox.sandbox_id)
         sandbox.resume(timeout=300)
         print('resumed:', sandbox.sandbox_id)
-        try:
-            print('network:', sandbox.update_network({'allowInternet': True}))
-        except Exception as err:
-            print('update network skipped:', err)
+        # Disk-only pause loses running processes; explicitly connect to restart.
+        sandbox.pause(memory=False)
+        sandbox.connect()  # v2: extend TTL to at least 300s, never shorten it.
+        print('cold-booted:', sandbox.sandbox_id)
     finally:
         cleanup_sandbox(sandbox)
 
