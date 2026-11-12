@@ -366,7 +366,8 @@ def test_create_with_kodo_resource_requires_qiniu_credentials(monkeypatch):
     assert 'Qiniu AK/SK' in str(err.value)
 
 
-def test_create_with_kodo_resource_uses_qiniu_signature():
+def test_create_with_kodo_resource_uses_qiniu_signature(monkeypatch):
+    monkeypatch.delenv('DISABLE_QINIU_TIMESTAMP_SIGNATURE', raising=False)
     session = RecordingSession(
         [DummyResponse(201, {'sandboxID': 'sbx123', 'templateID': 'base'})])
     client = SandboxClient(
