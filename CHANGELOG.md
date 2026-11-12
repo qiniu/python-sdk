@@ -1,4 +1,12 @@
 # Changelog
+## 7.19.0
+* Sandbox 新增持久快照创建与分页查询，支持调用方持久保存的幂等键、UTF-8 请求头和响应中断重试；自动重试受 35 分钟窗口限制，并校验 `Retry-After`
+* Sandbox 创建和连接支持幂等重试，新增资源查询、Git 仓库 Token 更新和 Kodo 挂载独立凭据
+* Sandbox 连接升级为 Connect v2，支持内存或仅文件系统暂停，以及自动暂停和恢复配置
+* Sandbox HTTP 注入支持 JSON body 条件匹配和字段注入，模板支持标签查询和最小总磁盘、剩余磁盘约束
+* 兼容性变化：模板创建移除 `disk_size_mb` / `diskSizeMB`，请改用 `min_disk_mb` / `min_free_disk_mb`；连接省略 `timeout` 时使用服务端默认的 300 秒，连接只延长已有 TTL
+* 补充 Sandbox 单元测试、实际服务集成用例、示例与使用说明
+
 ## 7.18.2
 * Sandbox 列表支持模板和状态数组过滤，并补充模板名称与归属信息
 * Sandbox 新增运行时注入配置和 GitHub Token 更新接口
