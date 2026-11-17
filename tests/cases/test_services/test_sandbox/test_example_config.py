@@ -147,7 +147,7 @@ def test_examples_cover_primary_sandbox_surfaces():
             'update_injections',
             'update_github_token',
             "os.getenv('QINIU_SANDBOX_GITHUB_TOKEN')",
-            'list_sandboxes_v2(',
+            'list_sandboxes(',
             'template=[sandbox.template_id]',
         ],
         'sandbox_templates.py': [

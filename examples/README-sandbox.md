@@ -16,9 +16,9 @@ python examples/sandbox_injection_rules.py
 
 ## 沙箱列表分页
 
-`client.list_sandboxes_v2()` 保持返回原始列表。需要完整遍历时使用
-`client.list_sandboxes_page()`，返回 `{'items': [...], 'nextToken': ...}`，
-游标来自 `X-Next-Token` 响应头；也可以让分页器自动传递游标：
+`client.list_sandboxes(limit=100, nextToken=cursor)` 返回
+`{'items': [...], 'nextToken': ...}`，游标来自 `X-Next-Token` 响应头，
+`nextToken` 为空表示没有下一页。完整遍历也可以让 `Sandbox.list()` 分页器自动传递游标：
 
 ```python
 from qiniu.services.sandbox import Sandbox

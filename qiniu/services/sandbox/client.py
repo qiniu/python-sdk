@@ -392,8 +392,12 @@ class SandboxClient(object):
             return None
         data = parse_json_response(response)
         if page:
-            return {'items': data, 'nextToken': response.headers.get(
-                'X-Next-Token')}
+            next_token = response.headers.get('X-Next-Token')
+            if isinstance(data, dict):
+                if next_token is None:
+                    next_token = data.get('nextToken') or data.get('next_token')
+                data = data.get('items') or data.get('sandboxes') or []
+            return {'items': data, 'nextToken': next_token}
         return data
 
     def _is_retryable(self, err):
@@ -438,34 +442,14 @@ class SandboxClient(object):
                 raise
 
     def list_sandboxes(self, **opts):
-        return self._request('GET', '/sandboxes', params=opts)
-
-    listSandboxes = list_sandboxes
-
-    def list_sandboxes_v2(self, **opts):
+        """Return {'items': [...], 'nextToken': ...} from the sandbox list."""
         return self._request(
             'GET',
             '/v2/sandboxes',
-            params=_normalize_list_options(opts))
-
-    def list_sandboxes_page(self, **opts):
-        """Return sandbox items and the next cursor from X-Next-Token."""
-        page = self._request(
-            'GET', '/v2/sandboxes',
             params=_normalize_list_options(opts), page=True)
-        if isinstance(page['items'], dict):
-            body = page['items']
-            return {
-                'items': body.get('items') or body.get('sandboxes') or [],
-                'nextToken': page.get('nextToken') or body.get('nextToken') or
-                body.get('next_token'),
-            }
-        return page
 
-    listSandboxesPage = list_sandboxes_page
-
-    listSandboxesV2 = list_sandboxes_v2
-    list = list_sandboxes_v2
+    listSandboxes = list_sandboxes
+    list = list_sandboxes
 
     def create_sandbox(self, template=None, **opts):
         body = _normalize_sandbox_create_options(template, **opts)

@@ -932,11 +932,36 @@ class RecordingSandboxListClient(object):
     def __init__(self):
         self.calls = []
 
-    def list_sandboxes_v2(self, **opts):
+    def list_sandboxes(self, **opts):
         self.calls.append(opts)
         if len(self.calls) == 1:
             return {'items': [], 'nextToken': 'next-page'}
         return {'items': []}
+
+
+@pytest.mark.parametrize('method_name', [
+    'list_sandboxes', 'listSandboxes', 'list',
+])
+def test_client_sandbox_list_returns_items_and_header_cursor(method_name):
+    first = DummyResponse(200, [{'sandboxID': 'first'}])
+    first.headers['X-Next-Token'] = 'page-2'
+    session = RecordingSession([
+        first, DummyResponse(200, [{'sandboxID': 'second'}]),
+    ])
+    client = SandboxClient(api_key='api-key', session=session)
+    list_sandboxes = getattr(client, method_name)
+
+    page = list_sandboxes(limit=1, query={'metadata': {'app': 'tests'}})
+    assert page == {'items': [{'sandboxID': 'first'}], 'nextToken': 'page-2'}
+    last = list_sandboxes(limit=1, nextToken=page['nextToken'])
+    assert last == {'items': [{'sandboxID': 'second'}], 'nextToken': None}
+    assert urlparse(session.requests[0].url).path == '/v2/sandboxes'
+    assert parse_qs(urlparse(session.requests[0].url).query) == {
+        'limit': ['1'], 'metadata': ['app=tests'],
+    }
+    assert parse_qs(urlparse(session.requests[1].url).query) == {
+        'limit': ['1'], 'nextToken': ['page-2'],
+    }
 
 
 def test_sandbox_paginator_follows_header_cursor_and_stops_at_last_page():
@@ -962,16 +987,26 @@ def test_sandbox_paginator_follows_header_cursor_and_stops_at_last_page():
 
 
 @pytest.mark.parametrize('body', [
-    {'items': [{'sandboxID': 'first'}], 'nextToken': 'page-2'},
-    {'sandboxes': [{'sandboxID': 'first'}], 'next_token': 'page-2'},
+    {'items': [{'sandboxID': 'first'}], 'nextToken': 'body-page'},
+    {'sandboxes': [{'sandboxID': 'first'}], 'next_token': 'body-page'},
 ])
-def test_sandbox_paginator_preserves_existing_page_responses(body):
-    session = RecordingSession([DummyResponse(200, body)])
-    paginator = Sandbox.list(client=SandboxClient(
-        api_key='api-key', session=session))
+@pytest.mark.parametrize('header_cursor', [None, 'header-page'])
+def test_sandbox_lists_normalize_json_pages_and_prefer_header_cursor(
+        body, header_cursor):
+    responses = [DummyResponse(200, body), DummyResponse(200, body)]
+    if header_cursor is not None:
+        for response in responses:
+            response.headers['X-Next-Token'] = header_cursor
+    client = SandboxClient(api_key='api-key',
+                           session=RecordingSession(responses))
+    expected_cursor = header_cursor or 'body-page'
 
+    assert client.list_sandboxes() == {
+        'items': [{'sandboxID': 'first'}], 'nextToken': expected_cursor,
+    }
+    paginator = Sandbox.list(client=client)
     assert [item.sandbox_id for item in paginator.next_items()] == ['first']
-    assert paginator.next_token == 'page-2'
+    assert paginator.next_token == expected_cursor
 
 
 def test_sandbox_paginator_does_not_reuse_initial_next_token():
@@ -1001,11 +1036,11 @@ def test_sandbox_paginator_does_not_send_client_credentials_as_filters():
     assert client.calls[0] == {'metadata': {'app': 'tests'}}
 
 
-def test_list_sandboxes_v2_serializes_metadata_dict_as_query_string():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_serializes_metadata_dict_as_query_string():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(query={
+    client.list_sandboxes(query={
         'metadata': {'app': 'tests'},
         'state': 'running',
     })
@@ -1015,31 +1050,31 @@ def test_list_sandboxes_v2_serializes_metadata_dict_as_query_string():
     assert query['state'] == ['running']
 
 
-def test_list_sandboxes_v2_accepts_metadata_string():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_accepts_metadata_string():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(metadata='user=abc&app=prod')
+    client.list_sandboxes(metadata='user=abc&app=prod')
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['metadata'] == ['user=abc&app=prod']
 
 
-def test_list_sandboxes_v2_serializes_template_filters_as_comma_string():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_serializes_template_filters_as_comma_string():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(template=['python', 'team/node'])
+    client.list_sandboxes(template=['python', 'team/node'])
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['template'] == ['python,team/node']
 
 
-def test_list_sandboxes_v2_serializes_array_filters_from_query_options():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_serializes_array_filters_from_query_options():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(query={
+    client.list_sandboxes(query={
         'template': ['python', 'team/node'],
         'state': ['running', 'paused'],
         'limit': 10,
@@ -1053,11 +1088,11 @@ def test_list_sandboxes_v2_serializes_array_filters_from_query_options():
     assert query['nextToken'] == ['next-page']
 
 
-def test_list_sandboxes_v2_explicit_options_override_extra_query_values():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_explicit_options_override_extra_query_values():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(
+    client.list_sandboxes(
         limit=20,
         state=['running'],
         template=['python'],
@@ -1074,11 +1109,11 @@ def test_list_sandboxes_v2_explicit_options_override_extra_query_values():
     assert query['template'] == ['python']
 
 
-def test_list_sandboxes_v2_explicit_none_options_override_query_values():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_explicit_none_options_override_query_values():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(
+    client.list_sandboxes(
         metadata=None,
         state=None,
         template=None,
@@ -1095,32 +1130,32 @@ def test_list_sandboxes_v2_explicit_none_options_override_query_values():
     assert 'template' not in query
 
 
-def test_list_sandboxes_v2_serializes_non_string_filter_values():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_serializes_non_string_filter_values():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(template=[123, 456], state=7)
+    client.list_sandboxes(template=[123, 456], state=7)
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['template'] == ['123,456']
     assert query['state'] == ['7']
 
 
-def test_list_sandboxes_v2_does_not_join_mapping_keys():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_does_not_join_mapping_keys():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(template={'template': 'python'})
+    client.list_sandboxes(template={'template': 'python'})
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['template'] == ["{'template': 'python'}"]
 
 
-def test_list_sandboxes_v2_preserves_bytes_and_unicode_filter_values():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_preserves_bytes_and_unicode_filter_values():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(
+    client.list_sandboxes(
         template=[u'团队/模板', b'team/node'],
         state=[b'running'],
     )

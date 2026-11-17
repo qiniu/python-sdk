@@ -76,16 +76,9 @@ class SandboxPaginator(object):
         request_opts.update(opts)
         if self.next_token and request_opts.get('nextToken') is None:
             request_opts['nextToken'] = self.next_token
-        list_page = getattr(self.client, 'list_sandboxes_page', None)
-        if list_page is None:
-            list_page = self.client.list_sandboxes_v2
-        data = list_page(**request_opts) or {}
-        items = data if isinstance(data, list) else (
-            data.get('items') or data.get('sandboxes') or []
-        )
-        self.next_token = None if isinstance(data, list) else (
-            data.get('nextToken') or data.get('next_token')
-        )
+        data = self.client.list_sandboxes(**request_opts)
+        items = data.get('items') or []
+        self.next_token = data.get('nextToken')
         self._has_next = bool(self.next_token)
         return [Sandbox(client=self.client, info=item) for item in items]
 
