@@ -395,7 +395,8 @@ def test_envd_redirects_never_forward_credentials(status, operation):
             self.respond()
 
         def respond(self):
-            self.server.received.append(dict(self.headers.items()))
+            self.server.received.append(
+                requests.structures.CaseInsensitiveDict(self.headers.items()))
             target = getattr(self.server, 'redirect_target', None)
             body = b'redirect' if target else b'public target'
             self.send_response(status if target else 200)
