@@ -1,32 +1,49 @@
 # -*- coding: utf-8 -*-
 import base64
 import gc
+import hashlib
 from io import BytesIO, StringIO
 import json
+import os
+import posixpath
+import shlex
+import shutil
 import struct
+import subprocess
 import sys
+import tempfile
+import time
 import traceback
-from threading import Event, Thread
+from threading import Event, Thread, Timer
 
 try:
-    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from http.server import BaseHTTPRequestHandler, HTTPServer, SimpleHTTPRequestHandler
 except ImportError:
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 try:
     from queue import Queue
 except ImportError:
     from Queue import Queue
 
+try:
+    from urllib.parse import parse_qs, urlencode, urlparse
+except ImportError:
+    from urlparse import parse_qs, urlparse
+    from urllib import urlencode
+
 import pytest
 import requests
 
 from qiniu.services.sandbox import (
     CommandExitError,
+    CommandResult,
     EntryInfo,
     FileType,
     FilesystemEventType,
     GitAuthException,
+    Git,
     InvalidArgumentException,
     PtySize,
     Sandbox,
@@ -1014,15 +1031,15 @@ def test_git_clone_uses_temporary_credentials_and_cleans_them(background):
     starts = [post['data']['process'] for post in session.posts
               if post['url'].endswith('/process.Process/Start')]
     clone = next(process for process in starts
-                 if process['args'][-1].startswith('git clone '))
+                 if (process.get('envs') or {}).get('GIT_ASKPASS'))
     assert clone['args'][-1] == (
-        'git clone https://github.com/qiniu/private.git /workspace/private')
+        'git -c credential.helper= clone https://github.com/qiniu/private.git /workspace/private')
     assert clone['envs']['GIT_USERNAME'] == 'demo-user'
     assert clone['envs']['GIT_PASSWORD'] == 'private-token'
     assert clone['envs']['CUSTOM'] == 'preserved'
     askpass_path = clone['envs']['GIT_ASKPASS']
     assert clone['envs']['GIT_TERMINAL_PROMPT'] == '0'
-    assert all('credential.helper' not in process['args'][-1]
+    assert all('config --global' not in process['args'][-1]
                for process in starts)
     if background:
         assert not any(post['url'].endswith('/filesystem.Filesystem/Remove')
@@ -1031,7 +1048,285 @@ def test_git_clone_uses_temporary_credentials_and_cleans_them(background):
     assert result.exit_code == 0
     removed = [post['data']['path'] for post in session.posts
                if post['url'].endswith('/filesystem.Filesystem/Remove')]
-    assert removed == [askpass_path]
+    assert removed == [askpass_path, posixpath.dirname(askpass_path)]
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='local askpass fixture requires POSIX shell')
+def test_git_temporary_credentials_do_not_enter_configured_store_helper():
+    try:
+        subprocess.check_output(['git', '--version'])
+    except OSError:
+        pytest.skip('git executable is required')
+    root = tempfile.mkdtemp(prefix='qiniu-git-credentials-')
+    git_home = os.path.join(root, 'home')
+    os.mkdir(git_home)
+    env = dict(os.environ)
+    for key in list(env):
+        if key.startswith('GIT_') or key == 'SSH_ASKPASS':
+            env.pop(key)
+    env.update({'HOME': git_home, 'XDG_CONFIG_HOME': git_home,
+                'GIT_CONFIG_NOSYSTEM': '1',
+                'GIT_CONFIG_GLOBAL': os.path.join(git_home, '.gitconfig'),
+                'GIT_TERMINAL_PROMPT': '0',
+                'NO_PROXY': '127.0.0.1,localhost',
+                'no_proxy': '127.0.0.1,localhost'})
+    remote = os.path.join(root, 'remote.git')
+    store = os.path.join(git_home, 'credentials')
+    helper = 'store --file=' + store
+    subprocess.check_call(['git', 'init', '--bare', '-q', remote], env=env)
+    subprocess.check_call(['git', '--git-dir=' + remote, 'update-server-info'], env=env)
+    subprocess.check_call(['git', 'config', '--global', 'credential.helper', helper], env=env)
+
+    class Handler(SimpleHTTPRequestHandler):
+        def do_GET(self):
+            expected = 'Basic ' + base64.b64encode(b'demo:fake-token').decode('ascii')
+            if self.headers.get('Authorization') != expected:
+                self.send_response(401)
+                self.send_header('WWW-Authenticate', 'Basic realm="local"')
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            SimpleHTTPRequestHandler.do_GET(self)
+
+        def translate_path(self, path):
+            return os.path.join(root, path.split('?', 1)[0].lstrip('/'))
+
+        def log_message(self, *args):
+            pass
+
+    def local_path(value):
+        return value.replace('/tmp/qiniu-git-auth', os.path.join(root, 'auth'))
+
+    class Files(object):
+        def write(self, path, data, **opts):
+            with open(local_path(path), 'w') as output:
+                output.write(data)
+
+        def remove(self, path, **opts):
+            path = local_path(path)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+
+    class Commands(object):
+        def __init__(self):
+            self.sandbox = type('SandboxContext', (object,), {'files': Files()})()
+
+        def run(self, command, **opts):
+            process_env = dict(env)
+            process_env.update(opts.get('envs') or {})
+            if 'GIT_ASKPASS' in process_env:
+                process_env['GIT_ASKPASS'] = local_path(process_env['GIT_ASKPASS'])
+            process = subprocess.Popen(
+                shlex.split(local_path(command)), stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=process_env, cwd=opts.get('cwd'))
+            expired = Event()
+
+            def expire():
+                expired.set()
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+
+            timer = Timer(10, expire)
+            timer.daemon = True
+            timer.start()
+            try:
+                stdout, stderr = process.communicate()
+            finally:
+                timer.cancel()
+            assert not expired.is_set(), 'local Git command timed out'
+            return CommandResult(process.pid, process.returncode,
+                                 stdout.decode('utf-8', 'replace'),
+                                 stderr.decode('utf-8', 'replace'))
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    serving = Thread(target=server.serve_forever)
+    serving.daemon = True
+    serving.start()
+    try:
+        git = Git(Commands())
+        url = 'http://127.0.0.1:{0}/remote.git'.format(server.server_port)
+        result = git.clone(url, os.path.join(root, 'explicit'),
+                           username='demo', password='fake-token')
+        assert result.exit_code == 0, result.stderr
+        assert not os.path.exists(store), 'temporary credentials reached the store helper'
+        assert not any(name.startswith('auth') for name in os.listdir(root))
+        configured = subprocess.check_output(
+            ['git', 'config', '--global', 'credential.helper'], env=env)
+        assert configured.decode('utf-8').strip() == helper
+
+        with open(store, 'w') as output:
+            output.write('http://demo:fake-token@127.0.0.1:{0}\n'.format(server.server_port))
+        result = git.clone(url, os.path.join(root, 'configured-helper'))
+        assert result.exit_code == 0, result.stderr
+    finally:
+        server.shutdown()
+        server.server_close()
+        serving.join(1)
+        shutil.rmtree(root)
+
+
+@pytest.mark.parametrize('operation', ['clone', 'pull', 'push'])
+@pytest.mark.parametrize('background', [False, True])
+def test_git_credentials_keep_request_user_and_private_directory(
+        operation, background):
+    class CredentialSession(EnvdSession):
+        def post(self, url, **opts):
+            response = super(CredentialSession, self).post(url, **opts)
+            process = self.posts[-1]['data'].get('process') or {}
+            args = process.get('args') or ['']
+            if args[-1] == 'git remote get-url origin':
+                return DummyResponse(raw=b''.join([
+                    encode_connect_envelope({'start': {'pid': 12}}),
+                    encode_connect_envelope({'data': {'stdout': base64.b64encode(
+                        b'https://example.test/private.git\n').decode('ascii')}}),
+                    encode_connect_envelope({'end': {'exitCode': 0}}),
+                ]), content_type='application/connect+json')
+            return response
+
+    def request_user(headers):
+        value = headers['Authorization'].split(' ', 1)[1]
+        return base64.b64decode(value).decode('ascii').split(':', 1)[0]
+
+    session = CredentialSession()
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    directories = []
+    for user in ('root', 'user'):
+        first_post = len(session.posts)
+        opts = {'user': user, 'username': 'demo', 'password': 'fake-token',
+                'background': background}
+        if operation == 'clone':
+            result = sandbox.git.clone('https://example.test/private.git', **opts)
+        else:
+            result = getattr(sandbox.git, operation)(
+                '/workspace/repo', remote='origin', **opts)
+        upload = session.requests[-1]
+        assert request_user(upload['kwargs']['headers']) == user
+        assert parse_qs(urlparse(upload['url']).query)['username'] == [user]
+        starts = [post for post in session.posts[first_post:]
+                  if post['url'].endswith('/process.Process/Start')]
+        assert all(request_user(post['headers']) == user for post in starts)
+        git_process = next(post['data']['process'] for post in starts
+                           if (post['data']['process'].get('envs') or {}).get('GIT_ASKPASS'))
+        askpass = git_process['envs']['GIT_ASKPASS']
+        directory = posixpath.dirname(askpass)
+        assert directory not in directories
+        directories.append(directory)
+        assert any('700' in post['data']['process']['args'][-1] and
+                   directory in post['data']['process']['args'][-1]
+                   for post in starts)
+        if background:
+            assert not any(post['url'].endswith('/filesystem.Filesystem/Remove')
+                           for post in session.posts[first_post:])
+            result = result.wait()
+        assert result.exit_code == 0
+        cleanup = [post for post in session.posts[first_post:]
+                   if post['url'].endswith('/filesystem.Filesystem/Remove')]
+        assert directory in [post['data']['path'] for post in cleanup]
+        assert all(request_user(post['headers']) == user for post in cleanup)
+
+
+def test_git_background_handle_discard_cleans_credentials_as_command_user():
+    sandbox, session = sandbox_with_envd_session()
+    handle = sandbox.git.clone('https://example.test/private.git',
+                               username='demo', password='fake-token',
+                               user='root', background=True)
+    assert not any(post['url'].endswith('/filesystem.Filesystem/Remove')
+                   for post in session.posts)
+    del handle
+    gc.collect()
+
+    cleanup = [post for post in session.posts
+               if post['url'].endswith('/filesystem.Filesystem/Remove')]
+    assert len(cleanup) == 2
+    assert cleanup[1]['data']['path'] == posixpath.dirname(cleanup[0]['data']['path'])
+    assert all(post['headers']['Authorization'] == 'Basic cm9vdDo='
+               for post in cleanup)
+
+
+@pytest.mark.parametrize('url_method,operation,http_method', [
+    ('download_url', 'read', 'GET'), ('upload_url', 'write', 'POST'),
+])
+def test_public_file_urls_pass_envd_signature_expiration_and_tamper_checks(
+        url_method, operation, http_method):
+    token = 'envd-test-token'
+
+    class Handler(BaseHTTPRequestHandler):
+        def authorize(self, expected_operation):
+            query = parse_qs(urlparse(self.path).query)
+            components = [query.get('path', [''])[0], expected_operation,
+                          query.get('username', [''])[0], token]
+            expiration = query.get('signature_expiration', [None])[0]
+            if expiration is not None:
+                components.append(expiration)
+            payload = ':'.join(components).encode('utf-8')
+            # Envd auth.go and keys/sha256.go use standard base64 without padding.
+            expected = 'v1_' + base64.b64encode(
+                hashlib.sha256(payload).digest()).decode('ascii').rstrip('=')
+            valid = query.get('signature', [''])[0] == expected
+            if expiration is not None:
+                valid = valid and int(expiration) >= int(time.time())
+            self.send_response(200 if valid else 401)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+
+        def do_GET(self):
+            self.authorize('read')
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get('Content-Length', '0')))
+            self.authorize('write')
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    serving = Thread(target=server.serve_forever)
+    serving.daemon = True
+    serving.start()
+    sandbox = Sandbox(sandbox_id='sbx123', envdAccessToken=token,
+                      envd_url='http://127.0.0.1:{0}'.format(server.server_port))
+    client = requests.Session()
+    client.trust_env = False
+
+    def status(url, method=http_method):
+        response = client.request(method, url, data=b'', timeout=2)
+        return response.status_code
+
+    try:
+        url = getattr(sandbox, url_method)(
+            '/tmp/hello world.txt', user='root',
+            signature_expiration=int(time.time()) + 300)
+        assert status(url) == 200
+        assert status(url, method='POST' if operation == 'read' else 'GET') == 401
+
+        query = dict((key, values[0]) for key, values in
+                     parse_qs(urlparse(url).query).items())
+        for key, value in [('signature', 'v1_tampered'),
+                           ('path', '/tmp/different.txt'),
+                           ('username', 'different-user'),
+                           ('signature_expiration', str(int(time.time()) + 600))]:
+            changed = dict(query)
+            changed[key] = value
+            tampered = urlparse(url)._replace(query=urlencode(changed)).geturl()
+            assert status(tampered) == 401
+
+        expired = getattr(sandbox, url_method)(
+            '/tmp/hello world.txt', user='root',
+            signature_expiration=int(time.time()) - 1)
+        assert status(expired) == 401
+        no_expiration = getattr(sandbox, url_method)(
+            '/tmp/hello world.txt', user='root', signature_expiration=None)
+        assert status(no_expiration) == 200
+    finally:
+        client.close()
+        server.shutdown()
+        server.server_close()
+        serving.join(1)
 
 
 def test_git_clone_auth_failure_removes_temporary_credentials():
@@ -1039,9 +1334,8 @@ def test_git_clone_auth_failure_removes_temporary_credentials():
         def post(self, url, **opts):
             response = super(AuthFailureSession, self).post(url, **opts)
             process = self.posts[-1]['data'].get('process') or {}
-            args = process.get('args') or []
-            if url.endswith('/process.Process/Start') and args[-1].startswith(
-                    'git clone '):
+            if url.endswith('/process.Process/Start') and (
+                    process.get('envs') or {}).get('GIT_ASKPASS'):
                 return DummyResponse(
                     raw=b''.join([
                         encode_connect_envelope({'start': {'pid': 12}}),
@@ -1059,11 +1353,16 @@ def test_git_clone_auth_failure_removes_temporary_credentials():
 
     with pytest.raises(GitAuthException):
         sandbox.git.clone('https://github.com/qiniu/private.git',
-                          username='demo-user', password='private-token')
+                          username='demo-user', password='private-token', user='root')
 
     removed = [post['data']['path'] for post in session.posts
                if post['url'].endswith('/filesystem.Filesystem/Remove')]
-    assert len(removed) == 1
+    assert len(removed) == 2
+    assert removed[1] == posixpath.dirname(removed[0])
+    cleanup = [post for post in session.posts
+               if post['url'].endswith('/filesystem.Filesystem/Remove')]
+    assert all(post['headers']['Authorization'] == 'Basic cm9vdDo='
+               for post in cleanup)
 
 
 @pytest.mark.parametrize('url,credentials', [

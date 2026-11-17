@@ -61,12 +61,13 @@ def basic_auth(user=None):
 
 
 def file_signature(path, operation, user, access_token, expiration):
-    if expiration is None:
-        expiration = ''
-    components = [path, operation, user, access_token, expiration]
+    components = [path, operation, user, access_token]
+    if expiration is not None:
+        components.append(expiration)
     raw = b':'.join([_to_utf8_bytes(component)
                      for component in components])
-    return 'v1_{0}'.format(hashlib.sha256(raw).hexdigest())
+    encoded = base64.b64encode(hashlib.sha256(raw).digest()).rstrip(b'=')
+    return 'v1_{0}'.format(encoded.decode('ascii'))
 
 
 def _to_utf8_bytes(value):

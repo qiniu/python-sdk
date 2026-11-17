@@ -30,45 +30,48 @@ def _normalize_paths(paths):
 RESET_MODES = set(['soft', 'mixed', 'hard', 'merge', 'keep'])
 
 
-def _remove_credential_file(filesystem, path):
-    if not path:
-        return
-    try:
-        filesystem.remove(path)
-    except Exception:
-        pass
+def _remove_credential_files(filesystem, path, directory, user):
+    opts = {} if user is None else {'user': user}
+    for item in (path, directory):
+        try:
+            filesystem.remove(item, **opts)
+        except Exception:
+            pass
 
 
 class _CredentialCleanupHandle(object):
-    def __init__(self, handle, filesystem, path):
+    def __init__(self, handle, filesystem, path, directory, user):
         self._handle = handle
         self._filesystem = filesystem
         self._path = path
+        self._directory = directory
+        self._user = user
         self._cleaned = [False]
         self.wait = self._wrap_wait(
-            handle.wait, filesystem, path, self._cleaned)
+            handle.wait, filesystem, path, directory, user, self._cleaned)
 
     def __getattr__(self, name):
         return getattr(self._handle, name)
 
     @staticmethod
-    def _cleanup(filesystem, path, cleaned):
+    def _cleanup(filesystem, path, directory, user, cleaned):
         if not cleaned[0]:
             cleaned[0] = True
-            _remove_credential_file(filesystem, path)
+            _remove_credential_files(filesystem, path, directory, user)
 
     @classmethod
-    def _wrap_wait(cls, wait, filesystem, path, cleaned):
+    def _wrap_wait(cls, wait, filesystem, path, directory, user, cleaned):
         def wrapped_wait(*args, **kwargs):
             try:
                 return wait(*args, **kwargs)
             finally:
-                cls._cleanup(filesystem, path, cleaned)
+                cls._cleanup(filesystem, path, directory, user, cleaned)
         return wrapped_wait
 
     def __del__(self):
         try:
-            self._cleanup(self._filesystem, self._path, self._cleaned)
+            self._cleanup(self._filesystem, self._path, self._directory,
+                          self._user, self._cleaned)
         except Exception:
             pass
 
@@ -357,6 +360,8 @@ class Git(object):
     def _run_git(self, repo_path, args, **opts):
         if repo_path:
             opts['cwd'] = repo_path
+        if opts.pop('_disable_credential_helpers', False):
+            args = ['-c', 'credential.helper='] + args
         return self.commands.run('git {0}'.format(' '.join(args)), **opts)
 
     def _get_remote_url(self, repo_path, remote, **opts):
@@ -407,27 +412,26 @@ class Git(object):
             raise SandboxError(
                 'Sandbox filesystem is required for credentialed Git '
                 'operations.')
-        temp_dir = '/tmp/qiniu-git-auth'
+        temp_dir = '/tmp/qiniu-git-auth-{0}'.format(uuid.uuid4().hex)
+        user = opts.get('user')
+        file_opts = {} if user is None else {'user': user}
         setup_opts = dict(opts)
         setup_opts.pop('background', None)
         prepare_result = self.commands.run(
-            'install -d -m 700 {0}'.format(shell_quote(temp_dir)),
+            'mkdir -m 700 {0}'.format(shell_quote(temp_dir)),
             **setup_opts
         )
         if getattr(prepare_result, 'exit_code', 0):
             return prepare_result
-        askpass_path = '{0}/qiniu-git-askpass-{1}'.format(
-            temp_dir,
-            uuid.uuid4().hex,
-        )
+        askpass_path = temp_dir + '/askpass'
         try:
-            filesystem.write(askpass_path, _askpass_script())
+            filesystem.write(askpass_path, _askpass_script(), **file_opts)
             chmod_result = self.commands.run(
                 'chmod 700 {0}'.format(shell_quote(askpass_path)),
                 **setup_opts
             )
             if getattr(chmod_result, 'exit_code', 0):
-                _remove_credential_file(filesystem, askpass_path)
+                _remove_credential_files(filesystem, askpass_path, temp_dir, user)
                 return chmod_result
 
             auth_opts = dict(opts)
@@ -439,16 +443,17 @@ class Git(object):
                 'GIT_PASSWORD': password,
             })
             auth_opts['envs'] = envs
+            auth_opts['_disable_credential_helpers'] = True
 
             result = operation(auth_opts)
             if opts.get('background') and hasattr(result, 'wait'):
                 result = _CredentialCleanupHandle(
-                    result, filesystem, askpass_path)
+                    result, filesystem, askpass_path, temp_dir, user)
             else:
-                _remove_credential_file(filesystem, askpass_path)
+                _remove_credential_files(filesystem, askpass_path, temp_dir, user)
             return result
         except BaseException as err:
-            _remove_credential_file(filesystem, askpass_path)
+            _remove_credential_files(filesystem, askpass_path, temp_dir, user)
             raise err
 
     def _raise_known_result_error(

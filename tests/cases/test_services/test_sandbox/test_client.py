@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import gc
 import json
+import posixpath
 import threading
 
 import pytest
@@ -342,13 +343,14 @@ def test_client_reads_qiniu_mac_credentials_from_env(monkeypatch):
 
 def test_util_helpers_encode_unicode_values_safely():
     assert encode_path(u'目录/文件.txt')
+    # Fixed envd vectors generated with Go crypto/sha256 and base64.RawStdEncoding.
     assert file_signature(
         u'/tmp/文件.txt',
         'read',
         u'用户',
         u'token',
         1893456000,
-    ).startswith('v1_')
+    ) == 'v1_iiDuVS1ZoEJWJwcmaMLXBJSUfap4iuJG1WlhzAi81fU'
 
 
 def test_create_with_kodo_resource_requires_qiniu_credentials(monkeypatch):
@@ -794,7 +796,7 @@ def test_sandbox_envd_and_file_urls_are_signed_when_token_is_available():
     assert query['path'] == ['/tmp/hello.txt']
     assert query['username'] == ['user']
     assert query['signature_expiration'] == ['1893456000']
-    assert query['signature'][0]
+    assert query['signature'][0] == 'v1_UeNL+5BVc/nTtL8kVKm6r9cV9MHKKK+ONfF8DqRHmQM'
 
 
 def test_envd_url_requires_domain_without_override():
@@ -814,14 +816,7 @@ def test_file_url_accepts_none_signature_expiration():
     url = sandbox.download_url('/tmp/hello.txt', signatureExpiration=None)
     query = parse_qs(urlparse(url).query)
 
-    assert query['signature'][0]
-    assert query['signature'][0] == file_signature(
-        '/tmp/hello.txt',
-        'read',
-        'user',
-        'token',
-        '',
-    )
+    assert query['signature'][0] == 'v1_Ts3v6XNhCOn8v/BAzyGbrgPhWwKFdEvLtchOSN7BqbU'
     assert 'signature_expiration' not in query
 
 
@@ -2019,18 +2014,18 @@ def test_git_push_with_credentials_uses_askpass_without_remote_url_leak():
     )
 
     assert commands.calls[0][0] == 'git remote get-url origin'
-    assert commands.calls[1][0] == 'install -d -m 700 /tmp/qiniu-git-auth'
-    assert files.writes[0][0].startswith(
-        '/tmp/qiniu-git-auth/qiniu-git-askpass-')
-    assert commands.calls[2][0].startswith(
-        'chmod 700 /tmp/qiniu-git-auth/qiniu-git-askpass-')
-    assert commands.calls[3][0] == 'git push --set-upstream origin main'
+    directory = posixpath.dirname(files.writes[0][0])
+    assert commands.calls[1][0] == 'mkdir -m 700 ' + directory
+    assert directory.startswith('/tmp/qiniu-git-auth-')
+    assert commands.calls[2][0] == 'chmod 700 ' + files.writes[0][0]
+    assert commands.calls[3][0] == 'git -c credential.helper= push --set-upstream origin main'
     assert 'secret:%@token' not in commands.calls[3][0]
     assert commands.calls[3][1]['request_timeout'] == 7
     assert commands.calls[3][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
     assert commands.calls[3][1]['envs']['GIT_USERNAME'] == 'git:user'
     assert commands.calls[3][1]['envs']['GIT_PASSWORD'] == 'secret:%@token'
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_pull_with_credentials_resolves_single_remote():
@@ -2078,11 +2073,12 @@ def test_git_pull_with_credentials_resolves_single_remote():
     )
 
     assert commands.calls[0][0] == 'git remote'
-    assert commands.calls[2][0] == 'install -d -m 700 /tmp/qiniu-git-auth'
-    assert commands.calls[4][0] == 'git pull origin main'
+    assert commands.calls[2][0] == 'mkdir -m 700 ' + posixpath.dirname(files.writes[0][0])
+    assert commands.calls[4][0] == 'git -c credential.helper= pull origin main'
     assert 'secret-token' not in commands.calls[4][0]
     assert commands.calls[4][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_credential_helpers_ignore_background_when_reading_remote():
@@ -2135,7 +2131,8 @@ def test_git_credential_helpers_ignore_background_when_reading_remote():
     assert commands.calls[4][1]['background'] is True
     assert files.removes == []
     handle.wait()
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_background_throw_on_error_waits_before_raising():
@@ -2187,7 +2184,8 @@ def test_git_background_throw_on_error_waits_before_raising():
     assert files.removes == []
     with pytest.raises(CommandExitError):
         handle.wait()
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_background_credentials_clean_up_when_handle_is_discarded():
@@ -2250,7 +2248,8 @@ def test_git_background_credentials_clean_up_when_handle_is_discarded():
     del handle
     gc.collect()
 
-    assert files.removes == [(credential_path, {})]
+    assert files.removes == [(credential_path, {}),
+                             (posixpath.dirname(credential_path), {})]
 
 
 def test_git_push_with_credentials_cleans_askpass_on_auth_failure():
@@ -2298,8 +2297,9 @@ def test_git_push_with_credentials_cleans_askpass_on_auth_failure():
             password='bad-token',
         )
 
-    assert commands.calls[-1][0] == 'git push --set-upstream origin'
-    assert files.removes == [(files.writes[0][0], {})]
+    assert commands.calls[-1][0] == 'git -c credential.helper= push --set-upstream origin'
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_push_cleans_askpass_after_operation_exception():
@@ -2332,7 +2332,8 @@ def test_git_push_cleans_askpass_after_operation_exception():
         )
 
     assert 'rpc timed out' in str(err.value)
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_credentials_clean_askpass_when_chmod_raises():
@@ -2368,7 +2369,8 @@ def test_git_credentials_clean_askpass_when_chmod_raises():
             password='secret-token',
         )
 
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_credentials_clean_askpass_when_write_raises():
@@ -2404,7 +2406,8 @@ def test_git_credentials_clean_askpass_when_write_raises():
             password='secret-token',
         )
 
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_helpers_accept_e2b_style_signatures():

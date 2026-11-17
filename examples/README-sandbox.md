@@ -65,6 +65,10 @@ result = sandbox.git.clone(
 使用 `background=True` 时，在句柄 `wait()` 结束后删除。该方式会把凭据交给
 沙箱中的 Git 进程，应仅用于允许沙箱访问这些凭据的任务。
 
+显式凭据只用于本次 Git 调用，已配置的 credential helper 不会保存它们；
+已有 Git 全局配置保持不变。每次调用使用独立的私有临时目录，准备、上传、
+执行及清理均使用本次 `user` 指定的身份；结束后同时删除 askpass 和临时目录。
+
 ## 暂停与恢复
 
 `Sandbox.connect()`、实例 `connect()` 和 `SandboxClient.connect_sandbox()` 使用 Connect v2。省略 `timeout` 使用服务端默认的 300 秒；显式值必须至少为 1 秒。连接只延长 TTL，不会缩短已有 TTL；需要主动调整过期时间时使用 `set_timeout()`。
