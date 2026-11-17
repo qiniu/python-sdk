@@ -10,9 +10,10 @@ import qiniu.services.sandbox.client as sandbox_client_module
 import qiniu.services.sandbox.sandbox as sandbox_module
 
 try:
-    from urllib.parse import parse_qs, urlparse
+    from urllib.parse import parse_qs, unquote_plus, urlparse
 except ImportError:
     from urlparse import parse_qs, urlparse
+    from urllib import unquote_plus
 
 try:
     from socketserver import StreamRequestHandler, TCPServer
@@ -1053,6 +1054,72 @@ def test_list_sandboxes_accepts_metadata_string():
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['metadata'] == ['user=abc&app=prod']
+
+
+@pytest.mark.parametrize('value', [
+    u'plain', u'中文 空格', u'a+b', u'100%', u'a=b', u'a&b',
+    u'feat/a&b=1+2%',
+])
+@pytest.mark.parametrize('nested', [False, True])
+def test_list_metadata_survives_server_filter_decoding(value, nested):
+    # The server unescapes the complete filter before splitting each key/value.
+    # A regular query decoder alone would miss '+' corruption and '&'/'=' errors.
+    metadata = {u'key+&=% 中文': value}
+    opts = {'query': {'metadata': metadata}} if nested else {'metadata': metadata}
+    session = RecordingSession([DummyResponse(200, [])])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes(**opts)
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    filters = unquote_plus(query['metadata'][0])
+    pairs = [item.split('=') for item in filters.split('&')]
+    assert all(len(pair) == 2 for pair in pairs)
+    decoded = dict((_decode_filter_component(key), _decode_filter_component(item))
+                   for key, item in pairs)
+    assert decoded == metadata
+
+
+def test_list_metadata_normalizes_utf8_bytes_and_non_string_values():
+    session = RecordingSession([DummyResponse(200, [])])
+    client = SandboxClient(api_key='api-key', session=session)
+    metadata = {u'字节+'.encode('utf-8'): u'值&+'.encode('utf-8'), 7: 42,
+                'flag': True, 'optional': None}
+
+    client.list_sandboxes(metadata=metadata)
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    filters = unquote_plus(query['metadata'][0])
+    decoded = dict((_decode_filter_component(key), _decode_filter_component(value))
+                   for key, value in (part.split('=') for part in filters.split('&')))
+    assert decoded == {u'字节+': u'值&+', '7': '42', 'flag': 'True',
+                       'optional': 'None'}
+
+
+def test_list_metadata_preserves_preformatted_filter():
+    session = RecordingSession([DummyResponse(200, [])])
+    client = SandboxClient(api_key='api-key', session=session)
+    formatted = 'branch=a%252Bb%2526c%253Dd%2525'
+
+    client.list_sandboxes(metadata=formatted)
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['metadata'] == [formatted]
+
+
+def test_list_metadata_preserves_raw_byte_values():
+    session = RecordingSession([DummyResponse(200, [])])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes(metadata={'raw': b'\xff+'})
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['metadata'] == ['raw=%25FF%252B']
+
+
+def _decode_filter_component(value):
+    decoded = unquote_plus(value)
+    return decoded if isinstance(decoded, type(u'')) else decoded.decode('utf-8')
 
 
 def test_list_sandboxes_serializes_template_filters_as_comma_string():

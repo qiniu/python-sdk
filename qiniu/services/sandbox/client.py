@@ -7,6 +7,11 @@ import uuid
 
 import requests
 
+try:
+    from urllib.parse import quote
+except ImportError:
+    from urllib import quote
+
 from qiniu.auth import QiniuMacAuth, QiniuMacRequestsAuth
 from qiniu.compat import (
     basestring,
@@ -203,6 +208,14 @@ def _require_sandbox_id(sandbox_id):
     return sandbox_id
 
 
+def _encode_metadata_component(value):
+    if not isinstance(value, (bytes_type, text_type)):
+        value = text_type(value)
+    if isinstance(value, text_type):
+        value = value.encode('utf-8')
+    return quote(value, safe='')
+
+
 def _normalize_list_options(opts):
     opts = dict(opts or {})
     query = opts.pop('query', None) or {}
@@ -210,7 +223,11 @@ def _normalize_list_options(opts):
     if metadata is not None and 'metadata' not in opts:
         opts['metadata'] = metadata
     if isinstance(opts.get('metadata'), dict):
-        opts['metadata'] = urlencode(opts.get('metadata'))
+        # The API unescapes the whole filter, then each key/value separately.
+        opts['metadata'] = urlencode([
+            (_encode_metadata_component(key), _encode_metadata_component(value))
+            for key, value in opts['metadata'].items()
+        ])
     for key, value in query.items():
         if (
                 key != 'metadata' and

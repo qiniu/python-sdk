@@ -36,13 +36,11 @@ def connect_rpc(sandbox, procedure, body=None, user=None, timeout=None):
             data=json.dumps(body or {}, separators=(',', ':')),
             headers=headers,
             timeout=timeout,
+            allow_redirects=False,
         )
     except requests.RequestException as err:
         raise SandboxError('Sandbox envd request failed: {0}'.format(err))
-    if response.status_code < 200 or response.status_code >= 300:
-        raise SandboxError(
-            'Sandbox envd request failed with status {0}'.format(
-                response.status_code), response, response.text, )
+    _check_envd_response(response)
     if not response.content:
         return None
     data = response.json()
@@ -222,6 +220,7 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
         'data': encode_connect_envelope(body),
         'headers': headers,
         'timeout': timeout,
+        'allow_redirects': False,
     }
     if stream:
         request_opts['stream'] = True
@@ -233,10 +232,7 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
             response = sandbox.client.session.post(url, **request_opts)
     except requests.RequestException as err:
         raise SandboxError('Sandbox envd request failed: {0}'.format(err))
-    if response.status_code < 200 or response.status_code >= 300:
-        raise SandboxError(
-            'Sandbox envd request failed with status {0}'.format(
-                response.status_code), response, response.text, )
+    _check_envd_response(response)
 
     if stream and hasattr(response, 'iter_content'):
         return _ConnectStream(response)
@@ -260,12 +256,22 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
 def raw_envd_request(sandbox, method, url, **kwargs):
     if kwargs.get('timeout') is None:
         kwargs['timeout'] = sandbox.client.timeout
+    # Envd credentials and signed URLs must not be forwarded to redirect targets.
+    kwargs['allow_redirects'] = False
     try:
         response = sandbox.client.session.request(method, url, **kwargs)
     except requests.RequestException as err:
         raise SandboxError('Sandbox envd request failed: {0}'.format(err))
+    _check_envd_response(response)
+    return response
+
+
+def _check_envd_response(response):
     if response.status_code < 200 or response.status_code >= 300:
+        try:
+            data = response.text
+        finally:
+            response.close()
         raise SandboxError(
             'Sandbox envd request failed with status {0}'.format(
-                response.status_code), response, response.text, )
-    return response
+                response.status_code), response, data)

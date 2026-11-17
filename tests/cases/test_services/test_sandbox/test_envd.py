@@ -51,6 +51,8 @@ from qiniu.services.sandbox import (
     SandboxError,
 )
 from qiniu.services.sandbox.envd import (
+    connect_rpc,
+    connect_stream_rpc,
     decode_connect_envelopes,
     encode_connect_envelope,
     iter_connect_envelopes,
@@ -88,7 +90,9 @@ class EnvdSession(object):
         self.post_exception = None
         self.request_exception = None
 
-    def post(self, url, data=None, headers=None, timeout=None, stream=False):
+    def post(self, url, data=None, headers=None, timeout=None, stream=False,
+             allow_redirects=False):
+        assert allow_redirects is False
         if self.post_exception is not None:
             raise self.post_exception
         if headers.get('Content-Type') == 'application/connect+json':
@@ -357,6 +361,99 @@ def test_raw_envd_request_wraps_transport_errors():
 
     assert 'Sandbox envd request failed' in str(err.value)
     assert 'timed out' in str(err.value)
+
+
+@pytest.mark.parametrize('status', [301, 302, 303, 307, 308])
+@pytest.mark.parametrize('operation', [
+    'read', 'read_stream', 'write', 'write_octet', 'rpc', 'stream_rpc',
+])
+def test_envd_redirects_never_forward_credentials(status, operation):
+    class RecordingSession(requests.Session):
+        def __init__(self):
+            super(RecordingSession, self).__init__()
+            self.responses = []
+
+        def send(self, request, **kwargs):
+            response = super(RecordingSession, self).send(request, **kwargs)
+            original_close = response.close
+            response.close_called = False
+
+            def close():
+                response.close_called = True
+                original_close()
+
+            response.close = close
+            self.responses.append(response)
+            return response
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.respond()
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get('Content-Length', '0')))
+            self.respond()
+
+        def respond(self):
+            self.server.received.append(dict(self.headers.items()))
+            target = getattr(self.server, 'redirect_target', None)
+            body = b'redirect' if target else b'public target'
+            self.send_response(status if target else 200)
+            if target:
+                self.send_header('Location', target)
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    target = HTTPServer(('127.0.0.1', 0), Handler)
+    origin = HTTPServer(('127.0.0.1', 0), Handler)
+    target.received = []
+    origin.received = []
+    origin.redirect_target = 'http://127.0.0.1:{0}/target'.format(
+        target.server_port)
+    threads = []
+    for server in (target, origin):
+        thread = Thread(target=server.serve_forever,
+                        kwargs={'poll_interval': 0.01})
+        thread.daemon = True
+        thread.start()
+        threads.append(thread)
+    session = RecordingSession()
+    client = SandboxClient(api_key='api-key', session=session, timeout=2)
+    sandbox = Sandbox(client=client, sandbox_id='redirect-test',
+                      envd_url='http://127.0.0.1:{0}'.format(origin.server_port),
+                      envdAccessToken='not-a-real-token')
+    try:
+        with pytest.raises(SandboxError) as failure:
+            if operation == 'read':
+                sandbox.files.read('/file')
+            elif operation == 'read_stream':
+                sandbox.files.read('/file', format='stream')
+            elif operation == 'write':
+                sandbox.files.write('/file', b'hello')
+            elif operation == 'write_octet':
+                sandbox.files.write('/file', b'hello', use_octet_stream=True)
+            elif operation == 'rpc':
+                connect_rpc(sandbox, '/filesystem.Filesystem/Stat', {})
+            else:
+                connect_stream_rpc(sandbox, '/process.Process/Start', {},
+                                   stream=True)
+        assert failure.value.status_code == status
+        assert len(origin.received) == 1
+        assert origin.received[0]['X-Access-Token'] == 'not-a-real-token'
+        assert target.received == []
+        assert len(session.responses) == 1
+        assert session.responses[0].close_called
+    finally:
+        session.close()
+        for server in (origin, target):
+            server.shutdown()
+            server.server_close()
+        for thread in threads:
+            thread.join(1)
 
 
 def test_filesystem_write_accepts_unicode_text():

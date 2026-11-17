@@ -29,6 +29,12 @@ while pages.has_next:
         print(sandbox.sandbox_id)
 ```
 
+元数据字典会按服务端过滤协议编码，`+`、`&`、`=`、`%` 和中文均保留原值。
+直接传入 `metadata` 字符串时，调用方应先分别编码每个键和值，再将这些项编码为查询字符串。
+
+Envd 文件和进程请求不自动跟随 HTTP 重定向；收到 30x 时抛出 `SandboxError`，
+避免把访问 token 或签名 URL 带给跳转目标。
+
 ## PTY 实时输出与断连
 
 `sandbox.pty.create(on_data=callback)` 和
