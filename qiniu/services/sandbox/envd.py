@@ -177,17 +177,24 @@ class _ConnectStream(object):
                 return
             self._closed = True
         raw = getattr(self._response, 'raw', None)
+        shutdown = getattr(raw, 'shutdown', None)
         try:
-            shutdown = getattr(raw, 'shutdown', None)
             if shutdown is not None:
                 shutdown()
-            else:
-                connection = getattr(raw, 'connection', None)
-                sock = getattr(connection, 'sock', None)
+        except (IOError, OSError, RuntimeError, ValueError):
+            shutdown = None
+        if shutdown is None:
+            # A closing HTTP connection can detach its socket while the
+            # current response's file object still owns the active read.
+            fp = getattr(getattr(raw, '_fp', None), 'fp', None)
+            sock = getattr(fp, '_sock', None)
+            if sock is None:
+                sock = getattr(getattr(fp, 'raw', None), '_sock', None)
+            try:
                 if sock is not None:
                     sock.shutdown(socket.SHUT_RDWR)
-        except (IOError, OSError, RuntimeError, ValueError):
-            pass
+            except (IOError, OSError, RuntimeError, ValueError):
+                pass
         try:
             self._response.close()
         finally:

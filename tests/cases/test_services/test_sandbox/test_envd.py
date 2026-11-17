@@ -5,6 +5,7 @@ from io import BytesIO, StringIO
 import json
 import struct
 import sys
+import traceback
 from threading import Event, Thread
 
 try:
@@ -759,9 +760,12 @@ def test_pty_wait_repeats_stream_errors_and_closes_response(
         response.close()
 
 
-def test_pty_disconnect_interrupts_a_blocked_http_read():
+@pytest.mark.parametrize('connection_close', [False, True])
+def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close):
     release = Event()
+    connection_closed = Event()
     disconnected = Event()
+    errors = []
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.1'
@@ -771,6 +775,8 @@ def test_pty_disconnect_interrupts_a_blocked_http_read():
             self.send_response(200)
             self.send_header('Content-Type', 'application/connect+json')
             self.send_header('Transfer-Encoding', 'chunked')
+            if connection_close:
+                self.send_header('Connection', 'close')
             self.end_headers()
             frame = encode_connect_envelope({'event': {'start': {'pid': 12}}})
             self.wfile.write(('{0:x}\r\n'.format(len(frame))).encode('ascii') +
@@ -797,14 +803,31 @@ def test_pty_disconnect_interrupts_a_blocked_http_read():
         handle = sandbox.pty.create(on_data=lambda data: None)
 
         def disconnect():
-            handle.disconnect()
-            handle.wait()
-            disconnected.set()
+            try:
+                handle.disconnect()
+                connection_closed.set()
+                handle.wait()
+            except BaseException as error:
+                errors.append(error)
+            finally:
+                disconnected.set()
 
         closing = Thread(target=disconnect)
         closing.daemon = True
         closing.start()
-        assert disconnected.wait(1), 'disconnect blocked on an idle HTTP stream'
+        if not disconnected.wait(1):
+            frames = sys._current_frames()
+            stacks = []
+            for thread in (closing, handle._reader):
+                frame = frames.get(thread.ident)
+                if frame is not None:
+                    stacks.append('{0}:\n{1}'.format(
+                        thread.name, ''.join(traceback.format_stack(frame))))
+            pytest.fail('disconnect blocked on an idle HTTP stream; '
+                        'connection close returned: {0}\n{1}'.format(
+                            connection_closed.is_set(), '\n'.join(stacks)))
+        if errors:
+            raise errors[0]
         assert handle.wait().exit_code == -1
     finally:
         release.set()
