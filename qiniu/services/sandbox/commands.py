@@ -65,7 +65,7 @@ def _decode_bytes(value):
 
 
 def command_result_from_events(events, on_stdout=None, on_stderr=None,
-                               on_pty=None):
+                               on_pty=None, on_data=None):
     pid = 0
     stdout = ''
     stderr = ''
@@ -88,6 +88,15 @@ def command_result_from_events(events, on_stdout=None, on_stderr=None,
                 on_stderr(stderr_chunk)
             if pty_chunk and on_pty:
                 on_pty(pty_chunk)
+            if data.get('pty') is not None and on_data:
+                value = data['pty']
+                if isinstance(value, bytes_type):
+                    pass
+                elif isinstance(value, basestring):
+                    value = base64.b64decode(value)
+                else:
+                    value = bytes_type(bytearray(value))
+                on_data(value)
             stdout += stdout_chunk
             stderr += stderr_chunk
             stdout += pty_chunk
@@ -109,7 +118,7 @@ def command_result_from_events(events, on_stdout=None, on_stderr=None,
 
 class CommandHandle(object):
     def __init__(self, commands, result=None, throw_on_error=False,
-                 events=None, on_stdout=None, on_stderr=None):
+                 events=None, on_stdout=None, on_stderr=None, on_data=None):
         self.commands = commands
         result = result or CommandResult()
         self.result = result
@@ -122,6 +131,7 @@ class CommandHandle(object):
         self._events = events
         self._on_stdout = on_stdout
         self._on_stderr = on_stderr
+        self._on_data = on_data
 
     def wait(self, on_stdout=None, on_stderr=None):
         if self._events is not None:
@@ -129,6 +139,7 @@ class CommandHandle(object):
                 self._events,
                 on_stdout=on_stdout or self._on_stdout,
                 on_stderr=on_stderr or self._on_stderr,
+                on_data=self._on_data,
             )
             if not result.pid:
                 result.pid = self.pid
@@ -143,7 +154,9 @@ class CommandHandle(object):
             self.stdout = result.stdout
             self.stderr = result.stderr
             self._events = None
-        if self.throw_on_error and self.result.exit_code:
+        if (self.throw_on_error and self.result.exit_code and not (
+                self.result.exit_code == -1 and
+                getattr(self, '_disconnected', False))):
             raise CommandExitError(self.result)
         return self.result
 

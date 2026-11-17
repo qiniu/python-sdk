@@ -8,12 +8,6 @@ from qiniu.services.sandbox import CommandExitError
 
 from sandbox_common import cleanup_sandbox, create_sandbox, run_example
 
-try:
-    from urllib.parse import quote, urlparse, urlunparse
-except ImportError:
-    from urllib import quote
-    from urlparse import urlparse, urlunparse
-
 
 def is_git_ok(result):
     message = result.stderr or result.stdout or result.error or ''
@@ -75,36 +69,17 @@ def remote_git_config():
     return repo_url, username, password
 
 
-def credentialed_repo_url(repo_url, username, password):
-    parsed = urlparse(repo_url)
-    if parsed.scheme not in ('http', 'https'):
-        raise RuntimeError(
-            'remote git push: only http(s) URLs support credentials')
-    netloc = parsed.netloc.split('@', 1)[-1]
-    auth = '{0}:{1}@'.format(
-        quote(username, safe=''),
-        quote(password, safe=''),
-    )
-    return urlunparse((
-        parsed.scheme,
-        auth + netloc,
-        parsed.path,
-        parsed.params,
-        parsed.query,
-        parsed.fragment,
-    ))
-
-
 def clone_remote_with_credentials(sandbox, repo_url, repo_path,
                                   username, password, attempts=5):
-    auth_url = credentialed_repo_url(repo_url, username, password)
     result = None
     for attempt in range(attempts):
         sandbox.commands.run('rm -rf {0}'.format(repo_path))
         result = sandbox.git.clone(
-            auth_url,
+            repo_url,
             repo_path,
             depth=1,
+            username=username,
+            password=password,
             timeout=180,
             request_timeout=180,
         )

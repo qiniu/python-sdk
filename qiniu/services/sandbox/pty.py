@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import threading
 
 from .commands import CommandHandle, command_result_from_events
 from .envd import connect_rpc, connect_stream_rpc
@@ -33,12 +34,69 @@ def _normalize_size(size=None, rows=None, cols=None):
     }
 
 
+class _PtyHandle(CommandHandle):
+    def __init__(self, pty, result, events, on_data=None,
+                 throw_on_error=False):
+        super(_PtyHandle, self).__init__(
+            pty, result, events=events, on_data=on_data,
+            throw_on_error=throw_on_error)
+        self._reader_error = None
+        self._done = threading.Event()
+        self._reader = None
+        if on_data is not None:
+            self._reader = threading.Thread(target=self._read)
+            self._reader.daemon = True
+            self._reader.start()
+
+    def _read(self):
+        try:
+            super(_PtyHandle, self).wait()
+        except BaseException as err:
+            self._reader_error = err
+        finally:
+            try:
+                self.disconnect()
+            except BaseException as err:
+                if self._reader_error is None:
+                    self._reader_error = err
+            finally:
+                self._done.set()
+
+    def wait(self, on_stdout=None, on_stderr=None):
+        if self._reader is None:
+            if self._reader_error is not None:
+                raise self._reader_error
+            try:
+                return super(_PtyHandle, self).wait(on_stdout, on_stderr)
+            except BaseException as err:
+                self._reader_error = err
+                self.disconnect()
+                raise
+        if threading.current_thread() is self._reader:
+            raise RuntimeError('Cannot wait for a PTY from its output callback')
+        self._done.wait()
+        if self._reader_error is not None:
+            raise self._reader_error
+        return self.result
+
+    def disconnect(self):
+        """Close this client stream without terminating the remote PTY."""
+        self._disconnected = True
+        if self._events is not None:
+            close = getattr(self._events, 'close', None)
+            if close is not None:
+                close()
+        if self._reader is None:
+            self._events = None
+
+
 class Pty(object):
     def __init__(self, sandbox):
         self.sandbox = sandbox
 
     def create(self, size=None, user=None, cwd=None, envs=None, timeout=None,
-               rows=None, cols=None, **opts):
+               rows=None, cols=None, on_data=None, **opts):
+        """Create a PTY; on_data receives raw bytes in a reader thread."""
         envs = dict(envs or {})
         envs.setdefault('TERM', 'xterm-256color')
         envs.setdefault('LANG', 'C.UTF-8')
@@ -66,13 +124,24 @@ class Pty(object):
         )
         events = iter(events)
         try:
-            first_event = next(events)
-        except StopIteration:
-            first_event = None
-        result = command_result_from_events([first_event])
-        return CommandHandle(self, result, events=events)
+            try:
+                first_event = next(events)
+            except StopIteration:
+                first_event = None
+            result = command_result_from_events([first_event], on_data=on_data)
+        except BaseException:
+            close = getattr(events, 'close', None)
+            if close is not None:
+                try:
+                    close()
+                except BaseException:
+                    pass
+            raise
+        return _PtyHandle(self, result, events, on_data=on_data)
 
-    def connect(self, pid, user=None, timeout=None, throw_on_error=False):
+    def connect(self, pid, user=None, timeout=None, throw_on_error=False,
+                on_data=None):
+        """Connect to a PTY; on_data receives raw bytes in a reader thread."""
         events = connect_stream_rpc(
             self.sandbox,
             '/process.Process/Connect',
@@ -83,14 +152,24 @@ class Pty(object):
         )
         events = iter(events)
         try:
-            first_event = next(events)
-        except StopIteration:
-            first_event = None
-        result = command_result_from_events([first_event])
-        return CommandHandle(
+            try:
+                first_event = next(events)
+            except StopIteration:
+                first_event = None
+            result = command_result_from_events([first_event], on_data=on_data)
+        except BaseException:
+            close = getattr(events, 'close', None)
+            if close is not None:
+                try:
+                    close()
+                except BaseException:
+                    pass
+            raise
+        return _PtyHandle(
             self,
             result,
-            events=events,
+            events,
+            on_data=on_data,
             throw_on_error=throw_on_error,
         )
 

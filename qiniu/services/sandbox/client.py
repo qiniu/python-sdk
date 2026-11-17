@@ -448,6 +448,22 @@ class SandboxClient(object):
             '/v2/sandboxes',
             params=_normalize_list_options(opts))
 
+    def list_sandboxes_page(self, **opts):
+        """Return sandbox items and the next cursor from X-Next-Token."""
+        page = self._request(
+            'GET', '/v2/sandboxes',
+            params=_normalize_list_options(opts), page=True)
+        if isinstance(page['items'], dict):
+            body = page['items']
+            return {
+                'items': body.get('items') or body.get('sandboxes') or [],
+                'nextToken': page.get('nextToken') or body.get('nextToken') or
+                body.get('next_token'),
+            }
+        return page
+
+    listSandboxesPage = list_sandboxes_page
+
     listSandboxesV2 = list_sandboxes_v2
     list = list_sandboxes_v2
 

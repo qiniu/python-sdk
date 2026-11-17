@@ -396,7 +396,11 @@ class Git(object):
     def _with_remote_credentials(self, repo_path, remote, username, password,
                                  operation, **opts):
         original_url = self._get_remote_url(repo_path, remote, **opts)
-        _validate_git_url_credentials(original_url, username, password)
+        return self._with_credentials(
+            original_url, username, password, operation, **opts)
+
+    def _with_credentials(self, url, username, password, operation, **opts):
+        _validate_git_url_credentials(url, username, password)
         sandbox = getattr(self.commands, 'sandbox', None)
         filesystem = getattr(sandbox, 'files', None)
         if filesystem is None:
@@ -476,7 +480,9 @@ class Git(object):
             return result
         return wrapped_wait
 
-    def clone(self, repo_url, path=None, branch=None, depth=None, **opts):
+    def clone(self, repo_url, path=None, branch=None, depth=None,
+              username=None, password=None, **opts):
+        """Clone with optional temporary HTTP(S) username/password credentials."""
         args = ['clone']
         if depth:
             args.extend(['--depth', shell_quote(depth)])
@@ -485,7 +491,22 @@ class Git(object):
         args.append(shell_quote(repo_url))
         if path:
             args.append(shell_quote(path))
-        return self._run_git(None, args, **opts)
+        if username is None and password is None:
+            return self._run_git(None, args, **opts)
+        if not username or not password:
+            raise InvalidArgumentException(
+                'Both username and password are required when using Git '
+                'credentials.')
+        throw_on_error = opts.pop('throw_on_error', False)
+        result = self._with_credentials(
+            repo_url, username, password,
+            lambda auth_opts: self._run_git(
+                None, args, throw_on_error=False, **auth_opts),
+            **opts
+        )
+        self._raise_known_result_error(
+            result, 'clone', throw_on_error=throw_on_error)
+        return result
 
     def init(self, repo_path, bare=False, initial_branch=None, **opts):
         args = ['init']

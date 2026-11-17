@@ -939,6 +939,41 @@ class RecordingSandboxListClient(object):
         return {'items': []}
 
 
+def test_sandbox_paginator_follows_header_cursor_and_stops_at_last_page():
+    first = DummyResponse(200, [{'sandboxID': 'first'}])
+    first.headers['X-Next-Token'] = 'page-2'
+    session = RecordingSession([
+        first, DummyResponse(200, [{'sandboxID': 'second'}]),
+    ])
+    client = SandboxClient(api_key='api-key', session=session)
+    paginator = Sandbox.list(client=client, limit=1,
+                             metadata={'app': 'tests'})
+
+    assert [item.sandbox_id for item in paginator.next_items()] == ['first']
+    assert paginator.has_next is True
+    assert paginator.next_token == 'page-2'
+    assert [item.sandbox_id for item in paginator.next_items()] == ['second']
+    assert paginator.has_next is False
+    assert paginator.next_items() == []
+    assert len(session.requests) == 2
+    query = parse_qs(urlparse(session.requests[1].url).query)
+    assert query == {'limit': ['1'], 'metadata': ['app=tests'],
+                     'nextToken': ['page-2']}
+
+
+@pytest.mark.parametrize('body', [
+    {'items': [{'sandboxID': 'first'}], 'nextToken': 'page-2'},
+    {'sandboxes': [{'sandboxID': 'first'}], 'next_token': 'page-2'},
+])
+def test_sandbox_paginator_preserves_existing_page_responses(body):
+    session = RecordingSession([DummyResponse(200, body)])
+    paginator = Sandbox.list(client=SandboxClient(
+        api_key='api-key', session=session))
+
+    assert [item.sandbox_id for item in paginator.next_items()] == ['first']
+    assert paginator.next_token == 'page-2'
+
+
 def test_sandbox_paginator_does_not_reuse_initial_next_token():
     client = RecordingSandboxListClient()
     paginator = SandboxPaginator(client=client, next_token='saved-page')

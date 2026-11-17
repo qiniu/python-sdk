@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
+import socket
 import struct
+import threading
 
 import requests
 
@@ -144,6 +146,58 @@ def iter_connect_envelopes(chunks, response=None):
                 pass
 
 
+class _ConnectStream(object):
+    """An event iterator whose transport can be closed during a read."""
+
+    def __init__(self, response):
+        self._response = response
+        self._events = iter_connect_envelopes(
+            response.iter_content(chunk_size=8192), response=response)
+        self._closed = False
+        self._close_lock = threading.Lock()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._closed:
+            raise StopIteration
+        try:
+            return next(self._events)
+        except Exception:
+            if self._closed:
+                raise StopIteration
+            raise
+
+    next = __next__
+
+    def close(self):
+        with self._close_lock:
+            if self._closed:
+                return
+            self._closed = True
+        raw = getattr(self._response, 'raw', None)
+        try:
+            shutdown = getattr(raw, 'shutdown', None)
+            if shutdown is not None:
+                shutdown()
+            else:
+                connection = getattr(raw, 'connection', None)
+                sock = getattr(connection, 'sock', None)
+                if sock is not None:
+                    sock.shutdown(socket.SHUT_RDWR)
+        except (IOError, OSError, RuntimeError, ValueError):
+            pass
+        try:
+            self._response.close()
+        finally:
+            try:
+                self._events.close()
+            except ValueError:
+                # The reader will leave the generator after transport close.
+                pass
+
+
 def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
                        stream=False):
     if timeout is None:
@@ -174,10 +228,7 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
                 response.status_code), response, response.text, )
 
     if stream and hasattr(response, 'iter_content'):
-        return iter_connect_envelopes(
-            response.iter_content(chunk_size=8192),
-            response=response,
-        )
+        return _ConnectStream(response)
 
     content_type = response.headers.get('Content-Type', '')
     if 'application/connect+json' in content_type:

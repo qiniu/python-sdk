@@ -14,6 +14,53 @@ python examples/sandbox_injection_rules.py
 
 示例会创建资源并在结束时清理。保存的注入规则还需要 AK/SK；直接设置运行时 HTTP 注入可使用 API key。
 
+## 沙箱列表分页
+
+`client.list_sandboxes_v2()` 保持返回原始列表。需要完整遍历时使用
+`client.list_sandboxes_page()`，返回 `{'items': [...], 'nextToken': ...}`，
+游标来自 `X-Next-Token` 响应头；也可以让分页器自动传递游标：
+
+```python
+from qiniu.services.sandbox import Sandbox
+
+pages = Sandbox.list(client=client, limit=100, metadata={'app': 'example'})
+while pages.has_next:
+    for sandbox in pages.next_items():
+        print(sandbox.sandbox_id)
+```
+
+## PTY 实时输出与断连
+
+`sandbox.pty.create(on_data=callback)` 和
+`sandbox.pty.connect(pid, on_data=callback)` 返回进程句柄。提供 `on_data` 时，
+后台读流线程在收到输出后立即调用回调，参数为原始 `bytes`；不需要先调用
+`wait()`。回调应快速返回，可把数据放入队列交给应用处理。
+
+`handle.wait()` 等待进程结束，仍返回带字符串 `stdout` 的 `CommandResult`。
+流错误和回调异常通过 `wait()` 抛出。未提供回调时，仍由 `wait()` 同步读取输出。
+
+`handle.disconnect()` 只关闭本地连接，不终止远端 PTY，可重复调用。
+断连后的 `wait()` 返回已收到的结果；未收到退出事件时 `exit_code` 保持 `-1`。
+之后可用 `sandbox.pty.connect(handle.pid, on_data=callback)` 重新连接。
+需要终止进程时显式调用 `handle.kill()`；任务结束时清理沙箱。
+
+## 私有 Git 克隆
+
+`clone()` 支持 `username` 和 `password`，与 `pull()` / `push()` 一样使用临时
+askpass 文件和进程环境，不把凭据写入远程 URL 或持久 credential store：
+
+```python
+import os
+
+result = sandbox.git.clone(
+    'https://github.com/owner/private.git', '/home/user/private',
+    username=os.environ['GIT_USERNAME'], password=os.environ['GIT_PASSWORD'])
+```
+
+两项凭据必须同时提供，且只适用于 HTTP(S) URL。前台执行完成后删除临时文件；
+使用 `background=True` 时，在句柄 `wait()` 结束后删除。该方式会把凭据交给
+沙箱中的 Git 进程，应仅用于允许沙箱访问这些凭据的任务。
+
 ## 暂停与恢复
 
 `Sandbox.connect()`、实例 `connect()` 和 `SandboxClient.connect_sandbox()` 使用 Connect v2。省略 `timeout` 使用服务端默认的 300 秒；显式值必须至少为 1 秒。连接只延长 TTL，不会缩短已有 TTL；需要主动调整过期时间时使用 `set_timeout()`。
