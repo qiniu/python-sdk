@@ -171,9 +171,17 @@ class _ConnectStream(object):
 
     next = __next__
 
+    def _close_events(self):
+        try:
+            self._events.close()
+        except ValueError:
+            # A reader still in I/O closes the iterator when it unwinds.
+            pass
+
     def close(self):
         with self._close_lock:
             if self._closed:
+                self._close_events()
                 return
             self._closed = True
         raw = getattr(self._response, 'raw', None)
@@ -198,11 +206,7 @@ class _ConnectStream(object):
         try:
             self._response.close()
         finally:
-            try:
-                self._events.close()
-            except ValueError:
-                # The reader will leave the generator after transport close.
-                pass
+            self._close_events()
 
 
 def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,

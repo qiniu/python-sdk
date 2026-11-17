@@ -551,6 +551,7 @@ class StreamingPtyResponse(DummyResponse):
         super(StreamingPtyResponse, self).__init__(
             raw=b'', content_type='application/connect+json')
         self.chunks = Queue()
+        self.closed_event = Event()
         self.chunks.put(encode_connect_envelope(
             {'event': {'start': {'pid': 12}}}))
 
@@ -576,6 +577,7 @@ class StreamingPtyResponse(DummyResponse):
 
     def close(self):
         self.closed = True
+        self.closed_event.set()
         self.chunks.put(None)
 
 
@@ -589,6 +591,167 @@ class StreamingPtySession(EnvdSession):
         if url.endswith(('/process.Process/Start', '/process.Process/Connect')):
             return self.responses.pop(0)
         return response
+
+
+@pytest.mark.parametrize('reconnect', [False, True])
+@pytest.mark.parametrize('blocked_close', [False, True])
+@pytest.mark.parametrize('late_error', [False, True])
+def test_pty_disconnect_releases_waiters_before_closed_reader_unwinds(
+        reconnect, blocked_close, late_error):
+    class DelayedCloseResponse(StreamingPtyResponse):
+        def __init__(self):
+            super(DelayedCloseResponse, self).__init__()
+            self.reading = Event()
+            self.released = Event()
+            self.close_started = Event()
+            self.close_released = Event()
+            self.reader_unwound = Event()
+            if not blocked_close:
+                self.close_released.set()
+
+        def iter_content(self, chunk_size=8192):
+            try:
+                for chunk in super(DelayedCloseResponse, self).iter_content(
+                        chunk_size):
+                    yield chunk
+                    self.reading.set()
+                    self.released.wait()
+            finally:
+                self.reader_unwound.set()
+
+        def close(self):
+            self.close_started.set()
+            self.close_released.wait()
+            self.closed = True
+            self.closed_event.set()
+
+    response = DelayedCloseResponse()
+    response.send(b'before disconnect')
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    received = []
+    available = Event()
+    waited = Event()
+    results = []
+
+    def on_data(data):
+        received.append(data)
+        available.set()
+
+    handle = None
+    waiter = None
+    try:
+        if reconnect:
+            handle = sandbox.pty.connect(12, on_data=on_data)
+        else:
+            handle = sandbox.pty.create(on_data=on_data)
+        response.released.set()
+        assert available.wait(1)
+        response.released.clear()
+        assert response.reading.wait(1)
+
+        def wait():
+            results.append(handle.wait())
+            waited.set()
+
+        waiter = Thread(target=wait)
+        waiter.daemon = True
+        waiter.start()
+        handle.disconnect()
+        assert waited.wait(1), 'wait still depends on a closed socket read'
+        assert response.close_started.wait(1)
+        if blocked_close:
+            assert response.closed is False
+        else:
+            assert response.closed_event.wait(1)
+        assert results[0].stdout == 'before disconnect'
+        assert results[0].exit_code == -1
+        assert handle.wait() is results[0]
+
+        if late_error:
+            response.chunks.put(requests.ConnectionError('late close error'))
+        else:
+            response.send(b'late output')
+        response.released.set()
+        response.close_released.set()
+        assert response.reader_unwound.wait(1)
+        assert response.closed_event.wait(1)
+        assert handle.wait() is results[0]
+        assert received == [b'before disconnect']
+        assert results[0].stdout == 'before disconnect'
+    finally:
+        response.released.set()
+        response.close_released.set()
+        response.chunks.put(None)
+        if handle is not None:
+            handle.disconnect()
+        if waiter is not None:
+            waiter.join(1)
+
+
+def test_pty_output_callback_can_disconnect_its_own_handle():
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    handles = []
+    disconnected = Event()
+
+    def on_data(data):
+        handles[0].disconnect()
+        disconnected.set()
+
+    handle = sandbox.pty.create(on_data=on_data)
+    handles.append(handle)
+    try:
+        response.send(b'last output')
+        assert disconnected.wait(1)
+        assert handle.wait().stdout == 'last output'
+        assert handle.wait().exit_code == -1
+        assert response.closed_event.wait(1)
+    finally:
+        response.close()
+
+
+def test_pty_disconnect_does_not_wait_for_an_inflight_output_callback():
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    entered = Event()
+    release = Event()
+    returned = Event()
+    detached = Event()
+
+    def on_data(data):
+        entered.set()
+        release.wait()
+        returned.set()
+        raise ValueError('inflight callback failed after disconnect')
+
+    handle = sandbox.pty.create(on_data=on_data)
+    try:
+        response.send(b'inflight output')
+        assert entered.wait(1)
+
+        def disconnect():
+            handle.disconnect()
+            detached.set()
+
+        closing = Thread(target=disconnect)
+        closing.daemon = True
+        closing.start()
+        assert detached.wait(1), 'disconnect waited for user callback code'
+        assert not returned.is_set()
+        assert handle.wait().stdout == 'inflight output'
+    finally:
+        release.set()
+        response.close()
+    assert returned.wait(1)
+    handle._reader.join(1)
+    assert not handle._reader.is_alive()
+    assert handle.wait().stdout == 'inflight output'
 
 
 @pytest.mark.parametrize('reconnect', [False, True])
@@ -615,6 +778,7 @@ def test_pty_callback_receives_raw_bytes_before_process_exit(reconnect):
         response.finish()
         assert handle.wait().stdout == u'\ufffd\x00hello'
         assert handle.wait().exit_code == 0
+        assert handle.wait().exitCode == 0
     finally:
         response.close()
 
@@ -669,7 +833,7 @@ def test_pty_disconnect_closes_stream_without_killing_and_allows_reconnect(
             assert available.wait(1)
         handle.disconnect()
         handle.disconnect()
-        assert response.closed is True
+        assert response.closed_event.wait(1)
         assert handle.wait().pid == 12
         assert handle.wait().exit_code == -1
         assert len(session.posts) == 1
@@ -725,6 +889,8 @@ def test_pty_throw_on_error_keeps_real_nonzero_exit_failure(with_callback):
             with pytest.raises(CommandExitError) as caught:
                 handle.wait()
             assert caught.value.result.exit_code == 7
+            assert caught.value.result.exitCode == 7
+            handle.disconnect()
     finally:
         response.close()
 

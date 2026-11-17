@@ -41,6 +41,10 @@ while pages.has_next:
 
 `handle.disconnect()` 只关闭本地连接，不终止远端 PTY，可重复调用。
 断连后的 `wait()` 返回已收到的结果；未收到退出事件时 `exit_code` 保持 `-1`。
+使用 `on_data` 的后台模式会在断连时冻结结果并释放等待者，由后台任务清理连接。
+部分操作系统的读操作或关闭操作会延迟到既有读取时限才退出；`timeout=None`
+的语义不变，不保证读线程立即结束。已开始的回调可以继续返回；断连后到达的
+输出或关闭错误不再修改结果，也不会发起新的输出回调。
 之后可用 `sandbox.pty.connect(handle.pid, on_data=callback)` 重新连接。
 需要终止进程时显式调用 `handle.kill()`；任务结束时清理沙箱。
 
