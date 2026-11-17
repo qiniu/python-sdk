@@ -266,7 +266,7 @@ class Commands(object):
         events = connect_stream_rpc(
             self.sandbox,
             '/process.Process/Connect',
-            {'process': {'selector': selector}},
+            {'process': selector},
             user=user,
             timeout=timeout,
             stream=True,
@@ -293,7 +293,7 @@ class Commands(object):
             else:
                 data = str(data).encode('utf-8')
         return connect_rpc(self.sandbox, '/process.Process/SendInput', {
-            'process': {'selector': {'pid': pid}},
+            'process': {'pid': pid},
             'input': {'stdin': base64.b64encode(data).decode('ascii')},
         }, user=user, timeout=timeout)
 
@@ -301,7 +301,7 @@ class Commands(object):
 
     def close_stdin(self, pid, user=None, timeout=None):
         return connect_rpc(self.sandbox, '/process.Process/CloseStdin', {
-            'process': {'selector': {'pid': pid}},
+            'process': {'pid': pid},
         }, user=user, timeout=timeout)
 
     closeStdin = close_stdin
@@ -309,7 +309,7 @@ class Commands(object):
     def kill(self, pid, user=None, timeout=None):
         try:
             connect_rpc(self.sandbox, '/process.Process/SendSignal', {
-                'process': {'selector': {'pid': pid}},
+                'process': {'pid': pid},
                 'signal': 'SIGNAL_SIGKILL',
             }, user=user, timeout=timeout)
             return True

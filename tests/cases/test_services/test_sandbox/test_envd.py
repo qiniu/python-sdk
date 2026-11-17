@@ -101,6 +101,11 @@ class EnvdSession(object):
             decoded = json.loads(
                 data.decode('utf-8') if isinstance(data, bytes) else data
             )
+        # Protobuf JSON flattens the ProcessSelector oneof: no selector wrapper.
+        if '/process.Process/' in url and not url.endswith('/Start'):
+            process = decoded.get('process')
+            if process is not None:
+                assert set(process) in ({'pid'}, {'tag'})
         self.posts.append({
             'url': url,
             'data': decoded,
@@ -538,7 +543,7 @@ def test_commands_connect_returns_handle_for_running_process():
     assert session.posts[0]['timeout'] == 30
     assert session.posts[0]['url'].endswith('/process.Process/Connect')
     assert session.posts[0]['data'] == {
-        'process': {'selector': {'pid': 12}},
+        'process': {'pid': 12},
     }
 
 
@@ -960,7 +965,7 @@ def test_pty_disconnect_closes_stream_without_killing_and_allows_reconnect(
         assert connected.wait().stdout == 'after reconnect'
         assert received == [b'after reconnect']
         assert session.posts[1]['url'].endswith('/process.Process/Connect')
-        assert session.posts[1]['data']['process']['selector'] == {'pid': 12}
+        assert session.posts[1]['data']['process'] == {'pid': 12}
     finally:
         response.close()
         reconnected_response.close()

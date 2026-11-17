@@ -225,7 +225,7 @@ class Pty(object):
         events = connect_stream_rpc(
             self.sandbox,
             '/process.Process/Connect',
-            {'process': {'selector': {'pid': pid}}},
+            {'process': {'pid': pid}},
             user=user,
             timeout=timeout,
             stream=True,
@@ -262,7 +262,7 @@ class Pty(object):
             else:
                 data = str(data).encode('utf-8')
         return connect_rpc(self.sandbox, '/process.Process/SendInput', {
-            'process': {'selector': {'pid': pid}},
+            'process': {'pid': pid},
             'input': {'pty': base64.b64encode(data).decode('ascii')},
         }, user=user, timeout=timeout)
 
@@ -273,14 +273,14 @@ class Pty(object):
     def resize(self, pid, size=None, user=None, timeout=None, rows=None,
                cols=None):
         return connect_rpc(self.sandbox, '/process.Process/Update', {
-            'process': {'selector': {'pid': pid}},
+            'process': {'pid': pid},
             'pty': {'size': _normalize_size(size, rows=rows, cols=cols)},
         }, user=user, timeout=timeout)
 
     def kill(self, pid, user=None, timeout=None):
         try:
             connect_rpc(self.sandbox, '/process.Process/SendSignal', {
-                'process': {'selector': {'pid': pid}},
+                'process': {'pid': pid},
                 'signal': 'SIGNAL_SIGKILL',
             }, user=user, timeout=timeout)
             return True
