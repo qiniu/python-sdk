@@ -492,6 +492,16 @@ class Git(object):
     def clone(self, repo_url, path=None, branch=None, depth=None,
               username=None, password=None, **opts):
         """Clone with optional temporary HTTP(S) username/password credentials."""
+        explicit = username is not None or password is not None
+        if explicit:
+            if not username or not password:
+                raise InvalidArgumentException(
+                    'Both username and password are required when using Git '
+                    'credentials.')
+            url = _validate_git_url_credentials(repo_url, username, password)
+            if '@' in url.netloc:
+                # Git takes the URL userinfo before command-scoped credentials.
+                repo_url = url._replace(netloc=url.netloc.rsplit('@', 1)[1]).geturl()
         args = ['clone']
         if depth:
             args.extend(['--depth', shell_quote(depth)])
@@ -500,12 +510,8 @@ class Git(object):
         args.append(shell_quote(repo_url))
         if path:
             args.append(shell_quote(path))
-        if username is None and password is None:
+        if not explicit:
             return self._run_git(None, args, **opts)
-        if not username or not password:
-            raise InvalidArgumentException(
-                'Both username and password are required when using Git '
-                'credentials.')
         throw_on_error = opts.pop('throw_on_error', False)
         result = self._with_credentials(
             repo_url, username, password,

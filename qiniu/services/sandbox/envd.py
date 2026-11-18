@@ -155,6 +155,13 @@ class _ConnectStream(object):
         self._reading = False
         self._state_lock = threading.Lock()
 
+    def __del__(self):
+        # Background commands can be dropped after the first event.
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def __iter__(self):
         return self
 

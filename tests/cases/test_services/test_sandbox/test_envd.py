@@ -1279,6 +1279,58 @@ def test_pty_wait_repeats_stream_errors_and_closes_response(
         response.close()
 
 
+def test_dropped_background_command_returns_connection_pool_slot(monkeypatch):
+    first = {'event': {'start': {'pid': 12}}, 'padding': ''}
+    first['padding'] = 'x' * (8192 - len(encode_connect_envelope(first)))
+    body = encode_connect_envelope(first) + encode_connect_envelope({'padding': 'x' * 8192})
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers['Content-Length']))
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/connect+json')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    serving = Thread(target=server.serve_forever)
+    serving.daemon = True
+    serving.start()
+    endpoint = 'http://127.0.0.1:{0}'.format(server.server_port)
+    session = requests.Session()
+    session.trust_env = False
+    adapter = requests.adapters.HTTPAdapter(pool_maxsize=1, pool_block=True)
+    session.mount(endpoint, adapter)
+    pools = []
+    post = session.post
+
+    def observe_post(*args, **kwargs):
+        response = post(*args, **kwargs)
+        pools.append(response.raw._pool)
+        return response
+
+    monkeypatch.setattr(session, 'post', observe_post)
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      sandbox_id='sbx123', envd_url=endpoint)
+    try:
+        handle = sandbox.commands.start('echo example')
+        assert handle.pid == 12
+        pool = pools[0]
+        assert pool.pool.qsize() == 0
+        del handle
+        gc.collect()
+        assert pool.pool.qsize() == 1
+    finally:
+        session.close()
+        server.shutdown()
+        server.server_close()
+        serving.join(1)
+
+
 @pytest.mark.parametrize('connection_close', [False, True])
 def test_pty_disconnect_releases_http_connection_once(connection_close, monkeypatch):
     release = Event()
@@ -1539,7 +1591,8 @@ def test_git_temporary_credentials_override_config_without_writing_to_store():
         subprocess.check_call(
             ['git', 'config', '--global', username_key, 'configured-user'], env=env)
         explicit_path = os.path.join(root, 'explicit')
-        result = git.clone(url, explicit_path, username='demo', password='fake-token')
+        old_url = url.replace('http://', 'http://old-user:old-password@', 1)
+        result = git.clone(old_url, explicit_path, username='demo', password='fake-token')
         assert result.exit_code == 0, result.stderr
         assert not os.path.exists(store), 'temporary credentials reached the store helper'
         assert not any(name.startswith('auth') for name in os.listdir(root))

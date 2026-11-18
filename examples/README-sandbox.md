@@ -18,7 +18,17 @@ python examples/sandbox_injection_rules.py
 
 `client.list_sandboxes(limit=100, nextToken=cursor)` 返回
 `{'items': [...], 'nextToken': ...}`，游标来自 `X-Next-Token` 响应头，
-`nextToken` 为空表示没有下一页。完整遍历也可以让 `Sandbox.list()` 分页器自动传递游标：
+`nextToken` 为空表示没有下一页。
+
+从 v7.19.0 升级时，把已移除的 `list_sandboxes_v2()`／`listSandboxesV2()` 改为
+`list_sandboxes()`。原来直接遍历 `client.list()` 的单页代码改为遍历 `items`：
+
+```python
+for item in client.list_sandboxes(limit=100)['items']:
+    print(item)
+```
+
+完整遍历可让 `Sandbox.list()` 分页器自动传递游标。
 
 ```python
 from qiniu.services.sandbox import Sandbox
