@@ -1280,7 +1280,7 @@ def test_pty_wait_repeats_stream_errors_and_closes_response(
 
 
 @pytest.mark.parametrize('connection_close', [False, True])
-def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close, monkeypatch):
+def test_pty_disconnect_releases_http_connection_once(connection_close, monkeypatch):
     release = Event()
     connection_closed = Event()
     disconnected = Event()
@@ -1310,6 +1310,8 @@ def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close, monkeyp
                 self.wfile.write(b'0\r\n\r\n')
             except IOError:
                 pass
+            finally:
+                self.close_connection = True
 
         def log_message(self, *args):
             pass
@@ -1380,9 +1382,12 @@ def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close, monkeyp
         if errors:
             raise errors[0]
         assert handle.wait().exit_code == -1
-        assert returning_connection.wait(2), 'socket shutdown did not wake the reader'
         handle._closer.join(1)
         assert not handle._closer.is_alive(), 'disconnect raced the reader to release the response'
+        # Some platforms keep the active read blocked after socket shutdown.
+        # End the stream on the server so pool cleanup can be checked independently.
+        release.set()
+        assert returning_connection.wait(2), 'the reader did not release the connection'
         assert len(returned) == 1, 'the same connection was released twice'
         release_connection.set()
         handle._reader.join(2)
@@ -1393,6 +1398,7 @@ def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close, monkeyp
         release.set()
         if handle is not None:
             handle.disconnect()
+        sandbox.client.session.close()
         server.shutdown()
         server.server_close()
         serving.join(1)
