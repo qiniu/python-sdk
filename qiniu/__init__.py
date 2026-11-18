@@ -9,7 +9,7 @@ For detailed document, please see:
 
 # flake8: noqa
 
-__version__ = '7.19.0'
+__version__ = '7.20.0'
 
 from .auth import Auth, QiniuMacAuth
 
