@@ -38,12 +38,14 @@ Envd 文件和进程请求不自动跟随 HTTP 重定向；收到 30x 时抛出 
 ## PTY 实时输出与断连
 
 `sandbox.pty.create(on_data=callback)` 和
-`sandbox.pty.connect(pid, on_data=callback)` 返回进程句柄。提供 `on_data` 时，
-后台读流线程在收到输出后立即调用回调，参数为原始 `bytes`；不需要先调用
-`wait()`。回调应快速返回，可把数据放入队列交给应用处理。
+`sandbox.pty.connect(pid, on_data=callback)` 返回进程句柄。回调接收原始 `bytes`。
+首帧含有 PTY 输出时，`create()` 或 `connect()` 会在调用线程执行回调，回调抛错时
+会关闭流并直接抛出异常。后续输出由后台读流线程调用回调，无需先调用 `wait()`。
+回调应快速返回，可把数据放入队列交给应用处理。
 
-`handle.wait()` 等待进程结束，仍返回带字符串 `stdout` 的 `CommandResult`。
-流错误和回调异常通过 `wait()` 抛出。未提供回调时，仍由 `wait()` 同步读取输出。
+`handle.wait()` 等待进程结束，返回带字符串 `stdout` 的 `CommandResult`，
+并抛出后台读流或回调异常。未提供 `on_data` 时，首次调用 `wait()` 会启动后台读流，
+传给该次 `wait()` 的 `on_stdout` 和 `on_stderr` 仍在调用线程执行。
 
 `handle.disconnect()` 只关闭本地连接，不终止远端 PTY，可重复调用。
 断连后的 `wait()` 返回已收到的结果；未收到退出事件时 `exit_code` 保持 `-1`。
@@ -73,8 +75,8 @@ result = sandbox.git.clone(
 使用 `background=True` 时，在句柄 `wait()` 结束后删除。该方式会把凭据交给
 沙箱中的 Git 进程，应仅用于允许沙箱访问这些凭据的任务。
 
-显式凭据只用于本次 Git 调用，已配置的 credential helper 不会保存它们；
-已有 Git 全局配置保持不变。每次调用使用独立的私有临时目录，准备、上传、
+显式用户名在本次 Git 调用中优先于 `credential.username`，已配置的 credential helper
+不会保存本次凭据。每次调用使用独立的私有临时目录，准备、上传、
 执行及清理均使用本次 `user` 指定的身份；结束后同时删除 askpass 和临时目录。
 
 ## 暂停与恢复

@@ -2085,7 +2085,8 @@ def test_git_push_with_credentials_uses_askpass_without_remote_url_leak():
     assert commands.calls[1][0] == 'mkdir -m 700 ' + directory
     assert directory.startswith('/tmp/qiniu-git-auth-')
     assert commands.calls[2][0] == 'chmod 700 ' + files.writes[0][0]
-    assert commands.calls[3][0] == 'git -c credential.helper= push --set-upstream origin main'
+    assert commands.calls[3][0] == (
+        'git -c credential.helper= -c credential.username=git:user push --set-upstream origin main')
     assert 'secret:%@token' not in commands.calls[3][0]
     assert commands.calls[3][1]['request_timeout'] == 7
     assert commands.calls[3][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
@@ -2141,7 +2142,8 @@ def test_git_pull_with_credentials_resolves_single_remote():
 
     assert commands.calls[0][0] == 'git remote'
     assert commands.calls[2][0] == 'mkdir -m 700 ' + posixpath.dirname(files.writes[0][0])
-    assert commands.calls[4][0] == 'git -c credential.helper= pull origin main'
+    assert commands.calls[4][0] == (
+        "git -c credential.helper= -c credential.username=git-user pull origin main")
     assert 'secret-token' not in commands.calls[4][0]
     assert commands.calls[4][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
     assert files.removes == [(files.writes[0][0], {}),
@@ -2364,7 +2366,8 @@ def test_git_push_with_credentials_cleans_askpass_on_auth_failure():
             password='bad-token',
         )
 
-    assert commands.calls[-1][0] == 'git -c credential.helper= push --set-upstream origin'
+    assert commands.calls[-1][0] == (
+        "git -c credential.helper= -c credential.username=git-user push --set-upstream origin")
     assert files.removes == [(files.writes[0][0], {}),
                              (posixpath.dirname(files.writes[0][0]), {})]
 

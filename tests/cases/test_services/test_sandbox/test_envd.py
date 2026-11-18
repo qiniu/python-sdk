@@ -717,8 +717,9 @@ class StreamingPtySession(EnvdSession):
 
 @pytest.mark.parametrize('reconnect', [False, True])
 @pytest.mark.parametrize('late_error', [False, True])
+@pytest.mark.parametrize('with_wait_callback', [False, True])
 def test_pty_disconnect_freezes_output_consumed_by_synchronous_wait(
-        reconnect, late_error):
+        reconnect, late_error, with_wait_callback):
     class PausedReaderResponse(StreamingPtyResponse):
         def __init__(self):
             super(PausedReaderResponse, self).__init__()
@@ -747,7 +748,8 @@ def test_pty_disconnect_freezes_output_consumed_by_synchronous_wait(
 
     def wait():
         try:
-            results.append(handle.wait())
+            on_stdout = (lambda data: None) if with_wait_callback else None
+            results.append(handle.wait(on_stdout=on_stdout))
         except BaseException as err:
             errors.append(err)
 
@@ -762,16 +764,18 @@ def test_pty_disconnect_freezes_output_consumed_by_synchronous_wait(
         assert snapshot.stdout == 'before disconnect'
         assert snapshot.exit_code == -1
         assert handle.wait() is snapshot
+        waiting.join(1)
+        assert not waiting.is_alive(), 'wait blocked on the detached reader'
+        assert errors == []
+        assert results == [snapshot]
         if late_error:
             response.chunks.put(requests.ConnectionError('late read error'))
         else:
             response.send(b'late output')
             response.finish(exit_code=7)
         response.release.set()
-        waiting.join(1)
-        assert not waiting.is_alive()
-        assert errors == []
-        assert results == [snapshot]
+        handle._reader.join(1)
+        assert not handle._reader.is_alive()
         assert handle.wait() is snapshot
         assert snapshot.stdout == 'before disconnect'
         assert snapshot.exit_code == -1
@@ -848,6 +852,33 @@ def test_pty_synchronous_wait_keeps_callback_channels_and_caller_thread():
         assert result.stderr == 'err'
         assert result.exit_code == 0
         assert handle.wait() is result
+    finally:
+        response.close()
+
+
+def test_pty_wait_callback_error_reaches_later_waiters():
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    handle = sandbox.pty.create()
+    response.chunks.put(encode_connect_envelope({'event': {'data': {
+        'stdout': base64.b64encode(b'out').decode('ascii'),
+    }}}))
+    error = ValueError('callback failed')
+
+    def callback(data):
+        with pytest.raises(RuntimeError, match='Cannot wait for a PTY'):
+            handle.wait()
+        raise error
+
+    try:
+        with pytest.raises(ValueError) as first:
+            handle.wait(on_stdout=callback)
+        with pytest.raises(ValueError) as repeated:
+            handle.wait()
+        assert first.value is repeated.value is error
+        assert response.closed_event.is_set()
     finally:
         response.close()
 
@@ -1329,7 +1360,8 @@ def test_git_clone_uses_temporary_credentials_and_cleans_them(background):
     clone = next(process for process in starts
                  if (process.get('envs') or {}).get('GIT_ASKPASS'))
     assert clone['args'][-1] == (
-        'git -c credential.helper= clone https://github.com/qiniu/private.git /workspace/private')
+        'git -c credential.helper= -c credential.username=demo-user '
+        'clone https://github.com/qiniu/private.git /workspace/private')
     assert clone['envs']['GIT_USERNAME'] == 'demo-user'
     assert clone['envs']['GIT_PASSWORD'] == 'private-token'
     assert clone['envs']['CUSTOM'] == 'preserved'
@@ -1348,7 +1380,7 @@ def test_git_clone_uses_temporary_credentials_and_cleans_them(background):
 
 
 @pytest.mark.skipif(os.name == 'nt', reason='local askpass fixture requires POSIX shell')
-def test_git_temporary_credentials_do_not_enter_configured_store_helper():
+def test_git_temporary_credentials_override_config_without_writing_to_store():
     try:
         subprocess.check_output(['git', '--version'])
     except OSError:
@@ -1445,15 +1477,30 @@ def test_git_temporary_credentials_do_not_enter_configured_store_helper():
     try:
         git = Git(Commands())
         url = 'http://127.0.0.1:{0}/remote.git'.format(server.server_port)
-        result = git.clone(url, os.path.join(root, 'explicit'),
-                           username='demo', password='fake-token')
+        username_key = 'credential.{0}.username'.format(url)
+        subprocess.check_call(
+            ['git', 'config', '--global', 'credential.username', 'default-user'], env=env)
+        subprocess.check_call(
+            ['git', 'config', '--global', username_key, 'configured-user'], env=env)
+        explicit_path = os.path.join(root, 'explicit')
+        result = git.clone(url, explicit_path, username='demo', password='fake-token')
         assert result.exit_code == 0, result.stderr
         assert not os.path.exists(store), 'temporary credentials reached the store helper'
         assert not any(name.startswith('auth') for name in os.listdir(root))
         configured = subprocess.check_output(
             ['git', 'config', '--global', 'credential.helper'], env=env)
         assert configured.decode('utf-8').strip() == helper
+        configured = subprocess.check_output(
+            ['git', 'config', '--global', username_key], env=env)
+        assert configured.decode('utf-8').strip() == 'configured-user'
+        remote_url = subprocess.check_output(
+            ['git', '-C', explicit_path, 'remote', 'get-url', 'origin'], env=env)
+        assert remote_url.decode('utf-8').strip() == url
 
+        subprocess.check_call(
+            ['git', 'config', '--global', '--unset', username_key], env=env)
+        subprocess.check_call(
+            ['git', 'config', '--global', '--unset', 'credential.username'], env=env)
         with open(store, 'w') as output:
             output.write('http://demo:fake-token@127.0.0.1:{0}\n'.format(server.server_port))
         result = git.clone(url, os.path.join(root, 'configured-helper'))

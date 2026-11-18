@@ -41,8 +41,10 @@ class _PtyHandle(CommandHandle):
             pty, result, events=events, on_data=on_data,
             throw_on_error=throw_on_error)
         self._reader_error = None
-        self._done = threading.Event()
-        self._state_lock = threading.RLock()
+        self._done = False
+        self._state = threading.Condition()
+        self._callback_waiter = None
+        self._pending_callback = None
         self._disconnected = False
         self._stdout_chunks = [result.stdout]
         self._stderr_chunks = [result.stderr]
@@ -50,12 +52,15 @@ class _PtyHandle(CommandHandle):
         self._reader = None
         self._closer = None
         if on_data is not None:
-            self._reader = threading.Thread(target=self._read)
-            self._reader.daemon = True
-            self._reader.start()
+            self._start_reader()
 
-    def _read(self, on_stdout=None, on_stderr=None):
-        events = self._events
+    def _start_reader(self, on_stdout=None, on_stderr=None):
+        self._reader = threading.Thread(
+            target=self._read, args=(self._events, on_stdout, on_stderr))
+        self._reader.daemon = True
+        self._reader.start()
+
+    def _read(self, events, on_stdout, on_stderr):
         try:
             for event in events:
                 callbacks = []
@@ -68,7 +73,7 @@ class _PtyHandle(CommandHandle):
                     on_data=(lambda data: callbacks.append((self._on_data, data)))
                     if self._on_data is not None else None,
                 )
-                with self._state_lock:
+                with self._state:
                     if self._disconnected:
                         break
                     if part.pid:
@@ -83,27 +88,36 @@ class _PtyHandle(CommandHandle):
                     if part.error:
                         self.result.error = part.error
                 for callback, chunk in callbacks:
-                    with self._state_lock:
+                    with self._state:
                         if self._disconnected:
                             break
-                        # Dispatch is committed here. User code runs unlocked;
-                        # disconnect never waits for a committed callback.
+                        if self._callback_waiter is not None:
+                            # One callback at a time, on the first waiter's thread.
+                            self._pending_callback = (callback, chunk)
+                            self._state.notify_all()
+                            while self._pending_callback is not None:
+                                self._state.wait()
+                            if self._reader_error is not None:
+                                break
+                            continue
+                        # Dispatch is committed here; user code runs unlocked.
                     callback(chunk)
-                with self._state_lock:
-                    if self._disconnected:
+                with self._state:
+                    if self._disconnected or self._reader_error is not None:
                         break
         except BaseException as err:
-            with self._state_lock:
+            with self._state:
                 if not self._disconnected:
                     self._reader_error = err
         finally:
             try:
                 self._close_stream(events)
             finally:
-                with self._state_lock:
+                with self._state:
                     self._freeze_result()
                     self._events = None
-                    self._done.set()
+                    self._done = True
+                    self._state.notify_all()
 
     def _close_stream(self, events):
         try:
@@ -111,7 +125,7 @@ class _PtyHandle(CommandHandle):
             if close is not None:
                 close()
         except BaseException as err:
-            with self._state_lock:
+            with self._state:
                 if not self._disconnected and self._reader_error is None:
                     self._reader_error = err
 
@@ -134,32 +148,63 @@ class _PtyHandle(CommandHandle):
         self._result_frozen = True
 
     def wait(self, on_stdout=None, on_stderr=None):
-        read_here = False
-        with self._state_lock:
-            if not self._done.is_set():
+        current = threading.current_thread()
+        with self._state:
+            if not self._done:
                 if self._reader is None:
-                    self._reader = threading.current_thread()
-                    read_here = True
-                elif threading.current_thread() is self._reader:
+                    if on_stdout is not None or on_stderr is not None:
+                        self._callback_waiter = current
+                    self._start_reader(on_stdout, on_stderr)
+                elif current in (self._reader, self._callback_waiter):
                     raise RuntimeError(
                         'Cannot wait for a PTY from its output callback')
-        if read_here:
-            self._read(on_stdout, on_stderr)
-        self._done.wait()
-        if self._reader_error is not None:
-            raise self._reader_error
-        return self.result
+
+            dispatch_callbacks = self._callback_waiter is current
+        try:
+            return self._wait_for_result(dispatch_callbacks)
+        except BaseException:
+            with self._state:
+                interrupted_dispatch = dispatch_callbacks and not self._done
+            if interrupted_dispatch:
+                # No waiter remains to acknowledge the reader's callbacks.
+                self.disconnect()
+            raise
+
+    def _wait_for_result(self, dispatch_callbacks):
+        while True:
+            with self._state:
+                if self._done:
+                    if self._reader_error is not None:
+                        raise self._reader_error
+                    return self.result
+                if not dispatch_callbacks or self._pending_callback is None:
+                    self._state.wait()
+                    continue
+                callback, chunk = self._pending_callback
+
+            error = None
+            try:
+                callback(chunk)
+            except BaseException as err:
+                error = err
+            with self._state:
+                if not self._disconnected and error is not None:
+                    self._reader_error = error
+                self._pending_callback = None
+                self._state.notify_all()
 
     def disconnect(self):
         """Detach immediately; already-dispatched callbacks may still run."""
-        with self._state_lock:
+        with self._state:
             if self._disconnected:
                 return
             self._disconnected = True
             events = self._events
             self._events = None
             self._freeze_result()
-            self._done.set()
+            self._pending_callback = None
+            self._done = True
+            self._state.notify_all()
             if events is not None:
                 self._closer = threading.Thread(
                     target=self._close_stream, args=(events,))
@@ -177,7 +222,12 @@ class Pty(object):
 
     def create(self, size=None, user=None, cwd=None, envs=None, timeout=None,
                rows=None, cols=None, on_data=None, **opts):
-        """Create a PTY; on_data receives raw bytes in a reader thread."""
+        """Create a PTY and pass raw output bytes to on_data.
+
+        Output in the first event calls on_data inline. A callback error there
+        closes the stream and propagates from create(). Later events call
+        on_data from the reader thread and report callback errors via wait().
+        """
         envs = dict(envs or {})
         envs.setdefault('TERM', 'xterm-256color')
         envs.setdefault('LANG', 'C.UTF-8')
@@ -222,7 +272,12 @@ class Pty(object):
 
     def connect(self, pid, user=None, timeout=None, throw_on_error=False,
                 on_data=None):
-        """Connect to a PTY; on_data receives raw bytes in a reader thread."""
+        """Connect to a PTY and pass raw output bytes to on_data.
+
+        Output in the first event calls on_data inline. A callback error there
+        closes the stream and propagates from connect(). Later events call
+        on_data from the reader thread and report callback errors via wait().
+        """
         events = connect_stream_rpc(
             self.sandbox,
             '/process.Process/Connect',

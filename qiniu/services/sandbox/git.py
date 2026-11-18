@@ -360,8 +360,12 @@ class Git(object):
     def _run_git(self, repo_path, args, **opts):
         if repo_path:
             opts['cwd'] = repo_path
-        if opts.pop('_disable_credential_helpers', False):
-            args = ['-c', 'credential.helper='] + args
+        username = opts.pop('_credential_username', None)
+        if username is not None:
+            args = [
+                '-c', 'credential.helper=',
+                '-c', shell_quote('credential.username={0}'.format(username)),
+            ] + args
         return self.commands.run('git {0}'.format(' '.join(args)), **opts)
 
     def _get_remote_url(self, repo_path, remote, **opts):
@@ -443,7 +447,7 @@ class Git(object):
                 'GIT_PASSWORD': password,
             })
             auth_opts['envs'] = envs
-            auth_opts['_disable_credential_helpers'] = True
+            auth_opts['_credential_username'] = username
 
             result = operation(auth_opts)
             if opts.get('background') and hasattr(result, 'wait'):
