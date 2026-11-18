@@ -14,6 +14,81 @@ python examples/sandbox_injection_rules.py
 
 示例会创建资源并在结束时清理。保存的注入规则还需要 AK/SK；直接设置运行时 HTTP 注入可使用 API key。
 
+## 沙箱列表分页
+
+`client.list_sandboxes(limit=100, nextToken=cursor)` 返回
+`{'items': [...], 'nextToken': ...}`，游标来自 `X-Next-Token` 响应头，
+`nextToken` 为空表示没有下一页。
+
+从 v7.19.0 升级时，把已移除的 `list_sandboxes_v2()`／`listSandboxesV2()` 改为
+`list_sandboxes()`。原来直接遍历 `client.list()` 的单页代码改为遍历 `items`：
+
+```python
+for item in client.list_sandboxes(limit=100)['items']:
+    print(item)
+```
+
+完整遍历可让 `Sandbox.list()` 分页器自动传递游标。
+
+```python
+from qiniu.services.sandbox import Sandbox
+
+pages = Sandbox.list(client=client, limit=100, metadata={'app': 'example'})
+while pages.has_next:
+    for sandbox in pages.next_items():
+        print(sandbox.sandbox_id)
+```
+
+元数据字典会按服务端过滤协议编码，`+`、`&`、`=`、`%` 和中文均保留原值。
+直接传入 `metadata` 字符串时，调用方应先分别编码每个键和值，再将这些项编码为查询字符串。
+
+Envd 文件和进程请求不自动跟随 HTTP 重定向；收到 30x 时抛出 `SandboxError`，
+避免把访问 token 或签名 URL 带给跳转目标。
+
+## PTY 实时输出与断连
+
+`sandbox.pty.create(on_data=callback)` 和
+`sandbox.pty.connect(pid, on_data=callback)` 返回进程句柄。回调接收原始 `bytes`。
+首帧含有 PTY 输出时，`create()` 或 `connect()` 会在调用线程执行回调，回调抛错时
+会关闭流并直接抛出异常。后续输出由后台读流线程调用回调，无需先调用 `wait()`。
+回调应快速返回，可把数据放入队列交给应用处理。
+
+`handle.wait()` 等待进程结束，返回带字符串 `stdout` 的 `CommandResult`，
+并抛出后台读流或回调异常。未提供 `on_data` 时，首次调用 `wait()` 会启动后台读流，
+传给该次 `wait()` 的 `on_stdout` 和 `on_stderr` 仍在调用线程执行。
+
+`handle.disconnect()` 只关闭本地连接，不终止远端 PTY，可重复调用。
+断连后的 `wait()` 返回已收到的结果；未收到退出事件时 `exit_code` 保持 `-1`。
+断连会冻结已处理的输出并释放等待者，包括另一个线程正在同步 `wait()` 的情况；
+后台任务负责清理连接，之后重复 `wait()` 返回同一份冻结结果。
+部分操作系统的读操作或关闭操作会延迟到既有读取时限才退出；`timeout=None`
+的语义不变，不保证读线程立即结束。输出回调在状态锁中确认调度后，在锁外执行。
+断连不会等待已经调度的回调，它们可能在 `disconnect()` 返回后才开始或结束；
+断连后不再调度后续回调，晚到的输出或异常也不再修改冻结结果。
+之后可用 `sandbox.pty.connect(handle.pid, on_data=callback)` 重新连接。
+需要终止进程时显式调用 `handle.kill()`；任务结束时清理沙箱。
+
+## 私有 Git 克隆
+
+`clone()` 支持 `username` 和 `password`，与 `pull()` / `push()` 一样使用临时
+askpass 文件和进程环境，不把凭据写入远程 URL 或持久 credential store：
+
+```python
+import os
+
+result = sandbox.git.clone(
+    'https://github.com/owner/private.git', '/home/user/private',
+    username=os.environ['GIT_USERNAME'], password=os.environ['GIT_PASSWORD'])
+```
+
+两项凭据必须同时提供，且只适用于 HTTP(S) URL。前台执行完成后删除临时文件；
+使用 `background=True` 时，在句柄 `wait()` 结束后删除。该方式会把凭据交给
+沙箱中的 Git 进程，应仅用于允许沙箱访问这些凭据的任务。
+
+显式用户名在本次 Git 调用中优先于 `credential.username`，已配置的 credential helper
+不会保存本次凭据。每次调用使用独立的私有临时目录，准备、上传、
+执行及清理均使用本次 `user` 指定的身份；结束后同时删除 askpass 和临时目录。
+
 ## 暂停与恢复
 
 `Sandbox.connect()`、实例 `connect()` 和 `SandboxClient.connect_sandbox()` 使用 Connect v2。省略 `timeout` 使用服务端默认的 300 秒；显式值必须至少为 1 秒。连接只延长 TTL，不会缩短已有 TTL；需要主动调整过期时间时使用 `set_timeout()`。

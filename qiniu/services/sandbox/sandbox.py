@@ -70,17 +70,15 @@ class SandboxPaginator(object):
     hasNext = has_next
 
     def next_items(self, **opts):
+        if not self.has_next and opts.get('nextToken') is None:
+            return []
         request_opts = dict(self.opts)
         request_opts.update(opts)
         if self.next_token and request_opts.get('nextToken') is None:
             request_opts['nextToken'] = self.next_token
-        data = self.client.list_sandboxes_v2(**request_opts) or {}
-        items = data if isinstance(data, list) else (
-            data.get('items') or data.get('sandboxes') or []
-        )
-        self.next_token = None if isinstance(data, list) else (
-            data.get('nextToken') or data.get('next_token')
-        )
+        data = self.client.list_sandboxes(**request_opts)
+        items = data.get('items') or []
+        self.next_token = data.get('nextToken')
         self._has_next = bool(self.next_token)
         return [Sandbox(client=self.client, info=item) for item in items]
 

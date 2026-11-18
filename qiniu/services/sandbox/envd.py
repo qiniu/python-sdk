@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
+import socket
 import struct
+import threading
 
 import requests
 
@@ -34,13 +36,11 @@ def connect_rpc(sandbox, procedure, body=None, user=None, timeout=None):
             data=json.dumps(body or {}, separators=(',', ':')),
             headers=headers,
             timeout=timeout,
+            allow_redirects=False,
         )
     except requests.RequestException as err:
         raise SandboxError('Sandbox envd request failed: {0}'.format(err))
-    if response.status_code < 200 or response.status_code >= 300:
-        raise SandboxError(
-            'Sandbox envd request failed with status {0}'.format(
-                response.status_code), response, response.text, )
+    _check_envd_response(response)
     if not response.content:
         return None
     data = response.json()
@@ -144,6 +144,105 @@ def iter_connect_envelopes(chunks, response=None):
                 pass
 
 
+class _ConnectStream(object):
+    """An event iterator whose transport can be interrupted during a read."""
+
+    def __init__(self, response):
+        self._response = response
+        self._chunks = response.iter_content(chunk_size=8192)
+        self._events = iter_connect_envelopes(self._chunks)
+        self._closed = False
+        self._reading = False
+        self._state_lock = threading.Lock()
+
+    def __del__(self):
+        # Background commands can be dropped after the first event.
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with self._state_lock:
+            if self._closed:
+                raise StopIteration
+            if self._reading:
+                raise ValueError('Connect stream is already being read')
+            self._reading = True
+
+        try:
+            event = next(self._events)
+        except BaseException as err:
+            if self._finish_read(terminal=True) and isinstance(err, Exception):
+                raise StopIteration
+            raise
+        if self._finish_read():
+            raise StopIteration
+        return event
+
+    next = __next__
+
+    def _finish_read(self, terminal=False):
+        with self._state_lock:
+            self._reading = False
+            interrupted = self._closed
+            if not (terminal or interrupted):
+                return False
+            self._closed = True
+        try:
+            self._close_resources()
+        except Exception:
+            pass
+        return interrupted
+
+    def _close_resources(self):
+        try:
+            self._events.close()
+            close_chunks = getattr(self._chunks, 'close', None)
+            if close_chunks is not None:
+                close_chunks()
+        finally:
+            self._response.close()
+
+    def close(self):
+        with self._state_lock:
+            if self._closed:
+                return
+            self._closed = True
+            if self._reading:
+                # Only wake the read. Closing the response here would race
+                # urllib3 releasing the connection as the read unwinds.
+                self._interrupt_read()
+                return
+        self._close_resources()
+
+    def _interrupt_read(self):
+        raw = getattr(self._response, 'raw', None)
+        if getattr(raw, 'closed', False):
+            return
+        shutdown = getattr(raw, 'shutdown', None)
+        try:
+            if shutdown is not None:
+                shutdown()
+        except (IOError, OSError, RuntimeError, ValueError):
+            shutdown = None
+        if shutdown is None:
+            # A closing HTTP connection can detach its socket while the
+            # current response's file object still owns the active read.
+            fp = getattr(getattr(raw, '_fp', None), 'fp', None)
+            sock = getattr(fp, '_sock', None)
+            if sock is None:
+                sock = getattr(getattr(fp, 'raw', None), '_sock', None)
+            try:
+                if sock is not None:
+                    sock.shutdown(socket.SHUT_RDWR)
+            except (IOError, OSError, RuntimeError, ValueError):
+                pass
+
+
 def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
                        stream=False):
     if timeout is None:
@@ -157,6 +256,7 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
         'data': encode_connect_envelope(body),
         'headers': headers,
         'timeout': timeout,
+        'allow_redirects': False,
     }
     if stream:
         request_opts['stream'] = True
@@ -168,16 +268,10 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
             response = sandbox.client.session.post(url, **request_opts)
     except requests.RequestException as err:
         raise SandboxError('Sandbox envd request failed: {0}'.format(err))
-    if response.status_code < 200 or response.status_code >= 300:
-        raise SandboxError(
-            'Sandbox envd request failed with status {0}'.format(
-                response.status_code), response, response.text, )
+    _check_envd_response(response)
 
     if stream and hasattr(response, 'iter_content'):
-        return iter_connect_envelopes(
-            response.iter_content(chunk_size=8192),
-            response=response,
-        )
+        return _ConnectStream(response)
 
     content_type = response.headers.get('Content-Type', '')
     if 'application/connect+json' in content_type:
@@ -198,12 +292,22 @@ def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,
 def raw_envd_request(sandbox, method, url, **kwargs):
     if kwargs.get('timeout') is None:
         kwargs['timeout'] = sandbox.client.timeout
+    # Envd credentials and signed URLs must not be forwarded to redirect targets.
+    kwargs['allow_redirects'] = False
     try:
         response = sandbox.client.session.request(method, url, **kwargs)
     except requests.RequestException as err:
         raise SandboxError('Sandbox envd request failed: {0}'.format(err))
+    _check_envd_response(response)
+    return response
+
+
+def _check_envd_response(response):
     if response.status_code < 200 or response.status_code >= 300:
+        try:
+            data = response.text
+        finally:
+            response.close()
         raise SandboxError(
             'Sandbox envd request failed with status {0}'.format(
-                response.status_code), response, response.text, )
-    return response
+                response.status_code), response, data)

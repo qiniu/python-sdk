@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import gc
 import json
+import posixpath
 import threading
 
 import pytest
@@ -9,9 +10,10 @@ import qiniu.services.sandbox.client as sandbox_client_module
 import qiniu.services.sandbox.sandbox as sandbox_module
 
 try:
-    from urllib.parse import parse_qs, urlparse
+    from urllib.parse import parse_qs, unquote_plus, urlparse
 except ImportError:
     from urlparse import parse_qs, urlparse
+    from urllib import unquote_plus
 
 try:
     from socketserver import StreamRequestHandler, TCPServer
@@ -342,13 +344,14 @@ def test_client_reads_qiniu_mac_credentials_from_env(monkeypatch):
 
 def test_util_helpers_encode_unicode_values_safely():
     assert encode_path(u'目录/文件.txt')
+    # Fixed envd vectors generated with Go crypto/sha256 and base64.RawStdEncoding.
     assert file_signature(
         u'/tmp/文件.txt',
         'read',
         u'用户',
         u'token',
         1893456000,
-    ).startswith('v1_')
+    ) == 'v1_iiDuVS1ZoEJWJwcmaMLXBJSUfap4iuJG1WlhzAi81fU'
 
 
 def test_create_with_kodo_resource_requires_qiniu_credentials(monkeypatch):
@@ -794,7 +797,7 @@ def test_sandbox_envd_and_file_urls_are_signed_when_token_is_available():
     assert query['path'] == ['/tmp/hello.txt']
     assert query['username'] == ['user']
     assert query['signature_expiration'] == ['1893456000']
-    assert query['signature'][0]
+    assert query['signature'][0] == 'v1_UeNL+5BVc/nTtL8kVKm6r9cV9MHKKK+ONfF8DqRHmQM'
 
 
 def test_envd_url_requires_domain_without_override():
@@ -814,14 +817,7 @@ def test_file_url_accepts_none_signature_expiration():
     url = sandbox.download_url('/tmp/hello.txt', signatureExpiration=None)
     query = parse_qs(urlparse(url).query)
 
-    assert query['signature'][0]
-    assert query['signature'][0] == file_signature(
-        '/tmp/hello.txt',
-        'read',
-        'user',
-        'token',
-        '',
-    )
+    assert query['signature'][0] == 'v1_Ts3v6XNhCOn8v/BAzyGbrgPhWwKFdEvLtchOSN7BqbU'
     assert 'signature_expiration' not in query
 
 
@@ -932,11 +928,81 @@ class RecordingSandboxListClient(object):
     def __init__(self):
         self.calls = []
 
-    def list_sandboxes_v2(self, **opts):
+    def list_sandboxes(self, **opts):
         self.calls.append(opts)
         if len(self.calls) == 1:
             return {'items': [], 'nextToken': 'next-page'}
         return {'items': []}
+
+
+@pytest.mark.parametrize('method_name', [
+    'list_sandboxes', 'listSandboxes', 'list',
+])
+def test_client_sandbox_list_returns_items_and_header_cursor(method_name):
+    first = DummyResponse(200, [{'sandboxID': 'first'}])
+    first.headers['X-Next-Token'] = 'page-2'
+    session = RecordingSession([
+        first, DummyResponse(200, [{'sandboxID': 'second'}]),
+    ])
+    client = SandboxClient(api_key='api-key', session=session)
+    list_sandboxes = getattr(client, method_name)
+
+    page = list_sandboxes(limit=1, query={'metadata': {'app': 'tests'}})
+    assert page == {'items': [{'sandboxID': 'first'}], 'nextToken': 'page-2'}
+    last = list_sandboxes(limit=1, nextToken=page['nextToken'])
+    assert last == {'items': [{'sandboxID': 'second'}], 'nextToken': None}
+    assert urlparse(session.requests[0].url).path == '/v2/sandboxes'
+    assert parse_qs(urlparse(session.requests[0].url).query) == {
+        'limit': ['1'], 'metadata': ['app=tests'],
+    }
+    assert parse_qs(urlparse(session.requests[1].url).query) == {
+        'limit': ['1'], 'nextToken': ['page-2'],
+    }
+
+
+def test_sandbox_paginator_follows_header_cursor_and_stops_at_last_page():
+    first = DummyResponse(200, [{'sandboxID': 'first'}])
+    first.headers['X-Next-Token'] = 'page-2'
+    session = RecordingSession([
+        first, DummyResponse(200, [{'sandboxID': 'second'}]),
+    ])
+    client = SandboxClient(api_key='api-key', session=session)
+    paginator = Sandbox.list(client=client, limit=1,
+                             metadata={'app': 'tests'})
+
+    assert [item.sandbox_id for item in paginator.next_items()] == ['first']
+    assert paginator.has_next is True
+    assert paginator.next_token == 'page-2'
+    assert [item.sandbox_id for item in paginator.next_items()] == ['second']
+    assert paginator.has_next is False
+    assert paginator.next_items() == []
+    assert len(session.requests) == 2
+    query = parse_qs(urlparse(session.requests[1].url).query)
+    assert query == {'limit': ['1'], 'metadata': ['app=tests'],
+                     'nextToken': ['page-2']}
+
+
+@pytest.mark.parametrize('body', [
+    {'items': [{'sandboxID': 'first'}], 'nextToken': 'body-page'},
+    {'sandboxes': [{'sandboxID': 'first'}], 'next_token': 'body-page'},
+])
+@pytest.mark.parametrize('header_cursor', [None, 'header-page'])
+def test_sandbox_lists_normalize_json_pages_and_prefer_header_cursor(
+        body, header_cursor):
+    responses = [DummyResponse(200, body), DummyResponse(200, body)]
+    if header_cursor is not None:
+        for response in responses:
+            response.headers['X-Next-Token'] = header_cursor
+    client = SandboxClient(api_key='api-key',
+                           session=RecordingSession(responses))
+    expected_cursor = header_cursor or 'body-page'
+
+    assert client.list_sandboxes() == {
+        'items': [{'sandboxID': 'first'}], 'nextToken': expected_cursor,
+    }
+    paginator = Sandbox.list(client=client)
+    assert [item.sandbox_id for item in paginator.next_items()] == ['first']
+    assert paginator.next_token == expected_cursor
 
 
 def test_sandbox_paginator_does_not_reuse_initial_next_token():
@@ -966,11 +1032,11 @@ def test_sandbox_paginator_does_not_send_client_credentials_as_filters():
     assert client.calls[0] == {'metadata': {'app': 'tests'}}
 
 
-def test_list_sandboxes_v2_serializes_metadata_dict_as_query_string():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_serializes_metadata_dict_as_query_string():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(query={
+    client.list_sandboxes(query={
         'metadata': {'app': 'tests'},
         'state': 'running',
     })
@@ -980,31 +1046,97 @@ def test_list_sandboxes_v2_serializes_metadata_dict_as_query_string():
     assert query['state'] == ['running']
 
 
-def test_list_sandboxes_v2_accepts_metadata_string():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_accepts_metadata_string():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(metadata='user=abc&app=prod')
+    client.list_sandboxes(metadata='user=abc&app=prod')
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['metadata'] == ['user=abc&app=prod']
 
 
-def test_list_sandboxes_v2_serializes_template_filters_as_comma_string():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+@pytest.mark.parametrize('value', [
+    u'plain', u'中文 空格', u'a+b', u'100%', u'a=b', u'a&b',
+    u'feat/a&b=1+2%',
+])
+@pytest.mark.parametrize('nested', [False, True])
+def test_list_metadata_survives_server_filter_decoding(value, nested):
+    # The server unescapes the complete filter before splitting each key/value.
+    # A regular query decoder alone would miss '+' corruption and '&'/'=' errors.
+    metadata = {u'key+&=% 中文': value}
+    opts = {'query': {'metadata': metadata}} if nested else {'metadata': metadata}
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(template=['python', 'team/node'])
+    client.list_sandboxes(**opts)
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    filters = unquote_plus(query['metadata'][0])
+    pairs = [item.split('=') for item in filters.split('&')]
+    assert all(len(pair) == 2 for pair in pairs)
+    decoded = dict((_decode_filter_component(key), _decode_filter_component(item))
+                   for key, item in pairs)
+    assert decoded == metadata
+
+
+def test_list_metadata_normalizes_utf8_bytes_and_non_string_values():
+    session = RecordingSession([DummyResponse(200, [])])
+    client = SandboxClient(api_key='api-key', session=session)
+    metadata = {u'字节+'.encode('utf-8'): u'值&+'.encode('utf-8'), 7: 42,
+                'flag': True, 'optional': None}
+
+    client.list_sandboxes(metadata=metadata)
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    filters = unquote_plus(query['metadata'][0])
+    decoded = dict((_decode_filter_component(key), _decode_filter_component(value))
+                   for key, value in (part.split('=') for part in filters.split('&')))
+    assert decoded == {u'字节+': u'值&+', '7': '42', 'flag': 'True',
+                       'optional': 'None'}
+
+
+def test_list_metadata_preserves_preformatted_filter():
+    session = RecordingSession([DummyResponse(200, [])])
+    client = SandboxClient(api_key='api-key', session=session)
+    formatted = 'branch=a%252Bb%2526c%253Dd%2525'
+
+    client.list_sandboxes(metadata=formatted)
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['metadata'] == [formatted]
+
+
+def test_list_metadata_preserves_raw_byte_values():
+    session = RecordingSession([DummyResponse(200, [])])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes(metadata={'raw': b'\xff+'})
+
+    query = parse_qs(urlparse(session.requests[0].url).query)
+    assert query['metadata'] == ['raw=%25FF%252B']
+
+
+def _decode_filter_component(value):
+    decoded = unquote_plus(value)
+    return decoded if isinstance(decoded, type(u'')) else decoded.decode('utf-8')
+
+
+def test_list_sandboxes_serializes_template_filters_as_comma_string():
+    session = RecordingSession([DummyResponse(200, [])])
+    client = SandboxClient(api_key='api-key', session=session)
+
+    client.list_sandboxes(template=['python', 'team/node'])
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['template'] == ['python,team/node']
 
 
-def test_list_sandboxes_v2_serializes_array_filters_from_query_options():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_serializes_array_filters_from_query_options():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(query={
+    client.list_sandboxes(query={
         'template': ['python', 'team/node'],
         'state': ['running', 'paused'],
         'limit': 10,
@@ -1018,11 +1150,11 @@ def test_list_sandboxes_v2_serializes_array_filters_from_query_options():
     assert query['nextToken'] == ['next-page']
 
 
-def test_list_sandboxes_v2_explicit_options_override_extra_query_values():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_explicit_options_override_extra_query_values():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(
+    client.list_sandboxes(
         limit=20,
         state=['running'],
         template=['python'],
@@ -1039,11 +1171,11 @@ def test_list_sandboxes_v2_explicit_options_override_extra_query_values():
     assert query['template'] == ['python']
 
 
-def test_list_sandboxes_v2_explicit_none_options_override_query_values():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_explicit_none_options_override_query_values():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(
+    client.list_sandboxes(
         metadata=None,
         state=None,
         template=None,
@@ -1060,32 +1192,32 @@ def test_list_sandboxes_v2_explicit_none_options_override_query_values():
     assert 'template' not in query
 
 
-def test_list_sandboxes_v2_serializes_non_string_filter_values():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_serializes_non_string_filter_values():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(template=[123, 456], state=7)
+    client.list_sandboxes(template=[123, 456], state=7)
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['template'] == ['123,456']
     assert query['state'] == ['7']
 
 
-def test_list_sandboxes_v2_does_not_join_mapping_keys():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_does_not_join_mapping_keys():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(template={'template': 'python'})
+    client.list_sandboxes(template={'template': 'python'})
 
     query = parse_qs(urlparse(session.requests[0].url).query)
     assert query['template'] == ["{'template': 'python'}"]
 
 
-def test_list_sandboxes_v2_preserves_bytes_and_unicode_filter_values():
-    session = RecordingSession([DummyResponse(200, {'items': []})])
+def test_list_sandboxes_preserves_bytes_and_unicode_filter_values():
+    session = RecordingSession([DummyResponse(200, [])])
     client = SandboxClient(api_key='api-key', session=session)
 
-    client.list_sandboxes_v2(
+    client.list_sandboxes(
         template=[u'团队/模板', b'team/node'],
         state=[b'running'],
     )
@@ -1949,18 +2081,19 @@ def test_git_push_with_credentials_uses_askpass_without_remote_url_leak():
     )
 
     assert commands.calls[0][0] == 'git remote get-url origin'
-    assert commands.calls[1][0] == 'install -d -m 700 /tmp/qiniu-git-auth'
-    assert files.writes[0][0].startswith(
-        '/tmp/qiniu-git-auth/qiniu-git-askpass-')
-    assert commands.calls[2][0].startswith(
-        'chmod 700 /tmp/qiniu-git-auth/qiniu-git-askpass-')
-    assert commands.calls[3][0] == 'git push --set-upstream origin main'
+    directory = posixpath.dirname(files.writes[0][0])
+    assert commands.calls[1][0] == 'mkdir -m 700 ' + directory
+    assert directory.startswith('/tmp/qiniu-git-auth-')
+    assert commands.calls[2][0] == 'chmod 700 ' + files.writes[0][0]
+    assert commands.calls[3][0] == (
+        'git -c credential.helper= -c credential.username=git:user push --set-upstream origin main')
     assert 'secret:%@token' not in commands.calls[3][0]
     assert commands.calls[3][1]['request_timeout'] == 7
     assert commands.calls[3][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
     assert commands.calls[3][1]['envs']['GIT_USERNAME'] == 'git:user'
     assert commands.calls[3][1]['envs']['GIT_PASSWORD'] == 'secret:%@token'
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_pull_with_credentials_resolves_single_remote():
@@ -2008,11 +2141,13 @@ def test_git_pull_with_credentials_resolves_single_remote():
     )
 
     assert commands.calls[0][0] == 'git remote'
-    assert commands.calls[2][0] == 'install -d -m 700 /tmp/qiniu-git-auth'
-    assert commands.calls[4][0] == 'git pull origin main'
+    assert commands.calls[2][0] == 'mkdir -m 700 ' + posixpath.dirname(files.writes[0][0])
+    assert commands.calls[4][0] == (
+        "git -c credential.helper= -c credential.username=git-user pull origin main")
     assert 'secret-token' not in commands.calls[4][0]
     assert commands.calls[4][1]['envs']['GIT_ASKPASS'] == files.writes[0][0]
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_credential_helpers_ignore_background_when_reading_remote():
@@ -2065,7 +2200,8 @@ def test_git_credential_helpers_ignore_background_when_reading_remote():
     assert commands.calls[4][1]['background'] is True
     assert files.removes == []
     handle.wait()
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_background_throw_on_error_waits_before_raising():
@@ -2117,7 +2253,8 @@ def test_git_background_throw_on_error_waits_before_raising():
     assert files.removes == []
     with pytest.raises(CommandExitError):
         handle.wait()
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_background_credentials_clean_up_when_handle_is_discarded():
@@ -2180,7 +2317,8 @@ def test_git_background_credentials_clean_up_when_handle_is_discarded():
     del handle
     gc.collect()
 
-    assert files.removes == [(credential_path, {})]
+    assert files.removes == [(credential_path, {}),
+                             (posixpath.dirname(credential_path), {})]
 
 
 def test_git_push_with_credentials_cleans_askpass_on_auth_failure():
@@ -2228,8 +2366,10 @@ def test_git_push_with_credentials_cleans_askpass_on_auth_failure():
             password='bad-token',
         )
 
-    assert commands.calls[-1][0] == 'git push --set-upstream origin'
-    assert files.removes == [(files.writes[0][0], {})]
+    assert commands.calls[-1][0] == (
+        "git -c credential.helper= -c credential.username=git-user push --set-upstream origin")
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_push_cleans_askpass_after_operation_exception():
@@ -2262,7 +2402,8 @@ def test_git_push_cleans_askpass_after_operation_exception():
         )
 
     assert 'rpc timed out' in str(err.value)
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_credentials_clean_askpass_when_chmod_raises():
@@ -2298,7 +2439,8 @@ def test_git_credentials_clean_askpass_when_chmod_raises():
             password='secret-token',
         )
 
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_credentials_clean_askpass_when_write_raises():
@@ -2334,7 +2476,8 @@ def test_git_credentials_clean_askpass_when_write_raises():
             password='secret-token',
         )
 
-    assert files.removes == [(files.writes[0][0], {})]
+    assert files.removes == [(files.writes[0][0], {}),
+                             (posixpath.dirname(files.writes[0][0]), {})]
 
 
 def test_git_helpers_accept_e2b_style_signatures():

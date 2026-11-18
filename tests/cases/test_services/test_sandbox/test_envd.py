@@ -1,27 +1,65 @@
 # -*- coding: utf-8 -*-
 import base64
+import gc
+import hashlib
+import inspect
 from io import BytesIO, StringIO
 import json
+import os
+import posixpath
+import shlex
+import shutil
 import struct
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+from threading import Event, Thread, Timer, current_thread
+
+try:
+    from http.server import BaseHTTPRequestHandler, HTTPServer, SimpleHTTPRequestHandler
+except ImportError:
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
+
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
+
+try:
+    from urllib.parse import parse_qs, urlencode, urlparse
+except ImportError:
+    from urlparse import parse_qs, urlparse
+    from urllib import urlencode
 
 import pytest
 import requests
 
 from qiniu.services.sandbox import (
+    CommandExitError,
+    CommandResult,
     EntryInfo,
     FileType,
     FilesystemEventType,
+    GitAuthException,
+    Git,
+    InvalidArgumentException,
     PtySize,
     Sandbox,
     SandboxClient,
     SandboxError,
 )
 from qiniu.services.sandbox.envd import (
+    connect_rpc,
+    connect_stream_rpc,
     decode_connect_envelopes,
     encode_connect_envelope,
     iter_connect_envelopes,
 )
 from qiniu.services.sandbox.commands import command_result_from_events
+from qiniu.services.sandbox.pty import _PtyHandle
 import qiniu.services.sandbox.util as sandbox_util
 
 
@@ -54,7 +92,9 @@ class EnvdSession(object):
         self.post_exception = None
         self.request_exception = None
 
-    def post(self, url, data=None, headers=None, timeout=None, stream=False):
+    def post(self, url, data=None, headers=None, timeout=None, stream=False,
+             allow_redirects=False):
+        assert allow_redirects is False
         if self.post_exception is not None:
             raise self.post_exception
         if headers.get('Content-Type') == 'application/connect+json':
@@ -63,6 +103,11 @@ class EnvdSession(object):
             decoded = json.loads(
                 data.decode('utf-8') if isinstance(data, bytes) else data
             )
+        # Protobuf JSON flattens the ProcessSelector oneof: no selector wrapper.
+        if '/process.Process/' in url and not url.endswith('/Start'):
+            process = decoded.get('process')
+            if process is not None:
+                assert set(process) in ({'pid'}, {'tag'})
         self.posts.append({
             'url': url,
             'data': decoded,
@@ -325,6 +370,100 @@ def test_raw_envd_request_wraps_transport_errors():
     assert 'timed out' in str(err.value)
 
 
+@pytest.mark.parametrize('status', [301, 302, 303, 307, 308])
+@pytest.mark.parametrize('operation', [
+    'read', 'read_stream', 'write', 'write_octet', 'rpc', 'stream_rpc',
+])
+def test_envd_redirects_never_forward_credentials(status, operation):
+    class RecordingSession(requests.Session):
+        def __init__(self):
+            super(RecordingSession, self).__init__()
+            self.responses = []
+
+        def send(self, request, **kwargs):
+            response = super(RecordingSession, self).send(request, **kwargs)
+            original_close = response.close
+            response.close_called = False
+
+            def close():
+                response.close_called = True
+                original_close()
+
+            response.close = close
+            self.responses.append(response)
+            return response
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.respond()
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get('Content-Length', '0')))
+            self.respond()
+
+        def respond(self):
+            self.server.received.append(
+                requests.structures.CaseInsensitiveDict(self.headers.items()))
+            target = getattr(self.server, 'redirect_target', None)
+            body = b'redirect' if target else b'public target'
+            self.send_response(status if target else 200)
+            if target:
+                self.send_header('Location', target)
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    target = HTTPServer(('127.0.0.1', 0), Handler)
+    origin = HTTPServer(('127.0.0.1', 0), Handler)
+    target.received = []
+    origin.received = []
+    origin.redirect_target = 'http://127.0.0.1:{0}/target'.format(
+        target.server_port)
+    threads = []
+    for server in (target, origin):
+        thread = Thread(target=server.serve_forever,
+                        kwargs={'poll_interval': 0.01})
+        thread.daemon = True
+        thread.start()
+        threads.append(thread)
+    session = RecordingSession()
+    client = SandboxClient(api_key='api-key', session=session, timeout=2)
+    sandbox = Sandbox(client=client, sandbox_id='redirect-test',
+                      envd_url='http://127.0.0.1:{0}'.format(origin.server_port),
+                      envdAccessToken='not-a-real-token')
+    try:
+        with pytest.raises(SandboxError) as failure:
+            if operation == 'read':
+                sandbox.files.read('/file')
+            elif operation == 'read_stream':
+                sandbox.files.read('/file', format='stream')
+            elif operation == 'write':
+                sandbox.files.write('/file', b'hello')
+            elif operation == 'write_octet':
+                sandbox.files.write('/file', b'hello', use_octet_stream=True)
+            elif operation == 'rpc':
+                connect_rpc(sandbox, '/filesystem.Filesystem/Stat', {})
+            else:
+                connect_stream_rpc(sandbox, '/process.Process/Start', {},
+                                   stream=True)
+        assert failure.value.status_code == status
+        assert len(origin.received) == 1
+        assert origin.received[0]['X-Access-Token'] == 'not-a-real-token'
+        assert target.received == []
+        assert len(session.responses) == 1
+        assert session.responses[0].close_called
+    finally:
+        session.close()
+        for server in (origin, target):
+            server.shutdown()
+            server.server_close()
+        for thread in threads:
+            thread.join(1)
+
+
 def test_filesystem_write_accepts_unicode_text():
     sandbox, session = sandbox_with_envd_session()
 
@@ -406,7 +545,7 @@ def test_commands_connect_returns_handle_for_running_process():
     assert session.posts[0]['timeout'] == 30
     assert session.posts[0]['url'].endswith('/process.Process/Connect')
     assert session.posts[0]['data'] == {
-        'process': {'selector': {'pid': 12}},
+        'process': {'pid': 12},
     }
 
 
@@ -527,6 +666,1169 @@ def test_pty_create_and_connect_handle_empty_event_streams():
     connected = sandbox.pty.connect(12)
 
     assert connected.wait().stdout == ''
+
+
+class StreamingPtyResponse(DummyResponse):
+    def __init__(self):
+        super(StreamingPtyResponse, self).__init__(
+            raw=b'', content_type='application/connect+json')
+        self.chunks = Queue()
+        self.closed_event = Event()
+        self.chunks.put(encode_connect_envelope(
+            {'event': {'start': {'pid': 12}}}))
+
+    def iter_content(self, chunk_size=8192):
+        del chunk_size
+        while True:
+            chunk = self.chunks.get()
+            if chunk is None:
+                return
+            if isinstance(chunk, Exception):
+                raise chunk
+            yield chunk
+
+    def send(self, data):
+        self.chunks.put(encode_connect_envelope({'event': {'data': {
+            'pty': base64.b64encode(data).decode('ascii'),
+        }}}))
+
+    def finish(self, exit_code=0):
+        self.chunks.put(encode_connect_envelope(
+            {'event': {'end': {'exitCode': exit_code}}}))
+        self.chunks.put(None)
+
+    def close(self):
+        self.closed = True
+        self.closed_event.set()
+        self.chunks.put(None)
+
+
+class StreamingPtySession(EnvdSession):
+    def __init__(self, responses):
+        super(StreamingPtySession, self).__init__()
+        self.responses = list(responses)
+
+    def post(self, url, **opts):
+        response = super(StreamingPtySession, self).post(url, **opts)
+        if url.endswith(('/process.Process/Start', '/process.Process/Connect')):
+            return self.responses.pop(0)
+        return response
+
+
+@pytest.mark.parametrize('reconnect', [False, True])
+@pytest.mark.parametrize('late_error', [False, True])
+@pytest.mark.parametrize('with_wait_callback', [False, True])
+def test_pty_disconnect_freezes_output_consumed_by_synchronous_wait(
+        reconnect, late_error, with_wait_callback):
+    class PausedReaderResponse(StreamingPtyResponse):
+        def __init__(self):
+            super(PausedReaderResponse, self).__init__()
+            self.consumed = Event()
+            self.release = Event()
+
+        def iter_content(self, chunk_size=8192):
+            for index, chunk in enumerate(
+                    super(PausedReaderResponse, self).iter_content(chunk_size)):
+                yield chunk
+                if index == 1:
+                    self.consumed.set()
+                    self.release.wait()
+
+        def close(self):
+            self.closed = True
+            self.closed_event.set()
+
+    response = PausedReaderResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    handle = sandbox.pty.connect(12) if reconnect else sandbox.pty.create()
+    results = []
+    errors = []
+
+    def wait():
+        try:
+            on_stdout = (lambda data: None) if with_wait_callback else None
+            results.append(handle.wait(on_stdout=on_stdout))
+        except BaseException as err:
+            errors.append(err)
+
+    waiting = Thread(target=wait)
+    waiting.daemon = True
+    try:
+        response.send(b'before disconnect')
+        waiting.start()
+        assert response.consumed.wait(1)
+        handle.disconnect()
+        snapshot = handle.wait()
+        assert snapshot.stdout == 'before disconnect'
+        assert snapshot.exit_code == -1
+        assert handle.wait() is snapshot
+        waiting.join(1)
+        assert not waiting.is_alive(), 'wait blocked on the detached reader'
+        assert errors == []
+        assert results == [snapshot]
+        if late_error:
+            response.chunks.put(requests.ConnectionError('late read error'))
+        else:
+            response.send(b'late output')
+            response.finish(exit_code=7)
+        response.release.set()
+        handle._reader.join(1)
+        assert not handle._reader.is_alive()
+        assert handle.wait() is snapshot
+        assert snapshot.stdout == 'before disconnect'
+        assert snapshot.exit_code == -1
+        assert response.closed_event.wait(1)
+    finally:
+        response.release.set()
+        response.chunks.put(None)
+        response.close()
+        waiting.join(1)
+
+
+def test_pty_disconnect_before_wait_does_not_block_on_response_close():
+    class BlockingCloseResponse(StreamingPtyResponse):
+        def __init__(self):
+            super(BlockingCloseResponse, self).__init__()
+            self.closing = Event()
+            self.release = Event()
+
+        def close(self):
+            self.closing.set()
+            self.release.wait()
+            super(BlockingCloseResponse, self).close()
+
+    response = BlockingCloseResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    handle = sandbox.pty.create()
+    detached = Event()
+
+    def disconnect():
+        handle.disconnect()
+        detached.set()
+
+    closing = Thread(target=disconnect)
+    closing.daemon = True
+    try:
+        closing.start()
+        assert detached.wait(1), 'disconnect waited for response.close()'
+        assert response.closing.wait(1)
+        assert handle.wait().stdout == ''
+        assert handle.wait().exit_code == -1
+        assert not response.closed_event.is_set()
+    finally:
+        response.release.set()
+        closing.join(1)
+        handle._closer.join(1)
+    assert response.closed_event.is_set()
+
+
+def test_pty_synchronous_wait_keeps_callback_channels_and_caller_thread():
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    handle = sandbox.pty.create()
+    response.chunks.put(encode_connect_envelope({'event': {'data': {
+        'stdout': base64.b64encode(b'out').decode('ascii'),
+        'stderr': base64.b64encode(b'err').decode('ascii'),
+        'pty': base64.b64encode(b'terminal').decode('ascii'),
+    }}}))
+    response.finish()
+    received = []
+    try:
+        result = handle.wait(
+            on_stdout=lambda data: received.append(
+                ('stdout', data, current_thread())),
+            on_stderr=lambda data: received.append(
+                ('stderr', data, current_thread())),
+        )
+        assert received == [('stdout', 'out', current_thread()),
+                            ('stderr', 'err', current_thread())]
+        assert result.stdout == 'outterminal'
+        assert result.stderr == 'err'
+        assert result.exit_code == 0
+        assert handle.wait() is result
+    finally:
+        response.close()
+
+
+def test_pty_wait_callback_error_reaches_later_waiters():
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    handle = sandbox.pty.create()
+    response.chunks.put(encode_connect_envelope({'event': {'data': {
+        'stdout': base64.b64encode(b'out').decode('ascii'),
+    }}}))
+    error = ValueError('callback failed')
+
+    def callback(data):
+        with pytest.raises(RuntimeError, match='Cannot wait for a PTY'):
+            handle.wait()
+        raise error
+
+    try:
+        with pytest.raises(ValueError) as first:
+            handle.wait(on_stdout=callback)
+        with pytest.raises(ValueError) as repeated:
+            handle.wait()
+        assert first.value is repeated.value is error
+        assert response.closed_event.is_set()
+    finally:
+        response.close()
+
+
+@pytest.mark.parametrize('reconnect', [False, True])
+@pytest.mark.parametrize('blocked_close', [False, True])
+@pytest.mark.parametrize('late_error', [False, True])
+def test_pty_disconnect_releases_waiters_before_closed_reader_unwinds(
+        reconnect, blocked_close, late_error):
+    class DelayedCloseResponse(StreamingPtyResponse):
+        def __init__(self):
+            super(DelayedCloseResponse, self).__init__()
+            self.reading = Event()
+            self.released = Event()
+            self.close_started = Event()
+            self.close_released = Event()
+            self.reader_unwound = Event()
+            if not blocked_close:
+                self.close_released.set()
+
+        def iter_content(self, chunk_size=8192):
+            try:
+                for chunk in super(DelayedCloseResponse, self).iter_content(
+                        chunk_size):
+                    yield chunk
+                    self.reading.set()
+                    self.released.wait()
+            finally:
+                self.reader_unwound.set()
+
+        def close(self):
+            self.close_started.set()
+            self.close_released.wait()
+            self.closed = True
+            self.closed_event.set()
+
+    response = DelayedCloseResponse()
+    response.send(b'before disconnect')
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    received = []
+    available = Event()
+    waited = Event()
+    results = []
+
+    def on_data(data):
+        received.append(data)
+        available.set()
+
+    handle = None
+    waiter = None
+    try:
+        if reconnect:
+            handle = sandbox.pty.connect(12, on_data=on_data)
+        else:
+            handle = sandbox.pty.create(on_data=on_data)
+        response.released.set()
+        assert available.wait(1)
+        response.released.clear()
+        assert response.reading.wait(1)
+
+        def wait():
+            results.append(handle.wait())
+            waited.set()
+
+        waiter = Thread(target=wait)
+        waiter.daemon = True
+        waiter.start()
+        handle.disconnect()
+        assert waited.wait(1), 'wait still depends on a closed socket read'
+        handle._closer.join(1)
+        assert not handle._closer.is_alive()
+        assert not response.close_started.is_set()
+        assert results[0].stdout == 'before disconnect'
+        assert results[0].exit_code == -1
+        assert handle.wait() is results[0]
+
+        if late_error:
+            response.chunks.put(requests.ConnectionError('late close error'))
+        else:
+            response.send(b'late output')
+        response.released.set()
+        assert response.reader_unwound.wait(1)
+        assert response.close_started.wait(1)
+        if blocked_close:
+            assert not response.closed_event.is_set()
+        response.close_released.set()
+        assert response.closed_event.wait(1)
+        assert handle.wait() is results[0]
+        assert received == [b'before disconnect']
+        assert results[0].stdout == 'before disconnect'
+    finally:
+        response.released.set()
+        response.close_released.set()
+        response.chunks.put(None)
+        if handle is not None:
+            handle.disconnect()
+        if waiter is not None:
+            waiter.join(1)
+
+
+def test_pty_output_callback_can_disconnect_its_own_handle():
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    handles = []
+    disconnected = Event()
+
+    def on_data(data):
+        handles[0].disconnect()
+        disconnected.set()
+
+    handle = sandbox.pty.create(on_data=on_data)
+    handles.append(handle)
+    try:
+        response.send(b'last output')
+        assert disconnected.wait(1)
+        assert handle.wait().stdout == 'last output'
+        assert handle.wait().exit_code == -1
+        assert response.closed_event.wait(1)
+    finally:
+        response.close()
+
+
+@pytest.mark.parametrize('reconnect', [False, True])
+def test_pty_disconnect_allows_already_dispatched_callback_to_start_later(
+        monkeypatch, reconnect):
+    original_read = _PtyHandle._read
+    lines, first_line = inspect.getsourcelines(original_read)
+    dispatch_line = next(first_line + index for index, line in enumerate(lines)
+                         if line.strip() == 'callback(chunk)')
+    function = getattr(original_read, 'im_func', original_read)
+    code = getattr(function, '__code__', None) or function.func_code
+    dispatched = Event()
+    release = Event()
+
+    def trace(frame, event, arg):
+        if (event == 'line' and frame.f_code is code and
+                frame.f_lineno == dispatch_line):
+            dispatched.set()
+            release.wait()
+        return trace
+
+    def traced_read(self, *args, **kwargs):
+        sys.settrace(trace)
+        try:
+            return original_read(self, *args, **kwargs)
+        finally:
+            sys.settrace(None)
+
+    monkeypatch.setattr(_PtyHandle, '_read', traced_read)
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    received = []
+    handle = (sandbox.pty.connect(12, on_data=received.append) if reconnect
+              else sandbox.pty.create(on_data=received.append))
+    try:
+        response.send(b'committed output')
+        assert dispatched.wait(1)
+        handle.disconnect()
+        snapshot = handle.wait()
+        assert received == []
+        assert snapshot.stdout == 'committed output'
+        response.send(b'late output')
+        release.set()
+        handle._reader.join(1)
+        assert not handle._reader.is_alive()
+        assert received == [b'committed output']
+        assert handle.wait() is snapshot
+        assert snapshot.stdout == 'committed output'
+    finally:
+        release.set()
+        response.close()
+        handle._reader.join(1)
+
+
+def test_pty_disconnect_does_not_wait_for_an_inflight_output_callback():
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    entered = Event()
+    release = Event()
+    returned = Event()
+    detached = Event()
+
+    def on_data(data):
+        entered.set()
+        release.wait()
+        returned.set()
+        raise ValueError('inflight callback failed after disconnect')
+
+    handle = sandbox.pty.create(on_data=on_data)
+    try:
+        response.send(b'inflight output')
+        assert entered.wait(1)
+
+        def disconnect():
+            handle.disconnect()
+            detached.set()
+
+        closing = Thread(target=disconnect)
+        closing.daemon = True
+        closing.start()
+        assert detached.wait(1), 'disconnect waited for user callback code'
+        assert not returned.is_set()
+        assert handle.wait().stdout == 'inflight output'
+    finally:
+        release.set()
+        response.close()
+    assert returned.wait(1)
+    handle._reader.join(1)
+    assert not handle._reader.is_alive()
+    assert handle.wait().stdout == 'inflight output'
+
+
+@pytest.mark.parametrize('reconnect', [False, True])
+def test_pty_callback_receives_raw_bytes_before_process_exit(reconnect):
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    received = []
+    available = Event()
+
+    def on_data(data):
+        received.append(data)
+        available.set()
+
+    try:
+        if reconnect:
+            handle = sandbox.pty.connect(12, on_data=on_data)
+        else:
+            handle = sandbox.pty.create(on_data=on_data)
+        response.send(b'\xff\x00hello')
+        assert available.wait(1), 'PTY output was not delivered before exit'
+        assert received == [b'\xff\x00hello']
+        response.finish()
+        assert handle.wait().stdout == u'\ufffd\x00hello'
+        assert handle.wait().exit_code == 0
+        assert handle.wait().exitCode == 0
+    finally:
+        response.close()
+
+
+@pytest.mark.parametrize('reconnect', [False, True])
+def test_pty_first_output_callback_error_closes_stream_before_traceback_release(
+        reconnect):
+    response = StreamingPtyResponse()
+    response.chunks.get()
+    response.send(b'first event is data')
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    error = ValueError('first output callback failed')
+    retained = []
+
+    def on_data(data):
+        raise error
+
+    try:
+        try:
+            if reconnect:
+                sandbox.pty.connect(12, on_data=on_data)
+            else:
+                sandbox.pty.create(on_data=on_data)
+        except ValueError:
+            retained.append(sys.exc_info())
+        else:
+            pytest.fail('callback error was not raised')
+        assert retained[0][1] is error
+        gc.collect()
+        assert response.closed is True
+    finally:
+        retained[:] = []
+        response.close()
+
+
+@pytest.mark.parametrize('with_callback', [False, True])
+def test_pty_disconnect_closes_stream_without_killing_and_allows_reconnect(
+        with_callback):
+    class InterruptibleResponse(StreamingPtyResponse):
+        @property
+        def raw(self):
+            return self
+
+        def shutdown(self):
+            self.chunks.put(None)
+
+    response = InterruptibleResponse()
+    reconnected_response = StreamingPtyResponse()
+    session = StreamingPtySession([response, reconnected_response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    available = Event()
+    callback = (lambda data: available.set()) if with_callback else None
+    handle = sandbox.pty.create(on_data=callback)
+    try:
+        if with_callback:
+            response.send(b'before disconnect')
+            assert available.wait(1)
+        handle.disconnect()
+        handle.disconnect()
+        assert response.closed_event.wait(1)
+        assert handle.wait().pid == 12
+        assert handle.wait().exit_code == -1
+        assert len(session.posts) == 1
+
+        received = []
+        connected = sandbox.pty.connect(handle.pid, on_data=received.append)
+        reconnected_response.send(b'after reconnect')
+        reconnected_response.finish()
+        assert connected.wait().stdout == 'after reconnect'
+        assert received == [b'after reconnect']
+        assert session.posts[1]['url'].endswith('/process.Process/Connect')
+        assert session.posts[1]['data']['process'] == {'pid': 12}
+    finally:
+        response.close()
+        reconnected_response.close()
+
+
+@pytest.mark.parametrize('with_callback', [False, True])
+def test_pty_disconnect_with_throw_on_error_preserves_unknown_exit_status(
+        with_callback):
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    received = Event()
+    callback = (lambda data: received.set()) if with_callback else None
+    handle = sandbox.pty.connect(12, on_data=callback, throw_on_error=True)
+    try:
+        if with_callback:
+            response.send(b'still running')
+            assert received.wait(1)
+        handle.disconnect()
+        for unused in range(2):
+            result = handle.wait()
+            assert result.pid == 12
+            assert result.exit_code == -1
+        assert len(session.posts) == 1
+    finally:
+        response.close()
+
+
+@pytest.mark.parametrize('with_callback', [False, True])
+def test_pty_throw_on_error_keeps_real_nonzero_exit_failure(with_callback):
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    callback = (lambda data: None) if with_callback else None
+    handle = sandbox.pty.connect(12, on_data=callback, throw_on_error=True)
+    try:
+        response.finish(exit_code=7)
+        for unused in range(2):
+            with pytest.raises(CommandExitError) as caught:
+                handle.wait()
+            assert caught.value.result.exit_code == 7
+            assert caught.value.result.exitCode == 7
+            handle.disconnect()
+    finally:
+        response.close()
+
+
+@pytest.mark.parametrize('callback_error,with_callback', [
+    (False, False), (False, True), (True, True),
+])
+def test_pty_wait_repeats_stream_errors_and_closes_response(
+        callback_error, with_callback):
+    response = StreamingPtyResponse()
+    session = StreamingPtySession([response])
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    error = ValueError('callback failed') if callback_error else (
+        requests.ConnectionError('stream failed'))
+
+    def on_data(data):
+        if callback_error:
+            raise error
+
+    handle = sandbox.pty.create(on_data=on_data if with_callback else None)
+    try:
+        if callback_error:
+            response.send(b'output')
+        else:
+            response.chunks.put(error)
+        for unused in range(2):
+            with pytest.raises(type(error)) as caught:
+                handle.wait()
+            assert caught.value is error
+        assert response.closed is True
+    finally:
+        response.close()
+
+
+def test_dropped_background_command_returns_connection_pool_slot(monkeypatch):
+    first = {'event': {'start': {'pid': 12}}, 'padding': ''}
+    first['padding'] = 'x' * (8192 - len(encode_connect_envelope(first)))
+    body = encode_connect_envelope(first) + encode_connect_envelope({'padding': 'x' * 8192})
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers['Content-Length']))
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/connect+json')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    serving = Thread(target=server.serve_forever)
+    serving.daemon = True
+    serving.start()
+    endpoint = 'http://127.0.0.1:{0}'.format(server.server_port)
+    session = requests.Session()
+    session.trust_env = False
+    adapter = requests.adapters.HTTPAdapter(pool_maxsize=1, pool_block=True)
+    session.mount(endpoint, adapter)
+    pools = []
+    post = session.post
+
+    def observe_post(*args, **kwargs):
+        response = post(*args, **kwargs)
+        pools.append(response.raw._pool)
+        return response
+
+    monkeypatch.setattr(session, 'post', observe_post)
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      sandbox_id='sbx123', envd_url=endpoint)
+    try:
+        handle = sandbox.commands.start('echo example')
+        assert handle.pid == 12
+        pool = pools[0]
+        assert pool.pool.qsize() == 0
+        del handle
+        gc.collect()
+        assert pool.pool.qsize() == 1
+    finally:
+        session.close()
+        server.shutdown()
+        server.server_close()
+        serving.join(1)
+
+
+@pytest.mark.parametrize('connection_close', [False, True])
+def test_pty_disconnect_releases_http_connection_once(connection_close, monkeypatch):
+    release = Event()
+    connection_closed = Event()
+    disconnected = Event()
+    errors = []
+    reading = Event()
+    returning_connection = Event()
+    release_connection = Event()
+    returned = []
+
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = 'HTTP/1.1'
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers['Content-Length']))
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/connect+json')
+            self.send_header('Transfer-Encoding', 'chunked')
+            if connection_close:
+                self.send_header('Connection', 'close')
+            self.end_headers()
+            frame = encode_connect_envelope({'event': {'start': {'pid': 12}}})
+            self.wfile.write(('{0:x}\r\n'.format(len(frame))).encode('ascii') +
+                             frame + b'\r\n')
+            self.wfile.flush()
+            release.wait(5)
+            try:
+                self.wfile.write(b'0\r\n\r\n')
+            except IOError:
+                pass
+            finally:
+                self.close_connection = True
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    serving = Thread(target=server.serve_forever)
+    serving.daemon = True
+    serving.start()
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', timeout=5),
+                      sandbox_id='sbx123',
+                      envd_url='http://127.0.0.1:{0}'.format(server.server_port))
+    post = sandbox.client.session.post
+
+    def observe_response(*args, **kwargs):
+        response = post(*args, **kwargs)
+        pool = response.raw._pool
+        connection = response.raw._connection
+        put_conn = pool._put_conn
+        iter_content = response.iter_content
+
+        def pause_first_release(conn):
+            if conn is connection:
+                returned.append(conn)
+                if len(returned) == 1:
+                    returning_connection.set()
+                    release_connection.wait(5)
+            return put_conn(conn)
+
+        def observe_read(*args, **kwargs):
+            for chunk in iter_content(*args, **kwargs):
+                yield chunk
+                reading.set()
+
+        monkeypatch.setattr(pool, '_put_conn', pause_first_release)
+        monkeypatch.setattr(response, 'iter_content', observe_read)
+        return response
+
+    monkeypatch.setattr(sandbox.client.session, 'post', observe_response)
+    handle = None
+    try:
+        handle = sandbox.pty.create(on_data=lambda data: None)
+        assert reading.wait(1), 'reader did not start the next HTTP read'
+
+        def disconnect():
+            try:
+                handle.disconnect()
+                connection_closed.set()
+                handle.wait()
+            except BaseException as error:
+                errors.append(error)
+            finally:
+                disconnected.set()
+
+        closing = Thread(target=disconnect)
+        closing.daemon = True
+        closing.start()
+        if not disconnected.wait(1):
+            frames = sys._current_frames()
+            stacks = []
+            for thread in (closing, handle._reader):
+                frame = frames.get(thread.ident)
+                if frame is not None:
+                    stacks.append('{0}:\n{1}'.format(
+                        thread.name, ''.join(traceback.format_stack(frame))))
+            pytest.fail('disconnect blocked on an idle HTTP stream; '
+                        'connection close returned: {0}\n{1}'.format(
+                            connection_closed.is_set(), '\n'.join(stacks)))
+        if errors:
+            raise errors[0]
+        assert handle.wait().exit_code == -1
+        handle._closer.join(1)
+        assert not handle._closer.is_alive(), 'disconnect raced the reader to release the response'
+        # Some platforms keep the active read blocked after socket shutdown.
+        # End the stream on the server so pool cleanup can be checked independently.
+        release.set()
+        assert returning_connection.wait(2), 'the reader did not release the connection'
+        assert len(returned) == 1, 'the same connection was released twice'
+        release_connection.set()
+        handle._reader.join(2)
+        assert not handle._reader.is_alive()
+        assert len(returned) == 1, 'the same connection was released twice'
+    finally:
+        release_connection.set()
+        release.set()
+        if handle is not None:
+            handle.disconnect()
+        sandbox.client.session.close()
+        server.shutdown()
+        server.server_close()
+        serving.join(1)
+
+
+@pytest.mark.parametrize('background', [False, True])
+def test_git_clone_uses_temporary_credentials_and_cleans_them(background):
+    sandbox, session = sandbox_with_envd_session()
+    result = sandbox.git.clone(
+        'https://github.com/qiniu/private.git', '/workspace/private',
+        username='demo-user', password='private-token',
+        envs={'CUSTOM': 'preserved'}, background=background)
+    starts = [post['data']['process'] for post in session.posts
+              if post['url'].endswith('/process.Process/Start')]
+    clone = next(process for process in starts
+                 if (process.get('envs') or {}).get('GIT_ASKPASS'))
+    assert clone['args'][-1] == (
+        'git -c credential.helper= -c credential.username=demo-user '
+        'clone https://github.com/qiniu/private.git /workspace/private')
+    assert clone['envs']['GIT_USERNAME'] == 'demo-user'
+    assert clone['envs']['GIT_PASSWORD'] == 'private-token'
+    assert clone['envs']['CUSTOM'] == 'preserved'
+    askpass_path = clone['envs']['GIT_ASKPASS']
+    assert clone['envs']['GIT_TERMINAL_PROMPT'] == '0'
+    assert all('config --global' not in process['args'][-1]
+               for process in starts)
+    if background:
+        assert not any(post['url'].endswith('/filesystem.Filesystem/Remove')
+                       for post in session.posts)
+        result = result.wait()
+    assert result.exit_code == 0
+    removed = [post['data']['path'] for post in session.posts
+               if post['url'].endswith('/filesystem.Filesystem/Remove')]
+    assert removed == [askpass_path, posixpath.dirname(askpass_path)]
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='local askpass fixture requires POSIX shell')
+def test_git_temporary_credentials_override_config_without_writing_to_store():
+    try:
+        subprocess.check_output(['git', '--version'])
+    except OSError:
+        pytest.skip('git executable is required')
+    root = tempfile.mkdtemp(prefix='qiniu-git-credentials-')
+    git_home = os.path.join(root, 'home')
+    os.mkdir(git_home)
+    env = dict(os.environ)
+    for key in list(env):
+        if key.startswith('GIT_') or key == 'SSH_ASKPASS':
+            env.pop(key)
+    env.update({'HOME': git_home, 'XDG_CONFIG_HOME': git_home,
+                'GIT_CONFIG_NOSYSTEM': '1',
+                'GIT_CONFIG_GLOBAL': os.path.join(git_home, '.gitconfig'),
+                'GIT_TERMINAL_PROMPT': '0',
+                'NO_PROXY': '127.0.0.1,localhost',
+                'no_proxy': '127.0.0.1,localhost'})
+    remote = os.path.join(root, 'remote.git')
+    store = os.path.join(git_home, 'credentials')
+    helper = 'store --file=' + store
+    subprocess.check_call(['git', 'init', '--bare', '-q', remote], env=env)
+    subprocess.check_call(['git', '--git-dir=' + remote, 'update-server-info'], env=env)
+    subprocess.check_call(['git', 'config', '--global', 'credential.helper', helper], env=env)
+
+    class Handler(SimpleHTTPRequestHandler):
+        def do_GET(self):
+            expected = 'Basic ' + base64.b64encode(b'demo:fake-token').decode('ascii')
+            if self.headers.get('Authorization') != expected:
+                self.send_response(401)
+                self.send_header('WWW-Authenticate', 'Basic realm="local"')
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            SimpleHTTPRequestHandler.do_GET(self)
+
+        def translate_path(self, path):
+            return os.path.join(root, path.split('?', 1)[0].lstrip('/'))
+
+        def log_message(self, *args):
+            pass
+
+    def local_path(value):
+        return value.replace('/tmp/qiniu-git-auth', os.path.join(root, 'auth'))
+
+    class Files(object):
+        def write(self, path, data, **opts):
+            with open(local_path(path), 'w') as output:
+                output.write(data)
+
+        def remove(self, path, **opts):
+            path = local_path(path)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+
+    class Commands(object):
+        def __init__(self):
+            self.sandbox = type('SandboxContext', (object,), {'files': Files()})()
+
+        def run(self, command, **opts):
+            process_env = dict(env)
+            process_env.update(opts.get('envs') or {})
+            if 'GIT_ASKPASS' in process_env:
+                process_env['GIT_ASKPASS'] = local_path(process_env['GIT_ASKPASS'])
+            process = subprocess.Popen(
+                shlex.split(local_path(command)), stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=process_env, cwd=opts.get('cwd'))
+            expired = Event()
+
+            def expire():
+                expired.set()
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+
+            timer = Timer(10, expire)
+            timer.daemon = True
+            timer.start()
+            try:
+                stdout, stderr = process.communicate()
+            finally:
+                timer.cancel()
+            assert not expired.is_set(), 'local Git command timed out'
+            return CommandResult(process.pid, process.returncode,
+                                 stdout.decode('utf-8', 'replace'),
+                                 stderr.decode('utf-8', 'replace'))
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    serving = Thread(target=server.serve_forever)
+    serving.daemon = True
+    serving.start()
+    try:
+        git = Git(Commands())
+        url = 'http://127.0.0.1:{0}/remote.git'.format(server.server_port)
+        username_key = 'credential.{0}.username'.format(url)
+        subprocess.check_call(
+            ['git', 'config', '--global', 'credential.username', 'default-user'], env=env)
+        subprocess.check_call(
+            ['git', 'config', '--global', username_key, 'configured-user'], env=env)
+        explicit_path = os.path.join(root, 'explicit')
+        old_url = url.replace('http://', 'http://old-user:old-password@', 1)
+        result = git.clone(old_url, explicit_path, username='demo', password='fake-token')
+        assert result.exit_code == 0, result.stderr
+        assert not os.path.exists(store), 'temporary credentials reached the store helper'
+        assert not any(name.startswith('auth') for name in os.listdir(root))
+        configured = subprocess.check_output(
+            ['git', 'config', '--global', 'credential.helper'], env=env)
+        assert configured.decode('utf-8').strip() == helper
+        configured = subprocess.check_output(
+            ['git', 'config', '--global', username_key], env=env)
+        assert configured.decode('utf-8').strip() == 'configured-user'
+        remote_url = subprocess.check_output(
+            ['git', '-C', explicit_path, 'remote', 'get-url', 'origin'], env=env)
+        assert remote_url.decode('utf-8').strip() == url
+
+        subprocess.check_call(
+            ['git', 'config', '--global', '--unset', username_key], env=env)
+        subprocess.check_call(
+            ['git', 'config', '--global', '--unset', 'credential.username'], env=env)
+        with open(store, 'w') as output:
+            output.write('http://demo:fake-token@127.0.0.1:{0}\n'.format(server.server_port))
+        result = git.clone(url, os.path.join(root, 'configured-helper'))
+        assert result.exit_code == 0, result.stderr
+    finally:
+        server.shutdown()
+        server.server_close()
+        serving.join(1)
+        shutil.rmtree(root)
+
+
+@pytest.mark.parametrize('operation', ['clone', 'pull', 'push'])
+@pytest.mark.parametrize('background', [False, True])
+def test_git_credentials_keep_request_user_and_private_directory(
+        operation, background):
+    class CredentialSession(EnvdSession):
+        def post(self, url, **opts):
+            response = super(CredentialSession, self).post(url, **opts)
+            process = self.posts[-1]['data'].get('process') or {}
+            args = process.get('args') or ['']
+            if args[-1] == 'git remote get-url origin':
+                return DummyResponse(raw=b''.join([
+                    encode_connect_envelope({'start': {'pid': 12}}),
+                    encode_connect_envelope({'data': {'stdout': base64.b64encode(
+                        b'https://example.test/private.git\n').decode('ascii')}}),
+                    encode_connect_envelope({'end': {'exitCode': 0}}),
+                ]), content_type='application/connect+json')
+            return response
+
+    def request_user(headers):
+        value = headers['Authorization'].split(' ', 1)[1]
+        return base64.b64decode(value).decode('ascii').split(':', 1)[0]
+
+    session = CredentialSession()
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+    directories = []
+    for user in ('root', 'user'):
+        first_post = len(session.posts)
+        opts = {'user': user, 'username': 'demo', 'password': 'fake-token',
+                'background': background}
+        if operation == 'clone':
+            result = sandbox.git.clone('https://example.test/private.git', **opts)
+        else:
+            result = getattr(sandbox.git, operation)(
+                '/workspace/repo', remote='origin', **opts)
+        upload = session.requests[-1]
+        assert request_user(upload['kwargs']['headers']) == user
+        assert parse_qs(urlparse(upload['url']).query)['username'] == [user]
+        starts = [post for post in session.posts[first_post:]
+                  if post['url'].endswith('/process.Process/Start')]
+        assert all(request_user(post['headers']) == user for post in starts)
+        git_process = next(post['data']['process'] for post in starts
+                           if (post['data']['process'].get('envs') or {}).get('GIT_ASKPASS'))
+        askpass = git_process['envs']['GIT_ASKPASS']
+        directory = posixpath.dirname(askpass)
+        assert directory not in directories
+        directories.append(directory)
+        assert any('700' in post['data']['process']['args'][-1] and
+                   directory in post['data']['process']['args'][-1]
+                   for post in starts)
+        if background:
+            assert not any(post['url'].endswith('/filesystem.Filesystem/Remove')
+                           for post in session.posts[first_post:])
+            result = result.wait()
+        assert result.exit_code == 0
+        cleanup = [post for post in session.posts[first_post:]
+                   if post['url'].endswith('/filesystem.Filesystem/Remove')]
+        assert directory in [post['data']['path'] for post in cleanup]
+        assert all(request_user(post['headers']) == user for post in cleanup)
+
+
+def test_git_background_handle_discard_cleans_credentials_as_command_user():
+    sandbox, session = sandbox_with_envd_session()
+    handle = sandbox.git.clone('https://example.test/private.git',
+                               username='demo', password='fake-token',
+                               user='root', background=True)
+    assert not any(post['url'].endswith('/filesystem.Filesystem/Remove')
+                   for post in session.posts)
+    del handle
+    gc.collect()
+
+    cleanup = [post for post in session.posts
+               if post['url'].endswith('/filesystem.Filesystem/Remove')]
+    assert len(cleanup) == 2
+    assert cleanup[1]['data']['path'] == posixpath.dirname(cleanup[0]['data']['path'])
+    assert all(post['headers']['Authorization'] == 'Basic cm9vdDo='
+               for post in cleanup)
+
+
+@pytest.mark.parametrize('url_method,operation,http_method', [
+    ('download_url', 'read', 'GET'), ('upload_url', 'write', 'POST'),
+])
+def test_public_file_urls_pass_envd_signature_expiration_and_tamper_checks(
+        url_method, operation, http_method):
+    token = 'envd-test-token'
+
+    class Handler(BaseHTTPRequestHandler):
+        def authorize(self, expected_operation):
+            query = parse_qs(urlparse(self.path).query)
+            components = [query.get('path', [''])[0], expected_operation,
+                          query.get('username', [''])[0], token]
+            expiration = query.get('signature_expiration', [None])[0]
+            if expiration is not None:
+                components.append(expiration)
+            payload = ':'.join(components).encode('utf-8')
+            # Envd auth.go and keys/sha256.go use standard base64 without padding.
+            expected = 'v1_' + base64.b64encode(
+                hashlib.sha256(payload).digest()).decode('ascii').rstrip('=')
+            valid = query.get('signature', [''])[0] == expected
+            if expiration is not None:
+                valid = valid and int(expiration) >= int(time.time())
+            self.send_response(200 if valid else 401)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+
+        def do_GET(self):
+            self.authorize('read')
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get('Content-Length', '0')))
+            self.authorize('write')
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    serving = Thread(target=server.serve_forever)
+    serving.daemon = True
+    serving.start()
+    sandbox = Sandbox(sandbox_id='sbx123', envdAccessToken=token,
+                      envd_url='http://127.0.0.1:{0}'.format(server.server_port))
+    client = requests.Session()
+    client.trust_env = False
+
+    def status(url, method=http_method):
+        response = client.request(method, url, data=b'', timeout=2)
+        return response.status_code
+
+    try:
+        url = getattr(sandbox, url_method)(
+            '/tmp/hello world.txt', user='root',
+            signature_expiration=int(time.time()) + 300)
+        assert status(url) == 200
+        assert status(url, method='POST' if operation == 'read' else 'GET') == 401
+
+        query = dict((key, values[0]) for key, values in
+                     parse_qs(urlparse(url).query).items())
+        for key, value in [('signature', 'v1_tampered'),
+                           ('path', '/tmp/different.txt'),
+                           ('username', 'different-user'),
+                           ('signature_expiration', str(int(time.time()) + 600))]:
+            changed = dict(query)
+            changed[key] = value
+            tampered = urlparse(url)._replace(query=urlencode(changed)).geturl()
+            assert status(tampered) == 401
+
+        expired = getattr(sandbox, url_method)(
+            '/tmp/hello world.txt', user='root',
+            signature_expiration=int(time.time()) - 1)
+        assert status(expired) == 401
+        no_expiration = getattr(sandbox, url_method)(
+            '/tmp/hello world.txt', user='root', signature_expiration=None)
+        assert status(no_expiration) == 200
+    finally:
+        client.close()
+        server.shutdown()
+        server.server_close()
+        serving.join(1)
+
+
+def test_git_clone_auth_failure_removes_temporary_credentials():
+    class AuthFailureSession(EnvdSession):
+        def post(self, url, **opts):
+            response = super(AuthFailureSession, self).post(url, **opts)
+            process = self.posts[-1]['data'].get('process') or {}
+            if url.endswith('/process.Process/Start') and (
+                    process.get('envs') or {}).get('GIT_ASKPASS'):
+                return DummyResponse(
+                    raw=b''.join([
+                        encode_connect_envelope({'start': {'pid': 12}}),
+                        encode_connect_envelope({'data': {
+                            'stderr': base64.b64encode(
+                                b'fatal: Authentication failed').decode('ascii'),
+                        }}),
+                        encode_connect_envelope({'end': {'exitCode': 128}}),
+                    ]), content_type='application/connect+json')
+            return response
+
+    session = AuthFailureSession()
+    sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
+                      info={'sandboxID': 'sbx123', 'domain': 'example.test'})
+
+    with pytest.raises(GitAuthException):
+        sandbox.git.clone('https://github.com/qiniu/private.git',
+                          username='demo-user', password='private-token', user='root')
+
+    removed = [post['data']['path'] for post in session.posts
+               if post['url'].endswith('/filesystem.Filesystem/Remove')]
+    assert len(removed) == 2
+    assert removed[1] == posixpath.dirname(removed[0])
+    cleanup = [post for post in session.posts
+               if post['url'].endswith('/filesystem.Filesystem/Remove')]
+    assert all(post['headers']['Authorization'] == 'Basic cm9vdDo='
+               for post in cleanup)
+
+
+@pytest.mark.parametrize('url,credentials', [
+    ('https://github.com/qiniu/private.git', {'username': 'demo-user'}),
+    ('https://github.com/qiniu/private.git', {'password': 'private-token'}),
+    ('git@github.com:qiniu/private.git',
+     {'username': 'demo-user', 'password': 'private-token'}),
+])
+def test_git_clone_rejects_incomplete_or_unsupported_credentials(
+        url, credentials):
+    sandbox, session = sandbox_with_envd_session()
+    with pytest.raises(InvalidArgumentException):
+        sandbox.git.clone(url, **credentials)
+    assert session.posts == []
 
 
 def test_filesystem_uses_envd_rpc_and_signed_file_urls():

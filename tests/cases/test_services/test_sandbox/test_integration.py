@@ -264,26 +264,45 @@ def test_filesystem_watch_dir_when_envd_supports_it():
             sandbox.kill()
 
 
-def test_pty_when_envd_supports_it():
+def test_commands_connect_stdin_close_and_kill():
+    sandbox = None
+    try:
+        sandbox = create_integration_sandbox('process_selectors')
+        handle = sandbox.commands.start('cat', stdin=True, tag='stdin-test',
+                                        request_timeout=30)
+        connected = sandbox.commands.connect(handle.pid, timeout=30)
+        tagged = sandbox.commands.connect(None, tag='stdin-test', timeout=30)
+        sandbox.commands.send_stdin(handle.pid, 'qiniu-stdin-ready\n')
+        sandbox.commands.close_stdin(handle.pid)
+        for stream in (handle, connected, tagged):
+            result = stream.wait()
+            assert result.exit_code == 0
+            assert 'qiniu-stdin-ready' in result.stdout
+
+        handle = sandbox.commands.start('exec sleep 60', request_timeout=30)
+        assert sandbox.commands.kill(handle.pid) is True
+        assert handle.wait().exit_code != 0
+    finally:
+        if sandbox is not None:
+            sandbox.kill()
+
+
+def test_pty_input_resize_reconnect_and_kill():
     sandbox = None
     try:
         sandbox = create_integration_sandbox('pty')
-        try:
-            handle = sandbox.pty.create(PtySize(rows=24, cols=80), timeout=30)
-        except SandboxError as err:
-            if is_unsupported_runtime_error(err):
-                pytest.skip('envd does not support pty')
-            raise
-
-        try:
-            sandbox.pty.send_stdin(handle.pid, 'echo qiniu-pty-ready\n')
-            sandbox.pty.send_stdin(handle.pid, 'exit\n')
-        except SandboxError as err:
-            if is_unsupported_runtime_error(err):
-                pytest.skip('envd can create pty but does not support input')
-            raise
+        handle = sandbox.pty.create(PtySize(rows=24, cols=80), timeout=30)
+        handle.disconnect()
+        handle = sandbox.pty.connect(handle.pid, timeout=30)
+        sandbox.pty.resize(handle.pid, PtySize(rows=30, cols=100))
+        sandbox.pty.send_stdin(handle.pid, 'echo qiniu-pty-ready\n')
+        sandbox.pty.send_stdin(handle.pid, 'exit\n')
         result = handle.wait()
         assert 'qiniu-pty-ready' in result.stdout
+
+        handle = sandbox.pty.create(PtySize(rows=24, cols=80), timeout=30)
+        assert sandbox.pty.kill(handle.pid) is True
+        assert handle.wait().exit_code != 0
     finally:
         if sandbox is not None:
             sandbox.kill()

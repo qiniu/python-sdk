@@ -7,6 +7,11 @@ import uuid
 
 import requests
 
+try:
+    from urllib.parse import quote
+except ImportError:
+    from urllib import quote
+
 from qiniu.auth import QiniuMacAuth, QiniuMacRequestsAuth
 from qiniu.compat import (
     basestring,
@@ -203,6 +208,14 @@ def _require_sandbox_id(sandbox_id):
     return sandbox_id
 
 
+def _encode_metadata_component(value):
+    if not isinstance(value, (bytes_type, text_type)):
+        value = text_type(value)
+    if isinstance(value, text_type):
+        value = value.encode('utf-8')
+    return quote(value, safe='')
+
+
 def _normalize_list_options(opts):
     opts = dict(opts or {})
     query = opts.pop('query', None) or {}
@@ -210,7 +223,11 @@ def _normalize_list_options(opts):
     if metadata is not None and 'metadata' not in opts:
         opts['metadata'] = metadata
     if isinstance(opts.get('metadata'), dict):
-        opts['metadata'] = urlencode(opts.get('metadata'))
+        # The API unescapes the whole filter, then each key/value separately.
+        opts['metadata'] = urlencode([
+            (_encode_metadata_component(key), _encode_metadata_component(value))
+            for key, value in opts['metadata'].items()
+        ])
     for key, value in query.items():
         if (
                 key != 'metadata' and
@@ -392,8 +409,12 @@ class SandboxClient(object):
             return None
         data = parse_json_response(response)
         if page:
-            return {'items': data, 'nextToken': response.headers.get(
-                'X-Next-Token')}
+            next_token = response.headers.get('X-Next-Token')
+            if isinstance(data, dict):
+                if next_token is None:
+                    next_token = data.get('nextToken') or data.get('next_token')
+                data = data.get('items') or data.get('sandboxes') or []
+            return {'items': data, 'nextToken': next_token}
         return data
 
     def _is_retryable(self, err):
@@ -438,18 +459,14 @@ class SandboxClient(object):
                 raise
 
     def list_sandboxes(self, **opts):
-        return self._request('GET', '/sandboxes', params=opts)
-
-    listSandboxes = list_sandboxes
-
-    def list_sandboxes_v2(self, **opts):
+        """Return {'items': [...], 'nextToken': ...} from the sandbox list."""
         return self._request(
             'GET',
             '/v2/sandboxes',
-            params=_normalize_list_options(opts))
+            params=_normalize_list_options(opts), page=True)
 
-    listSandboxesV2 = list_sandboxes_v2
-    list = list_sandboxes_v2
+    listSandboxes = list_sandboxes
+    list = list_sandboxes
 
     def create_sandbox(self, template=None, **opts):
         body = _normalize_sandbox_create_options(template, **opts)

@@ -9,10 +9,10 @@ from sandbox_common import cleanup_sandbox, create_sandbox, run_example
 def main():
     sandbox = create_sandbox(timeout=300)
     try:
-        listed = sandbox.client.list_sandboxes_v2(
+        listed = sandbox.client.list_sandboxes(
             template=[sandbox.template_id],
         )
-        print('sandboxes using template:', listed)
+        print('sandboxes using template:', listed['items'])
 
         print('current injections:', sandbox.get_injections())
         sandbox.update_injections([{
