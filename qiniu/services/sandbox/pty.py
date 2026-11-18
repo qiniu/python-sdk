@@ -54,12 +54,20 @@ class _PtyHandle(CommandHandle):
             self._reader.daemon = True
             self._reader.start()
 
-    def _read(self):
+    def _read(self, on_stdout=None, on_stderr=None):
         events = self._events
         try:
             for event in events:
-                chunks = []
-                part = command_result_from_events([event], on_data=chunks.append)
+                callbacks = []
+                part = command_result_from_events(
+                    [event],
+                    on_stdout=(lambda data: callbacks.append((on_stdout, data)))
+                    if on_stdout is not None else None,
+                    on_stderr=(lambda data: callbacks.append((on_stderr, data)))
+                    if on_stderr is not None else None,
+                    on_data=(lambda data: callbacks.append((self._on_data, data)))
+                    if self._on_data is not None else None,
+                )
                 with self._state_lock:
                     if self._disconnected:
                         break
@@ -74,10 +82,16 @@ class _PtyHandle(CommandHandle):
                         self.result.exit_code = part.exit_code
                     if part.error:
                         self.result.error = part.error
-                for chunk in chunks:
+                for callback, chunk in callbacks:
+                    with self._state_lock:
+                        if self._disconnected:
+                            break
+                        # Dispatch is committed here. User code runs unlocked;
+                        # disconnect never waits for a committed callback.
+                    callback(chunk)
+                with self._state_lock:
                     if self._disconnected:
                         break
-                    self._on_data(chunk)
         except BaseException as err:
             with self._state_lock:
                 if not self._disconnected:
@@ -120,54 +134,41 @@ class _PtyHandle(CommandHandle):
         self._result_frozen = True
 
     def wait(self, on_stdout=None, on_stderr=None):
-        if self._reader is None:
-            if self._reader_error is not None:
-                raise self._reader_error
-            try:
-                return super(_PtyHandle, self).wait(on_stdout, on_stderr)
-            except BaseException as err:
-                self._reader_error = err
-                self.disconnect()
-                raise
-        if threading.current_thread() is self._reader:
-            raise RuntimeError('Cannot wait for a PTY from its output callback')
+        read_here = False
+        with self._state_lock:
+            if not self._done.is_set():
+                if self._reader is None:
+                    self._reader = threading.current_thread()
+                    read_here = True
+                elif threading.current_thread() is self._reader:
+                    raise RuntimeError(
+                        'Cannot wait for a PTY from its output callback')
+        if read_here:
+            self._read(on_stdout, on_stderr)
         self._done.wait()
         if self._reader_error is not None:
             raise self._reader_error
         return self.result
 
     def disconnect(self):
-        """Close this client stream without terminating the remote PTY."""
+        """Detach immediately; already-dispatched callbacks may still run."""
         with self._state_lock:
             if self._disconnected:
                 return
             self._disconnected = True
             events = self._events
-            if self._reader is not None:
-                self._freeze_result()
-                self._done.set()
-                if events is not None:
-                    self._closer = threading.Thread(
-                        target=self._close_stream, args=(events,))
-                    self._closer.daemon = True
-                    closer = self._closer
-                else:
-                    closer = None
+            self._events = None
+            self._freeze_result()
+            self._done.set()
+            if events is not None:
+                self._closer = threading.Thread(
+                    target=self._close_stream, args=(events,))
+                self._closer.daemon = True
+                closer = self._closer
             else:
                 closer = None
-        if self._reader is not None:
-            if closer is not None:
-                closer.start()
-            return
-        try:
-            close = getattr(events, 'close', None)
-            if close is not None:
-                close()
-        finally:
-            with self._state_lock:
-                if self._reader is None:
-                    self._events = None
-                self._done.set()
+        if closer is not None:
+            closer.start()
 
 
 class Pty(object):
