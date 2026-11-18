@@ -1,4 +1,10 @@
 # Changelog
+## 7.20.0
+* Sandbox 列表现在返回带游标的分页结果，支持按含特殊字符的 metadata 筛选。由 v7.19.0 升级时，请将 `list_sandboxes_v2()` / `listSandboxesV2()` 改为 `list_sandboxes()`。原先直接遍历 `client.list()` 或 `client.list_sandboxes()` 的代码请改为遍历返回值的 `items` 字段，下一页使用 `nextToken`。
+* Sandbox PTY 支持通过 `on_data` 实时接收原始字节，通过 `disconnect()` 保留已读输出并断开本地连接，之后可按 PID 重连。修复命令和 PTY 的重连、输入、关闭 stdin、调整终端尺寸和终止进程等操作。
+* Sandbox Git clone 支持显式用户名和密码，clone、pull 和 push 使用临时凭据时会隔离已有的 Git credential helper。
+* Sandbox 文件和进程请求收到 HTTP 重定向时会抛出 `SandboxError`。修复文件上传和下载 URL 的签名，以及断连或丢弃后台命令句柄时的 HTTP 连接回收。
+
 ## 7.19.0
 * Sandbox 新增持久快照创建与分页查询，支持调用方持久保存的幂等键、UTF-8 请求头和响应中断重试；自动重试受 35 分钟窗口限制，并校验 `Retry-After`
 * Sandbox 创建和连接支持幂等重试，新增资源查询、Git 仓库 Token 更新和 Kodo 挂载独立凭据
