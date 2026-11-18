@@ -980,7 +980,8 @@ def test_pty_disconnect_allows_already_dispatched_callback_to_start_later(
     lines, first_line = inspect.getsourcelines(original_read)
     dispatch_line = next(first_line + index for index, line in enumerate(lines)
                          if line.strip() == 'callback(chunk)')
-    code = getattr(original_read, '__code__', None) or original_read.func_code
+    function = getattr(original_read, 'im_func', original_read)
+    code = getattr(function, '__code__', None) or function.func_code
     dispatched = Event()
     release = Event()
 
