@@ -145,44 +145,77 @@ def iter_connect_envelopes(chunks, response=None):
 
 
 class _ConnectStream(object):
-    """An event iterator whose transport can be closed during a read."""
+    """An event iterator whose transport can be interrupted during a read."""
 
     def __init__(self, response):
         self._response = response
-        self._events = iter_connect_envelopes(
-            response.iter_content(chunk_size=8192), response=response)
+        self._chunks = response.iter_content(chunk_size=8192)
+        self._events = iter_connect_envelopes(self._chunks)
         self._closed = False
-        self._close_lock = threading.Lock()
+        self._reading = False
+        self._state_lock = threading.Lock()
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self._closed:
-            raise StopIteration
-        try:
-            return next(self._events)
-        except Exception:
+        with self._state_lock:
             if self._closed:
                 raise StopIteration
+            if self._reading:
+                raise ValueError('Connect stream is already being read')
+            self._reading = True
+
+        try:
+            event = next(self._events)
+        except BaseException as err:
+            if self._finish_read(terminal=True) and isinstance(err, Exception):
+                raise StopIteration
             raise
+        if self._finish_read():
+            raise StopIteration
+        return event
 
     next = __next__
 
-    def _close_events(self):
+    def _finish_read(self, terminal=False):
+        with self._state_lock:
+            self._reading = False
+            interrupted = self._closed
+            if not (terminal or interrupted):
+                return False
+            self._closed = True
+        try:
+            self._close_resources()
+        except Exception:
+            pass
+        return interrupted
+
+    def _close_resources(self):
         try:
             self._events.close()
-        except ValueError:
-            # A reader still in I/O closes the iterator when it unwinds.
-            pass
+            close_chunks = getattr(self._chunks, 'close', None)
+            if close_chunks is not None:
+                close_chunks()
+        finally:
+            self._response.close()
 
     def close(self):
-        with self._close_lock:
+        with self._state_lock:
             if self._closed:
-                self._close_events()
                 return
             self._closed = True
+            if self._reading:
+                # Only wake the read. Closing the response here would race
+                # urllib3 releasing the connection as the read unwinds.
+                self._interrupt_read()
+                return
+        self._close_resources()
+
+    def _interrupt_read(self):
         raw = getattr(self._response, 'raw', None)
+        if getattr(raw, 'closed', False):
+            return
         shutdown = getattr(raw, 'shutdown', None)
         try:
             if shutdown is not None:
@@ -201,10 +234,6 @@ class _ConnectStream(object):
                     sock.shutdown(socket.SHUT_RDWR)
             except (IOError, OSError, RuntimeError, ValueError):
                 pass
-        try:
-            self._response.close()
-        finally:
-            self._close_events()
 
 
 def connect_stream_rpc(sandbox, procedure, body=None, user=None, timeout=None,

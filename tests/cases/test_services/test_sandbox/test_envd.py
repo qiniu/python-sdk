@@ -950,11 +950,9 @@ def test_pty_disconnect_releases_waiters_before_closed_reader_unwinds(
         waiter.start()
         handle.disconnect()
         assert waited.wait(1), 'wait still depends on a closed socket read'
-        assert response.close_started.wait(1)
-        if blocked_close:
-            assert response.closed is False
-        else:
-            assert response.closed_event.wait(1)
+        handle._closer.join(1)
+        assert not handle._closer.is_alive()
+        assert not response.close_started.is_set()
         assert results[0].stdout == 'before disconnect'
         assert results[0].exit_code == -1
         assert handle.wait() is results[0]
@@ -964,8 +962,11 @@ def test_pty_disconnect_releases_waiters_before_closed_reader_unwinds(
         else:
             response.send(b'late output')
         response.released.set()
-        response.close_released.set()
         assert response.reader_unwound.wait(1)
+        assert response.close_started.wait(1)
+        if blocked_close:
+            assert not response.closed_event.is_set()
+        response.close_released.set()
         assert response.closed_event.wait(1)
         assert handle.wait() is results[0]
         assert received == [b'before disconnect']
@@ -1163,7 +1164,15 @@ def test_pty_first_output_callback_error_closes_stream_before_traceback_release(
 @pytest.mark.parametrize('with_callback', [False, True])
 def test_pty_disconnect_closes_stream_without_killing_and_allows_reconnect(
         with_callback):
-    response = StreamingPtyResponse()
+    class InterruptibleResponse(StreamingPtyResponse):
+        @property
+        def raw(self):
+            return self
+
+        def shutdown(self):
+            self.chunks.put(None)
+
+    response = InterruptibleResponse()
     reconnected_response = StreamingPtyResponse()
     session = StreamingPtySession([response, reconnected_response])
     sandbox = Sandbox(client=SandboxClient(api_key='api-key', session=session),
@@ -1271,11 +1280,15 @@ def test_pty_wait_repeats_stream_errors_and_closes_response(
 
 
 @pytest.mark.parametrize('connection_close', [False, True])
-def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close):
+def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close, monkeypatch):
     release = Event()
     connection_closed = Event()
     disconnected = Event()
     errors = []
+    reading = Event()
+    returning_connection = Event()
+    release_connection = Event()
+    returned = []
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.1'
@@ -1308,9 +1321,37 @@ def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close):
     sandbox = Sandbox(client=SandboxClient(api_key='api-key', timeout=5),
                       sandbox_id='sbx123',
                       envd_url='http://127.0.0.1:{0}'.format(server.server_port))
+    post = sandbox.client.session.post
+
+    def observe_response(*args, **kwargs):
+        response = post(*args, **kwargs)
+        pool = response.raw._pool
+        connection = response.raw._connection
+        put_conn = pool._put_conn
+        iter_content = response.iter_content
+
+        def pause_first_release(conn):
+            if conn is connection:
+                returned.append(conn)
+                if len(returned) == 1:
+                    returning_connection.set()
+                    release_connection.wait(5)
+            return put_conn(conn)
+
+        def observe_read(*args, **kwargs):
+            for chunk in iter_content(*args, **kwargs):
+                yield chunk
+                reading.set()
+
+        monkeypatch.setattr(pool, '_put_conn', pause_first_release)
+        monkeypatch.setattr(response, 'iter_content', observe_read)
+        return response
+
+    monkeypatch.setattr(sandbox.client.session, 'post', observe_response)
     handle = None
     try:
         handle = sandbox.pty.create(on_data=lambda data: None)
+        assert reading.wait(1), 'reader did not start the next HTTP read'
 
         def disconnect():
             try:
@@ -1339,7 +1380,16 @@ def test_pty_disconnect_interrupts_a_blocked_http_read(connection_close):
         if errors:
             raise errors[0]
         assert handle.wait().exit_code == -1
+        assert returning_connection.wait(2), 'socket shutdown did not wake the reader'
+        handle._closer.join(1)
+        assert not handle._closer.is_alive(), 'disconnect raced the reader to release the response'
+        assert len(returned) == 1, 'the same connection was released twice'
+        release_connection.set()
+        handle._reader.join(2)
+        assert not handle._reader.is_alive()
+        assert len(returned) == 1, 'the same connection was released twice'
     finally:
+        release_connection.set()
         release.set()
         if handle is not None:
             handle.disconnect()
