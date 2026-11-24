@@ -50,7 +50,16 @@ py.test
 | Workflow filename | `pypi-publish.yml` |
 | Environment | `pypi` |
 
-GitHub 仓库使用同名 `pypi` 环境。合入 `master` 并完成授权后，如需补发现有标签，从 `master` 手动启动工作流：
+在 GitHub 仓库的 **Settings → Environments → pypi** 配置部署保护：
+
+- 在 **Deployment branches and tags** 选择指定分支和标签。允许分支 `master` 用于手动补发，允许标签 `v*` 用于正式 Release。自动发布需要允许版本标签。
+- 为环境配置可信发布审核人，使用仓库规则集限制 `v*` 标签的创建、修改及删除。发布前核对标签指向已合入的提交。
+
+工作流要求标签符合 `vX.Y.Z`，并与 `qiniu/__init__.py` 中的 `__version__` 一致。预发布 Release 会跳过上传。补发使用标签对应的代码，适用于尚未上传到 PyPI 的版本。
+
+发布工作流把 Actions 固定到官方发行提交，并固定构建工具的直接依赖版本。更新这些依赖时，重新验证 wheel、源码包和安装后的导入。
+
+合入 `master` 并完成授权后，如需补发现有标签，从 `master` 手动启动工作流：
 
 ```bash
 gh workflow run pypi-publish.yml --repo qiniu/python-sdk --ref master -f tag=v7.20.0

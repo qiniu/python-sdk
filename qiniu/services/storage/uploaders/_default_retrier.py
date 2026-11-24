@@ -188,7 +188,7 @@ def get_default_retrier(
     """
     retry_policies = []
     upload_service_names = [ServiceName.UP]
-    handle_change_region = None
+    reset_progress = None
 
     if accelerate_uploading:
         # Resumable upload records pin the previous endpoint. Start fresh on fallback.
@@ -204,10 +204,9 @@ def get_default_retrier(
             record_exists_handler=progress_record.exists
         ))
 
-        def _handle_change_region(_):
+        def reset_progress(_):
+            # A different service or region must start without the old upload context.
             progress_record.delete()
-
-        handle_change_region = _handle_change_region
 
     retry_policies += [
         EndpointsRetryPolicy(skip_init_context=True),
@@ -215,7 +214,8 @@ def get_default_retrier(
             regions_provider=regions_provider,
             service_names=upload_service_names,
             preferred_endpoints_provider=preferred_endpoints_provider,
-            on_change_region=handle_change_region
+            on_change_region=reset_progress,
+            on_change_service=reset_progress
         )
     ]
 

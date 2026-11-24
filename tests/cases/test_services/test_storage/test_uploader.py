@@ -1,5 +1,4 @@
 from collections import namedtuple
-from itertools import groupby
 from time import time
 
 import pytest
@@ -20,7 +19,7 @@ from qiniu.http.endpoint import Endpoint
 from qiniu.http.region import Region, ServiceName
 from qiniu.services.storage.uploader import _form_put, put_file_v2, put_stream_v2
 from qiniu.services.storage.upload_progress_recorder import UploadProgressRecorder
-from qiniu.services.storage.uploaders.abc import UploaderBase
+from qiniu.services.storage.uploaders.abc import ResumeUploaderBase, UploaderBase
 from qiniu.utils import io_crc32
 
 from . import conftest as storage_fixtures
@@ -47,12 +46,15 @@ def test_get_real_regions_returns_independent_results(monkeypatch, get_real_regi
         assert not region.services[ServiceName.UP_ACC]
 
 
-@pytest.mark.parametrize('version', ['v1', 'v2'])
-@pytest.mark.parametrize('temp_file, accelerate_failure', [
-    (size, failure)
-    for size in (64 * KB, 10 * MB)
+@pytest.mark.parametrize('temp_file, version, accelerate_failure', [
+    (size, version, failure)
+    for size, version in ((64 * KB, 'v1'), (10 * MB, 'v1'), (10 * MB, 'v2'))
     for failure in ('none', 'timeout', 'unavailable', 'bad_request')
-] + [(10 * MB, 'unavailable_on_complete')], indirect=['temp_file'])
+] + [
+    (10 * MB, version, failure)
+    for version in ('v1', 'v2')
+    for failure in ('unavailable_on_complete', 'timeout_after_part', 'server_error_on_complete')
+], indirect=['temp_file'])
 def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accelerate_failure):
     accelerate_host = 'accelerate.invalid'
     source_host = 'source.invalid'
@@ -61,7 +63,13 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
         ServiceName.UP: [Endpoint(source_host)],
     })
     requested_hosts = []
+    part_hosts = []
     key = 'upload-order'
+    initialize_resumable = ResumeUploaderBase.__init__
+
+    def initialize_sequential(uploader, bucket_name, **kwargs):
+        kwargs['concurrent_executor'] = None
+        initialize_resumable(uploader, bucket_name, **kwargs)
 
     def send(_session, request, **kwargs):
         url = urlparse(request.url)
@@ -70,6 +78,12 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
             raise requests.exceptions.ConnectTimeout('controlled upload timeout')
 
         status = 200
+        is_part = url.path.startswith('/mkblk/') or request.method == 'PUT'
+        if is_part:
+            part_hosts.append(url.hostname)
+            if (url.hostname == accelerate_host and accelerate_failure == 'timeout_after_part'
+                    and part_hosts.count(accelerate_host) == 2):
+                raise requests.exceptions.ConnectTimeout('controlled timeout after one part')
         if url.path.startswith('/mkblk/'):
             payload = {'ctx': 'block-context', 'crc32': io_crc32(request.body)}
         elif url.path.endswith('/uploads'):
@@ -87,6 +101,8 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
             ):
                 status = 400
                 payload = {'error': 'transfer acceleration is not configured on this bucket'}
+            if accelerate_failure == 'server_error_on_complete' and payload == {'key': key}:
+                status, payload = 503, {'error': 'controlled completion failure'}
 
         response = requests.Response()
         response.status_code = status
@@ -95,6 +111,7 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
         response._content = json.dumps(payload).encode('utf-8')
         return response
 
+    monkeypatch.setattr(ResumeUploaderBase, '__init__', initialize_sequential)
     monkeypatch.setattr(requests.Session, 'send', send)
     token = Auth('access-key', 'secret-key').upload_token('bucket', key)
     ret, resp = put_file(
@@ -103,7 +120,13 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
         regions=[region], accelerate_uploading=True,
     )
 
-    expected_hosts = [accelerate_host]
+    upload_requests = 1 if temp_file.size == 64 * KB else (4 if version == 'v1' else 5)
+    accelerate_requests = 1
+    if accelerate_failure in ('none', 'unavailable_on_complete', 'server_error_on_complete'):
+        accelerate_requests = upload_requests
+    elif accelerate_failure == 'timeout_after_part':
+        accelerate_requests = 2 if version == 'v1' else 3
+    expected_hosts = [accelerate_host] * accelerate_requests
     if accelerate_failure == 'bad_request':
         assert ret is None and resp.status_code == 400, resp
         assert resp.json() == {'error': 'Bad Request'}
@@ -111,8 +134,8 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
         assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
         if accelerate_failure != 'none':
-            expected_hosts.append(source_host)
-    assert [host for host, _ in groupby(requested_hosts)] == expected_hosts
+            expected_hosts.extend([source_host] * upload_requests)
+    assert requested_hosts == expected_hosts
     assert urlparse(resp.url).hostname == expected_hosts[-1], resp
 
 
