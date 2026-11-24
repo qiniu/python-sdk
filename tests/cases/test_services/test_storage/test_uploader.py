@@ -1,9 +1,13 @@
 from collections import namedtuple
+from itertools import groupby
+from time import time
 
 import pytest
+import requests
 
-from qiniu.compat import json, is_py2
+from qiniu.compat import json, is_py2, urlparse
 from qiniu import (
+    Auth,
     Zone,
     config as qn_config,
     set_default,
@@ -13,13 +17,84 @@ from qiniu import (
     build_batch_delete
 )
 from qiniu.http.endpoint import Endpoint
-from qiniu.http.region import ServiceName
+from qiniu.http.region import Region, ServiceName
 from qiniu.services.storage.uploader import _form_put, put_file_v2, put_stream_v2
+from qiniu.services.storage.upload_progress_recorder import UploadProgressRecorder
 from qiniu.services.storage.uploaders.abc import UploaderBase
+from qiniu.utils import io_crc32
+
+from . import conftest as storage_fixtures
 
 KB = 1024
 MB = 1024 * KB
 GB = 1024 * MB
+
+
+def test_get_real_regions_returns_independent_results(monkeypatch, get_real_regions):
+    cached = Region('z0', services={ServiceName.UP: [Endpoint('source.invalid')]})
+    monkeypatch.setattr(storage_fixtures, 'get_default_regions_provider',
+                        lambda **kwargs: [cached])
+
+    first, = get_real_regions('access-key', 'bucket')
+    second, = get_real_regions('access-key', 'bucket')
+    assert first is not second
+    assert first.services[ServiceName.UP][0] is not cached.services[ServiceName.UP][0]
+
+    del first.services[ServiceName.UP][:]
+    first.services[ServiceName.UP_ACC] = [Endpoint('accelerate.invalid')]
+    for region in (cached, second):
+        assert len(region.services[ServiceName.UP]) == 1
+        assert not region.services[ServiceName.UP_ACC]
+
+
+@pytest.mark.parametrize('temp_file', [64 * KB, 10 * MB], indirect=True)
+@pytest.mark.parametrize('version', ['v1', 'v2'])
+@pytest.mark.parametrize('accelerate_times_out', [False, True])
+def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accelerate_times_out):
+    accelerate_host = 'accelerate.invalid'
+    source_host = 'source.invalid'
+    region = Region('z0', services={
+        ServiceName.UP_ACC: [Endpoint(accelerate_host)],
+        ServiceName.UP: [Endpoint(source_host)],
+    })
+    requested_hosts = []
+    key = 'upload-order'
+
+    def send(_session, request, **kwargs):
+        url = urlparse(request.url)
+        requested_hosts.append(url.hostname)
+        if url.hostname == accelerate_host and accelerate_times_out:
+            raise requests.exceptions.ConnectTimeout('controlled upload timeout')
+
+        if url.path.startswith('/mkblk/'):
+            payload = {'ctx': 'block-context', 'crc32': io_crc32(request.body)}
+        elif url.path.endswith('/uploads'):
+            payload = {'uploadId': 'upload-id', 'expireAt': int(time()) + 3600}
+        elif request.method == 'PUT':
+            payload = {'etag': 'part-etag'}
+        else:
+            payload = {'key': key}
+
+        response = requests.Response()
+        response.status_code = 200
+        response.url = request.url
+        response.headers['X-Reqid'] = 'mock-upload'
+        response._content = json.dumps(payload).encode('utf-8')
+        return response
+
+    monkeypatch.setattr(requests.Session, 'send', send)
+    token = Auth('access-key', 'secret-key').upload_token('bucket', key)
+    ret, resp = put_file(
+        token, key, temp_file.path, version=version,
+        upload_progress_recorder=UploadProgressRecorder(str(tmpdir)),
+        regions=[region], accelerate_uploading=True,
+    )
+
+    assert resp.ok() and ret is not None, resp
+    assert ret['key'] == key, resp
+    expected_hosts = [accelerate_host, source_host] if accelerate_times_out else [accelerate_host]
+    assert [host for host, _ in groupby(requested_hosts)] == expected_hosts
+    assert urlparse(resp.url).hostname == expected_hosts[-1], resp
 
 
 @pytest.fixture(scope='session')
@@ -860,8 +935,10 @@ class TestResumableUploader:
             accelerate_uploading=True
         )
 
+        # The final response can come from the source after a retry.
+        # test_upload_acc_request_order verifies endpoint ordering.
+        assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
-        assert 'kodo-accelerate' in resp.url, resp
 
     @pytest.mark.parametrize('temp_file', [
         64 * KB,  # form
@@ -895,6 +972,7 @@ class TestResumableUploader:
             accelerate_uploading=True
         )
 
+        assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
 
     @pytest.mark.parametrize('temp_file', [
@@ -929,9 +1007,11 @@ class TestResumableUploader:
             key=key,
             file_path=temp_file.path,
             version=version,
+            regions=[region],
             accelerate_uploading=True
         )
 
+        assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
 
     def test_uploader_base_compatible(self, qn_auth, bucket_name):
