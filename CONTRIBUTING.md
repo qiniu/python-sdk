@@ -31,7 +31,7 @@ py.test
 
 ## 发布到 PyPI
 
-正式 GitHub Release 会触发 `.github/workflows/pypi-publish.yml`。工作流从对应标签构建并检查 wheel 和源码包，通过后由 `pypi` 环境中的独立 job 上传。
+直接发布正式 GitHub Release，或将使用正式版本标签的预发布转为正式版，都会触发 `.github/workflows/pypi-publish.yml`。工作流从对应标签构建并检查 wheel 和源码包，通过后由 `pypi` 环境中的独立 job 上传。
 
 ### 为什么采用 OIDC
 
@@ -55,7 +55,7 @@ py.test
 - 在 **Deployment branches and tags** 选择指定分支和标签。允许分支 `master` 用于手动补发，允许标签 `v*` 用于正式 Release。自动发布需要允许版本标签。
 - 为环境配置可信发布审核人，使用仓库规则集限制 `v*` 标签的创建、修改及删除。发布前核对标签指向已合入的提交。
 
-工作流要求标签符合 `vX.Y.Z`，并与 `qiniu/__init__.py` 中的 `__version__` 一致。预发布 Release 会跳过上传。补发使用标签对应的代码，适用于尚未上传到 PyPI 的版本。
+工作流要求标签符合 `vX.Y.Z`，并与 `qiniu/__init__.py` 中的 `__version__` 一致。手动补发会在检出源码前确认标签对应已发布的正式 GitHub Release。补发使用标签对应的代码，适用于尚未上传到 PyPI 的版本。
 
 发布工作流把 Actions 固定到官方发行提交，并固定 build、twine、setuptools 和 wheel 的版本。构建使用预装的后端，工具的传递依赖仍由 pip 解析。更新这些工具时，重新验证 wheel、源码包和安装后的导入。
 
