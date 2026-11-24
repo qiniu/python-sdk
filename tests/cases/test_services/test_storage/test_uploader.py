@@ -47,10 +47,13 @@ def test_get_real_regions_returns_independent_results(monkeypatch, get_real_regi
         assert not region.services[ServiceName.UP_ACC]
 
 
-@pytest.mark.parametrize('temp_file', [64 * KB, 10 * MB], indirect=True)
 @pytest.mark.parametrize('version', ['v1', 'v2'])
-@pytest.mark.parametrize('accelerate_times_out', [False, True])
-def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accelerate_times_out):
+@pytest.mark.parametrize('temp_file, accelerate_failure', [
+    (size, failure)
+    for size in (64 * KB, 10 * MB)
+    for failure in ('none', 'timeout', 'unavailable', 'bad_request')
+] + [(10 * MB, 'unavailable_on_complete')], indirect=['temp_file'])
+def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accelerate_failure):
     accelerate_host = 'accelerate.invalid'
     source_host = 'source.invalid'
     region = Region('z0', services={
@@ -63,9 +66,10 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
     def send(_session, request, **kwargs):
         url = urlparse(request.url)
         requested_hosts.append(url.hostname)
-        if url.hostname == accelerate_host and accelerate_times_out:
+        if url.hostname == accelerate_host and accelerate_failure == 'timeout':
             raise requests.exceptions.ConnectTimeout('controlled upload timeout')
 
+        status = 200
         if url.path.startswith('/mkblk/'):
             payload = {'ctx': 'block-context', 'crc32': io_crc32(request.body)}
         elif url.path.endswith('/uploads'):
@@ -75,8 +79,17 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
         else:
             payload = {'key': key}
 
+        if url.hostname == accelerate_host:
+            if accelerate_failure == 'bad_request':
+                status, payload = 400, {'error': 'Bad Request'}
+            if accelerate_failure == 'unavailable' or (
+                accelerate_failure == 'unavailable_on_complete' and payload == {'key': key}
+            ):
+                status = 400
+                payload = {'error': 'transfer acceleration is not configured on this bucket'}
+
         response = requests.Response()
-        response.status_code = 200
+        response.status_code = status
         response.url = request.url
         response.headers['X-Reqid'] = 'mock-upload'
         response._content = json.dumps(payload).encode('utf-8')
@@ -90,9 +103,15 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
         regions=[region], accelerate_uploading=True,
     )
 
-    assert resp.ok() and ret is not None, resp
-    assert ret['key'] == key, resp
-    expected_hosts = [accelerate_host, source_host] if accelerate_times_out else [accelerate_host]
+    expected_hosts = [accelerate_host]
+    if accelerate_failure == 'bad_request':
+        assert ret is None and resp.status_code == 400, resp
+        assert resp.json() == {'error': 'Bad Request'}
+    else:
+        assert resp.ok() and ret is not None, resp
+        assert ret['key'] == key, resp
+        if accelerate_failure != 'none':
+            expected_hosts.append(source_host)
     assert [host for host, _ in groupby(requested_hosts)] == expected_hosts
     assert urlparse(resp.url).hostname == expected_hosts[-1], resp
 

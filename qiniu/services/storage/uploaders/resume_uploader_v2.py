@@ -14,7 +14,7 @@ from qiniu.http.endpoint import Endpoint
 from qiniu.utils import b, io_md5, urlsafe_base64_encode
 from qiniu.compat import json
 
-from ._default_retrier import ProgressRecord, get_default_retrier
+from ._default_retrier import AccUnavailableRetryPolicy, ProgressRecord, get_default_retrier
 from .abc import ResumeUploaderBase
 from .io_chunked import IOChunked
 
@@ -557,7 +557,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
                     return attempt.result
                 if (
                     not is_seekable(data) or
-                    not resp.need_retry()
+                    not (resp.need_retry() or AccUnavailableRetryPolicy.should_retry(attempt))
                 ):
                     return attempt.result
                 data.seek(0)

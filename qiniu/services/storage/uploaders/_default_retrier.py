@@ -103,13 +103,14 @@ class TokenExpiredRetryPolicy(RetryPolicy):
 
 
 class AccUnavailableRetryPolicy(RetryPolicy):
-    def __init__(self):
-        pass
+    def __init__(self, on_fallback=None):
+        self.on_fallback = on_fallback
 
     def init_context(self, context):
         pass
 
-    def should_retry(self, attempt):
+    @staticmethod
+    def should_retry(attempt):
         """
         Parameters
         ----------
@@ -119,7 +120,7 @@ class AccUnavailableRetryPolicy(RetryPolicy):
         -------
         bool
         """
-        if not attempt.result:
+        if not attempt.result or attempt.context.get('service_name') != ServiceName.UP_ACC:
             return False
 
         region = attempt.context.get('region')
@@ -128,14 +129,14 @@ class AccUnavailableRetryPolicy(RetryPolicy):
 
         if all(
             not region.services[sn]
-            for sn in attempt.context.get('alternative_service_names')
+            for sn in attempt.context.get('alternative_service_names', [])
         ):
             return False
 
         _ret, resp = attempt.result
 
         return resp.status_code == 400 and \
-            'transfer acceleration is not configured on this bucket' in resp.text_body
+            'transfer acceleration is not configured on this bucket' in (resp.text_body or '')
 
     def prepare_retry(self, attempt):
         """
@@ -153,6 +154,8 @@ class AccUnavailableRetryPolicy(RetryPolicy):
             endpoints = attempt.context['region'].services.get(attempt.context['service_name'], [])[:]
         attempt.context['alternative_endpoints'] = endpoints
         attempt.context['endpoint'] = attempt.context['alternative_endpoints'].pop(0)
+        if self.on_fallback:
+            self.on_fallback()
 
 
 ProgressRecord = namedtuple(
@@ -188,7 +191,10 @@ def get_default_retrier(
     handle_change_region = None
 
     if accelerate_uploading:
-        retry_policies.append(AccUnavailableRetryPolicy())
+        # Resumable upload records pin the previous endpoint. Start fresh on fallback.
+        retry_policies.append(AccUnavailableRetryPolicy(
+            on_fallback=progress_record.delete if progress_record else None
+        ))
         upload_service_names.insert(0, ServiceName.UP_ACC)
 
     if progress_record:
