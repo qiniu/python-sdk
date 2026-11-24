@@ -204,9 +204,11 @@ def get_default_retrier(
             record_exists_handler=progress_record.exists
         ))
 
-        def reset_progress(_):
+        def _reset_progress(_):
             # A different service or region must start without the old upload context.
             progress_record.delete()
+
+        reset_progress = _reset_progress
 
     retry_policies += [
         EndpointsRetryPolicy(skip_init_context=True),
