@@ -15,42 +15,6 @@ def mocked_regions_provider():
 
 
 class TestRegionsRetryPolicy:
-    @pytest.mark.parametrize('fallback, expected_calls', [
-        ('same-region', ['service']),
-        ('next-region', ['region', 'service']),
-        ('service-only', ['service']),
-        ('shared-callback', ['region']),
-    ])
-    def test_retry_notifies_final_endpoint(self, fallback, expected_calls):
-        first = Region('first', services={ServiceName.UP_ACC: [Endpoint('acc.invalid')]})
-        source = Endpoint('source.invalid')
-        if fallback == 'same-region':
-            first.services[ServiceName.UP] = [source]
-            target = first
-            regions = [first]
-        else:
-            target = Region('target', services={ServiceName.UP: [source]})
-            regions = [first, Region('empty'), Region('also-empty'), target]
-        calls = []
-
-        def on_region(context):
-            calls.append(('region', context['region'], context['service_name'], context['endpoint']))
-
-        def on_service(context):
-            calls.append(('service', context['region'], context['service_name'], context['endpoint']))
-
-        policy = RegionsRetryPolicy(
-            regions_provider=regions,
-            service_names=[ServiceName.UP_ACC, ServiceName.UP],
-            on_change_region=None if fallback == 'service-only' else on_region,
-            on_change_service=on_region if fallback == 'shared-callback' else on_service,
-        )
-        attempt = Attempt()
-        policy.init_context(attempt.context)
-        policy.prepare_retry(attempt)
-
-        assert calls == [(name, target, ServiceName.UP, source) for name in expected_calls]
-
     def test_init(self, mocked_regions_provider):
         regions_retry_policy = RegionsRetryPolicy(
             regions_provider=mocked_regions_provider,

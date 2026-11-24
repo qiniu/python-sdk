@@ -103,14 +103,13 @@ class TokenExpiredRetryPolicy(RetryPolicy):
 
 
 class AccUnavailableRetryPolicy(RetryPolicy):
-    def __init__(self, on_fallback=None):
-        self.on_fallback = on_fallback
+    def __init__(self):
+        pass
 
     def init_context(self, context):
         pass
 
-    @staticmethod
-    def should_retry(attempt):
+    def should_retry(self, attempt):
         """
         Parameters
         ----------
@@ -120,7 +119,7 @@ class AccUnavailableRetryPolicy(RetryPolicy):
         -------
         bool
         """
-        if not attempt.result or attempt.context.get('service_name') != ServiceName.UP_ACC:
+        if not attempt.result:
             return False
 
         region = attempt.context.get('region')
@@ -129,14 +128,14 @@ class AccUnavailableRetryPolicy(RetryPolicy):
 
         if all(
             not region.services[sn]
-            for sn in attempt.context.get('alternative_service_names', [])
+            for sn in attempt.context.get('alternative_service_names')
         ):
             return False
 
         _ret, resp = attempt.result
 
         return resp.status_code == 400 and \
-            'transfer acceleration is not configured on this bucket' in (resp.text_body or '')
+            'transfer acceleration is not configured on this bucket' in resp.text_body
 
     def prepare_retry(self, attempt):
         """
@@ -154,8 +153,6 @@ class AccUnavailableRetryPolicy(RetryPolicy):
             endpoints = attempt.context['region'].services.get(attempt.context['service_name'], [])[:]
         attempt.context['alternative_endpoints'] = endpoints
         attempt.context['endpoint'] = attempt.context['alternative_endpoints'].pop(0)
-        if self.on_fallback:
-            self.on_fallback()
 
 
 ProgressRecord = namedtuple(
@@ -166,15 +163,6 @@ ProgressRecord = namedtuple(
         'delete'
     ]
 )
-
-
-def should_retry_upload(attempt, retrier):
-    """Permit response-specific recovery before trying another endpoint."""
-    _, response = attempt.result
-    return response.need_retry() or any(
-        policy.should_retry(attempt) for policy in retrier.policies
-        if isinstance(policy, (AccUnavailableRetryPolicy, TokenExpiredRetryPolicy))
-    )
 
 
 def get_default_retrier(
@@ -197,13 +185,10 @@ def get_default_retrier(
     """
     retry_policies = []
     upload_service_names = [ServiceName.UP]
-    reset_progress = None
+    handle_change_region = None
 
     if accelerate_uploading:
-        # Resumable upload records pin the previous endpoint. Start fresh on fallback.
-        retry_policies.append(AccUnavailableRetryPolicy(
-            on_fallback=progress_record.delete if progress_record else None
-        ))
+        retry_policies.append(AccUnavailableRetryPolicy())
         upload_service_names.insert(0, ServiceName.UP_ACC)
 
     if progress_record:
@@ -213,11 +198,10 @@ def get_default_retrier(
             record_exists_handler=progress_record.exists
         ))
 
-        def _reset_progress(_):
-            # A different service or region must start without the old upload context.
+        def _handle_change_region(_):
             progress_record.delete()
 
-        reset_progress = _reset_progress
+        handle_change_region = _handle_change_region
 
     retry_policies += [
         EndpointsRetryPolicy(skip_init_context=True),
@@ -225,8 +209,7 @@ def get_default_retrier(
             regions_provider=regions_provider,
             service_names=upload_service_names,
             preferred_endpoints_provider=preferred_endpoints_provider,
-            on_change_region=reset_progress,
-            on_change_service=reset_progress
+            on_change_region=handle_change_region
         )
     ]
 

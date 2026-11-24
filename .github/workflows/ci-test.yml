@@ -77,7 +77,6 @@ jobs:
             tests/cases/test_http/test_single_flight.py \
             tests/cases/test_retry \
             tests/cases/test_utils.py \
-            tests/cases/test_services/test_storage/test_uploader.py::test_upload_acc_request_order \
             tests/cases/test_services/test_sandbox/test_client.py \
             tests/cases/test_services/test_sandbox/test_config.py \
             tests/cases/test_services/test_sandbox/test_envd.py \
@@ -191,7 +190,6 @@ jobs:
             tests/cases/test_http/test_single_flight.py `
             tests/cases/test_retry `
             tests/cases/test_utils.py `
-            tests/cases/test_services/test_storage/test_uploader.py::test_upload_acc_request_order `
             tests/cases/test_services/test_sandbox/test_client.py `
             tests/cases/test_services/test_sandbox/test_config.py `
             tests/cases/test_services/test_sandbox/test_envd.py `

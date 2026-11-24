@@ -14,7 +14,7 @@ from qiniu.http.endpoint import Endpoint
 from qiniu.utils import b, io_md5, urlsafe_base64_encode
 from qiniu.compat import json
 
-from ._default_retrier import ProgressRecord, get_default_retrier, should_retry_upload
+from ._default_retrier import ProgressRecord, get_default_retrier
 from .abc import ResumeUploaderBase
 from .io_chunked import IOChunked
 
@@ -513,9 +513,15 @@ class ResumeUploaderV2(ResumeUploaderBase):
             ]
 
         progress_record = None
-        if self.upload_progress_recorder and (file_name or key):
+        if all(
+            [
+                self.upload_progress_recorder,
+                file_name,
+                key
+            ]
+        ):
             progress_record = ProgressRecord(
-                upload_api_version='v2',
+                upload_api_version='v1',
                 exists=functools.partial(
                     self.upload_progress_recorder.has_upload_record,
                     file_name=file_name,
@@ -551,7 +557,7 @@ class ResumeUploaderV2(ResumeUploaderBase):
                     return attempt.result
                 if (
                     not is_seekable(data) or
-                    not should_retry_upload(attempt, retrier)
+                    not resp.need_retry()
                 ):
                     return attempt.result
                 data.seek(0)

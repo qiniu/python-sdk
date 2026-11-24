@@ -1,12 +1,9 @@
 from collections import namedtuple
-from time import time
 
 import pytest
-import requests
 
-from qiniu.compat import json, is_py2, urlparse
+from qiniu.compat import json, is_py2
 from qiniu import (
-    Auth,
     Zone,
     config as qn_config,
     set_default,
@@ -16,136 +13,13 @@ from qiniu import (
     build_batch_delete
 )
 from qiniu.http.endpoint import Endpoint
-from qiniu.http.region import Region, ServiceName
+from qiniu.http.region import ServiceName
 from qiniu.services.storage.uploader import _form_put, put_file_v2, put_stream_v2
-from qiniu.services.storage.upload_progress_recorder import UploadProgressRecorder
-from qiniu.services.storage.uploaders.abc import ResumeUploaderBase, UploaderBase
-from qiniu.utils import io_crc32
-
-from . import conftest as storage_fixtures
+from qiniu.services.storage.uploaders.abc import UploaderBase
 
 KB = 1024
 MB = 1024 * KB
 GB = 1024 * MB
-
-
-def test_get_real_regions_returns_independent_results(monkeypatch, get_real_regions):
-    cached = Region('z0', services={ServiceName.UP: [Endpoint('source.invalid')]})
-    monkeypatch.setattr(storage_fixtures, 'get_default_regions_provider',
-                        lambda **kwargs: [cached])
-
-    first, = get_real_regions('access-key', 'bucket')
-    second, = get_real_regions('access-key', 'bucket')
-    assert first is not second
-    assert first.services[ServiceName.UP][0] is not cached.services[ServiceName.UP][0]
-
-    del first.services[ServiceName.UP][:]
-    first.services[ServiceName.UP_ACC] = [Endpoint('accelerate.invalid')]
-    for region in (cached, second):
-        assert len(region.services[ServiceName.UP]) == 1
-        assert not region.services[ServiceName.UP_ACC]
-
-
-@pytest.mark.parametrize('temp_file, version, accelerate_failure, upload_key', [
-    (size, version, failure, 'upload-order')
-    for size, version in ((64 * KB, 'v1'), (10 * MB, 'v1'), (10 * MB, 'v2'))
-    for failure in ('none', 'timeout', 'unavailable', 'bad_request')
-] + [
-    (10 * MB, version, failure, key)
-    for version in ('v1', 'v2')
-    for failure in ('unavailable_on_complete', 'timeout_after_part', 'server_error_on_complete', 'resume_expired')
-    for key in ('upload-order', None)
-], indirect=['temp_file'])
-def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accelerate_failure, upload_key):
-    accelerate_host = 'accelerate.invalid'
-    source_host = 'source.invalid'
-    region = Region('z0', services={
-        ServiceName.UP_ACC: [Endpoint(accelerate_host)],
-        ServiceName.UP: [Endpoint(source_host)],
-    })
-    requested_hosts = []
-    part_hosts = []
-    key = upload_key or 'generated-key'
-    recorder = UploadProgressRecorder(str(tmpdir))
-    upload_requests = 1 if temp_file.size == 64 * KB else (4 if version == 'v1' else 5)
-    initialize_resumable = ResumeUploaderBase.__init__
-
-    def initialize_sequential(uploader, bucket_name, **kwargs):
-        kwargs['concurrent_executor'] = None
-        initialize_resumable(uploader, bucket_name, **kwargs)
-
-    def send(_session, request, **kwargs):
-        url = urlparse(request.url)
-        requested_hosts.append(url.hostname)
-        if url.hostname == accelerate_host and accelerate_failure == 'timeout':
-            raise requests.exceptions.ConnectTimeout('controlled upload timeout')
-
-        status = 200
-        is_part = url.path.startswith('/mkblk/') or request.method == 'PUT'
-        if is_part:
-            part_hosts.append(url.hostname)
-            if (url.hostname == accelerate_host and accelerate_failure == 'timeout_after_part'
-                    and part_hosts.count(accelerate_host) == 2):
-                raise requests.exceptions.ConnectTimeout('controlled timeout after one part')
-        if url.path.startswith('/mkblk/'):
-            payload = {'ctx': 'block-context', 'crc32': io_crc32(request.body)}
-        elif url.path.endswith('/uploads'):
-            payload = {'uploadId': 'upload-id', 'expireAt': int(time()) + 3600}
-        elif request.method == 'PUT':
-            payload = {'etag': 'part-etag'}
-        else:
-            payload = {'key': key}
-
-        if url.hostname == accelerate_host:
-            if accelerate_failure == 'bad_request':
-                status, payload = 400, {'error': 'Bad Request'}
-            if accelerate_failure == 'unavailable' or (
-                accelerate_failure == 'unavailable_on_complete' and payload == {'key': key}
-            ):
-                status = 400
-                payload = {'error': 'transfer acceleration is not configured on this bucket'}
-            if accelerate_failure == 'server_error_on_complete' and payload == {'key': key}:
-                status, payload = 503, {'error': 'controlled completion failure'}
-            if (accelerate_failure == 'resume_expired' and payload == {'key': key}
-                    and len(requested_hosts) == upload_requests):
-                assert recorder.has_upload_record(temp_file.name, upload_key)
-                status = 701 if version == 'v1' else 612
-                payload = {'error': 'controlled expired resume record'}
-
-        response = requests.Response()
-        response.status_code = status
-        response.url = request.url
-        response.headers['X-Reqid'] = 'mock-upload'
-        response._content = json.dumps(payload).encode('utf-8')
-        return response
-
-    monkeypatch.setattr(ResumeUploaderBase, '__init__', initialize_sequential)
-    monkeypatch.setattr(requests.Session, 'send', send)
-    token = Auth('access-key', 'secret-key').upload_token('bucket', upload_key)
-    ret, resp = put_file(
-        token, upload_key, temp_file.path, version=version,
-        upload_progress_recorder=recorder,
-        regions=[region], accelerate_uploading=True,
-    )
-
-    accelerate_requests = 1
-    if accelerate_failure in ('none', 'unavailable_on_complete', 'server_error_on_complete'):
-        accelerate_requests = upload_requests
-    elif accelerate_failure == 'timeout_after_part':
-        accelerate_requests = 2 if version == 'v1' else 3
-    elif accelerate_failure == 'resume_expired':
-        accelerate_requests = 2 * upload_requests
-    expected_hosts = [accelerate_host] * accelerate_requests
-    if accelerate_failure == 'bad_request':
-        assert ret is None and resp.status_code == 400, resp
-        assert resp.json() == {'error': 'Bad Request'}
-    else:
-        assert resp.ok() and ret is not None, resp
-        assert ret['key'] == key, resp
-        if accelerate_failure not in ('none', 'resume_expired'):
-            expected_hosts.extend([source_host] * upload_requests)
-    assert requested_hosts == expected_hosts
-    assert urlparse(resp.url).hostname == expected_hosts[-1], resp
 
 
 @pytest.fixture(scope='session')
@@ -974,24 +848,8 @@ class TestResumableUploader:
         10 * MB  # resume
     ], indirect=True)
     @pytest.mark.parametrize('version', ['v1', 'v2'])
-    def test_upload_acc_normally(self, bucket_name, qn_auth, temp_file, version, get_key, get_real_regions, monkeypatch):
+    def test_upload_acc_normally(self, bucket_name, qn_auth, temp_file, version, get_key):
         key = get_key('test_upload_acc_normally')
-        regions = get_real_regions(qn_auth.get_access_key(), bucket_name)
-        accelerate_hosts = {
-            urlparse(endpoint.get_value()).hostname
-            for region in regions for endpoint in region.services.get(ServiceName.UP_ACC, [])
-        }
-        assert accelerate_hosts, 'No acceleration endpoints returned for the test bucket'
-
-        upload_hosts = []
-        original_send = requests.Session.send
-
-        def record_upload_host(session, request, **kwargs):
-            if request.method in ('POST', 'PUT'):
-                upload_hosts.append(urlparse(request.url).hostname)
-            return original_send(session, request, **kwargs)
-
-        monkeypatch.setattr(requests.Session, 'send', record_upload_host)
 
         token = qn_auth.upload_token(bucket_name, key)
         ret, resp = put_file(
@@ -1002,9 +860,8 @@ class TestResumableUploader:
             accelerate_uploading=True
         )
 
-        assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
-        assert upload_hosts and upload_hosts[0] in accelerate_hosts, upload_hosts
+        assert 'kodo-accelerate' in resp.url, resp
 
     @pytest.mark.parametrize('temp_file', [
         64 * KB,  # form
@@ -1038,7 +895,6 @@ class TestResumableUploader:
             accelerate_uploading=True
         )
 
-        assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
 
     @pytest.mark.parametrize('temp_file', [
@@ -1073,11 +929,9 @@ class TestResumableUploader:
             key=key,
             file_path=temp_file.path,
             version=version,
-            regions=[region],
             accelerate_uploading=True
         )
 
-        assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
 
     def test_uploader_base_compatible(self, qn_auth, bucket_name):

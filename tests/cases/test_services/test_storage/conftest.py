@@ -55,7 +55,7 @@ def get_real_regions():
         if not regions:
             raise RuntimeError('No regions found')
 
-        return [region.clone() for region in regions]
+        return regions
 
     yield _get_real_regions
 

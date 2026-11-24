@@ -1,8 +1,4 @@
 # Changelog
-
-## Unreleased
-* 对象存储，修复加速上传因网络错误、服务端错误或存储桶未开通加速而回退失败的问题。分片上传切换服务时清理旧续传记录，从目标端点重新开始。
-
 ## 7.20.0
 * Sandbox 列表现在返回带游标的分页结果，支持按含特殊字符的 metadata 筛选。由 v7.19.0 升级时，请将 `list_sandboxes_v2()` / `listSandboxesV2()` 改为 `list_sandboxes()`。原先直接遍历 `client.list()` 或 `client.list_sandboxes()` 的代码请改为遍历返回值的 `items` 字段，下一页使用 `nextToken`。
 * Sandbox PTY 支持通过 `on_data` 实时接收原始字节，通过 `disconnect()` 保留已读输出并断开本地连接，之后可按 PID 重连。修复命令和 PTY 的重连、输入、关闭 stdin、调整终端尺寸和终止进程等操作。
