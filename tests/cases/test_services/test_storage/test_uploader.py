@@ -46,16 +46,17 @@ def test_get_real_regions_returns_independent_results(monkeypatch, get_real_regi
         assert not region.services[ServiceName.UP_ACC]
 
 
-@pytest.mark.parametrize('temp_file, version, accelerate_failure', [
-    (size, version, failure)
+@pytest.mark.parametrize('temp_file, version, accelerate_failure, upload_key', [
+    (size, version, failure, 'upload-order')
     for size, version in ((64 * KB, 'v1'), (10 * MB, 'v1'), (10 * MB, 'v2'))
     for failure in ('none', 'timeout', 'unavailable', 'bad_request')
 ] + [
-    (10 * MB, version, failure)
+    (10 * MB, version, failure, key)
     for version in ('v1', 'v2')
-    for failure in ('unavailable_on_complete', 'timeout_after_part', 'server_error_on_complete')
+    for failure in ('unavailable_on_complete', 'timeout_after_part', 'server_error_on_complete', 'resume_expired')
+    for key in ('upload-order', None)
 ], indirect=['temp_file'])
-def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accelerate_failure):
+def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accelerate_failure, upload_key):
     accelerate_host = 'accelerate.invalid'
     source_host = 'source.invalid'
     region = Region('z0', services={
@@ -64,7 +65,9 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
     })
     requested_hosts = []
     part_hosts = []
-    key = 'upload-order'
+    key = upload_key or 'generated-key'
+    recorder = UploadProgressRecorder(str(tmpdir))
+    upload_requests = 1 if temp_file.size == 64 * KB else (4 if version == 'v1' else 5)
     initialize_resumable = ResumeUploaderBase.__init__
 
     def initialize_sequential(uploader, bucket_name, **kwargs):
@@ -103,6 +106,11 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
                 payload = {'error': 'transfer acceleration is not configured on this bucket'}
             if accelerate_failure == 'server_error_on_complete' and payload == {'key': key}:
                 status, payload = 503, {'error': 'controlled completion failure'}
+            if (accelerate_failure == 'resume_expired' and payload == {'key': key}
+                    and len(requested_hosts) == upload_requests):
+                assert recorder.has_upload_record(temp_file.name, upload_key)
+                status = 701 if version == 'v1' else 612
+                payload = {'error': 'controlled expired resume record'}
 
         response = requests.Response()
         response.status_code = status
@@ -113,19 +121,20 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
 
     monkeypatch.setattr(ResumeUploaderBase, '__init__', initialize_sequential)
     monkeypatch.setattr(requests.Session, 'send', send)
-    token = Auth('access-key', 'secret-key').upload_token('bucket', key)
+    token = Auth('access-key', 'secret-key').upload_token('bucket', upload_key)
     ret, resp = put_file(
-        token, key, temp_file.path, version=version,
-        upload_progress_recorder=UploadProgressRecorder(str(tmpdir)),
+        token, upload_key, temp_file.path, version=version,
+        upload_progress_recorder=recorder,
         regions=[region], accelerate_uploading=True,
     )
 
-    upload_requests = 1 if temp_file.size == 64 * KB else (4 if version == 'v1' else 5)
     accelerate_requests = 1
     if accelerate_failure in ('none', 'unavailable_on_complete', 'server_error_on_complete'):
         accelerate_requests = upload_requests
     elif accelerate_failure == 'timeout_after_part':
         accelerate_requests = 2 if version == 'v1' else 3
+    elif accelerate_failure == 'resume_expired':
+        accelerate_requests = 2 * upload_requests
     expected_hosts = [accelerate_host] * accelerate_requests
     if accelerate_failure == 'bad_request':
         assert ret is None and resp.status_code == 400, resp
@@ -133,7 +142,7 @@ def test_upload_acc_request_order(monkeypatch, temp_file, tmpdir, version, accel
     else:
         assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
-        if accelerate_failure != 'none':
+        if accelerate_failure not in ('none', 'resume_expired'):
             expected_hosts.extend([source_host] * upload_requests)
     assert requested_hosts == expected_hosts
     assert urlparse(resp.url).hostname == expected_hosts[-1], resp
@@ -965,8 +974,24 @@ class TestResumableUploader:
         10 * MB  # resume
     ], indirect=True)
     @pytest.mark.parametrize('version', ['v1', 'v2'])
-    def test_upload_acc_normally(self, bucket_name, qn_auth, temp_file, version, get_key):
+    def test_upload_acc_normally(self, bucket_name, qn_auth, temp_file, version, get_key, get_real_regions, monkeypatch):
         key = get_key('test_upload_acc_normally')
+        regions = get_real_regions(qn_auth.get_access_key(), bucket_name)
+        accelerate_hosts = {
+            urlparse(endpoint.get_value()).hostname
+            for region in regions for endpoint in region.services.get(ServiceName.UP_ACC, [])
+        }
+        assert accelerate_hosts, 'No acceleration endpoints returned for the test bucket'
+
+        upload_hosts = []
+        original_send = requests.Session.send
+
+        def record_upload_host(session, request, **kwargs):
+            if request.method in ('POST', 'PUT'):
+                upload_hosts.append(urlparse(request.url).hostname)
+            return original_send(session, request, **kwargs)
+
+        monkeypatch.setattr(requests.Session, 'send', record_upload_host)
 
         token = qn_auth.upload_token(bucket_name, key)
         ret, resp = put_file(
@@ -977,10 +1002,9 @@ class TestResumableUploader:
             accelerate_uploading=True
         )
 
-        # The final response can come from the source after a retry.
-        # test_upload_acc_request_order verifies endpoint ordering.
         assert resp.ok() and ret is not None, resp
         assert ret['key'] == key, resp
+        assert upload_hosts and upload_hosts[0] in accelerate_hosts, upload_hosts
 
     @pytest.mark.parametrize('temp_file', [
         64 * KB,  # form

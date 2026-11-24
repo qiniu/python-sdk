@@ -59,8 +59,8 @@ jobs:
           PY
       - name: Build and check distributions
         run: |
-          python -m pip install "build==1.6.1" "twine==7.0.0"
-          python -m build
+          python -m pip install "build==1.6.1" "twine==7.0.0" "setuptools==84.2.1" "wheel==0.45.1"
+          python -m build --no-isolation
           python -m twine check dist/*
       - name: Verify distribution contents and name
         env:

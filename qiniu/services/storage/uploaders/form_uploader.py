@@ -8,7 +8,7 @@ from qiniu.auth import Auth
 from qiniu.http import qn_http_client
 
 from .abc import UploaderBase
-from ._default_retrier import AccUnavailableRetryPolicy, get_default_retrier
+from ._default_retrier import get_default_retrier, should_retry_upload
 
 
 class FormUploader(UploaderBase):
@@ -165,7 +165,7 @@ class FormUploader(UploaderBase):
                     return attempt.result
                 if (
                     not is_seekable(data) or
-                    not (resp.need_retry() or AccUnavailableRetryPolicy.should_retry(attempt))
+                    not should_retry_upload(attempt, retrier)
                 ):
                     return attempt.result
                 data.seek(0)

@@ -168,6 +168,15 @@ ProgressRecord = namedtuple(
 )
 
 
+def should_retry_upload(attempt, retrier):
+    """Permit response-specific recovery before trying another endpoint."""
+    _, response = attempt.result
+    return response.need_retry() or any(
+        policy.should_retry(attempt) for policy in retrier.policies
+        if isinstance(policy, (AccUnavailableRetryPolicy, TokenExpiredRetryPolicy))
+    )
+
+
 def get_default_retrier(
     regions_provider,
     preferred_endpoints_provider=None,

@@ -19,9 +19,11 @@ class RegionsRetryPolicy(RetryPolicy):
         service_names: list[ServiceName or str]
         preferred_endpoints_provider: Iterable[Endpoint]
         on_change_region: Callable
+            Called once after resolving a different region and its endpoint.
             `(context: dict) -> None`
         on_change_service: Callable
-            Called after switching services within the same region.
+            Called once after a retry changes the selected service, after
+            on_change_region if both change. A shared callback is called once.
             `(context: dict) -> None`
         """
         self.regions_provider = regions_provider
@@ -41,7 +43,10 @@ class RegionsRetryPolicy(RetryPolicy):
         context: dict
         """
         self._init_regions(context)
+        initial_region = context['region']
         self._prepare_endpoints(context)
+        if context['region'] is not initial_region and callable(self.on_change_region):
+            self.on_change_region(context)
 
     def should_retry(self, attempt):
         """
@@ -69,13 +74,14 @@ class RegionsRetryPolicy(RetryPolicy):
         elif context.get('alternative_regions'):
             # change region for next try
             context['region'] = context['alternative_regions'].pop(0)
-            if callable(self.on_change_region):
-                self.on_change_region(context)
         else:
             raise RuntimeError('There isn\'t available region or service for next try')
         self._prepare_endpoints(context)
-        if (callable(self.on_change_service) and context['region'] is previous_region
-                and context['service_name'] != previous_service):
+        region_changed = context['region'] is not previous_region
+        if region_changed and callable(self.on_change_region):
+            self.on_change_region(context)
+        if (context['service_name'] != previous_service and callable(self.on_change_service)
+                and not (region_changed and self.on_change_service is self.on_change_region)):
             self.on_change_service(context)
 
     def _init_regions(self, context):
@@ -158,8 +164,6 @@ class RegionsRetryPolicy(RetryPolicy):
                 context['alternative_service_names'] = self.service_names[:]
                 context['service_name'] = context['alternative_service_names'].pop(0)
                 endpoints = context['region'].services.get(context['service_name'], [])[:]
-                if callable(self.on_change_region):
-                    self.on_change_region(context)
             else:
                 raise RuntimeError(
                     'There isn\'t available endpoint for {0} service(s) in any available regions'.format(
