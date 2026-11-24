@@ -28,3 +28,30 @@
 py.test
 
 ```
+
+## 发布到 PyPI
+
+正式 GitHub Release 会触发 `.github/workflows/pypi-publish.yml`。工作流从对应标签构建并检查 wheel 和源码包，通过后由 `pypi` 环境中的独立 job 上传。
+
+### 为什么采用 OIDC
+
+使用 PyPI API token 发布时，维护者需要生成发布凭据、保存到 GitHub Secrets，并负责权限和轮换。Trusted Publishing 将授权绑定到 GitHub 仓库、工作流文件和发布环境，省去保存和轮换长期发布 token 的工作。
+
+上传 job 运行时，GitHub 通过 OIDC 签发带签名的身份凭据。PyPI 核对它来自获准的仓库、工作流和环境，再签发范围限于该 PyPI 项目的短期上传凭据。工作流只给上传 job 配置请求 OIDC 身份凭据的权限。[PyPI Trusted Publishing 说明](https://docs.pypi.org/trusted-publishers/using-a-publisher/)
+
+### 配置与补发
+
+首次发布前，由 `qiniu` 的 PyPI 管理员在 **Manage → Publishing → GitHub** 中配置 Trusted Publisher：
+
+| 字段 | 值 |
+| --- | --- |
+| Owner | `qiniu` |
+| Repository | `python-sdk` |
+| Workflow filename | `pypi-publish.yml` |
+| Environment | `pypi` |
+
+GitHub 仓库使用同名 `pypi` 环境。合入 `master` 并完成授权后，如需补发现有标签，从 `master` 手动启动工作流：
+
+```bash
+gh workflow run pypi-publish.yml --repo qiniu/python-sdk --ref master -f tag=v7.20.0
+```

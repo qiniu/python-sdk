@@ -1,0 +1,123 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable release tag (for example, v7.20.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select stable release tag
+        id: release
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Expected a stable release tag such as v7.20.0." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ steps.release.outputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify source version
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          python - <<'PY'
+          import ast
+          import os
+          from pathlib import Path
+
+          source = ast.parse(Path("qiniu/__init__.py").read_text(encoding="utf-8"))
+          version, = (
+              ast.literal_eval(statement.value)
+              for statement in source.body
+              if isinstance(statement, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == "__version__"
+                      for target in statement.targets)
+          )
+          if "v{}".format(version) != os.environ["TAG"]:
+              raise SystemExit("Tag {} does not match qiniu version {}"
+                               .format(os.environ["TAG"], version))
+          PY
+      - name: Build and check distributions
+        run: |
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Verify distribution contents and name
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          python - <<'PY'
+          import os
+          import tarfile
+          import zipfile
+          from email.parser import BytesParser
+          from pathlib import Path
+
+          wheel, = Path("dist").glob("*.whl")
+          sdist, = Path("dist").glob("*.tar.gz")
+          sandbox = "qiniu/services/sandbox/"
+          expected = {"Name": "qiniu", "Version": os.environ["TAG"][1:]}
+
+          with zipfile.ZipFile(wheel) as archive:
+              name, = (name for name in archive.namelist()
+                       if name.endswith(".dist-info/METADATA"))
+              wheel_metadata = BytesParser().parsebytes(archive.read(name))
+              archive.getinfo(sandbox + "__init__.py")
+          with tarfile.open(sdist) as archive:
+              prefix = sdist.name[:-len(".tar.gz")] + "/"
+              with archive.extractfile(prefix + "PKG-INFO") as info:
+                  sdist_metadata = BytesParser().parse(info)
+              archive.getmember(prefix + sandbox + "__init__.py")
+
+          for path, metadata in ((wheel, wheel_metadata), (sdist, sdist_metadata)):
+              for field, value in expected.items():
+                  if metadata[field] != value:
+                      raise SystemExit("{}: expected {} {}, got {}"
+                                       .format(path, field, value, metadata[field]))
+          PY
+      - name: Smoke test the installed wheel
+        run: |
+          wheel="$(realpath dist/*.whl)"
+          smoke_dir="$(mktemp -d "$RUNNER_TEMP/pypi-smoke.XXXXXX")"
+          python -m venv "$smoke_dir/venv"
+          cd "$smoke_dir"
+          venv/bin/python -m pip install "$wheel"
+          venv/bin/python -c 'from qiniu.services.sandbox import Sandbox, SandboxClient'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
