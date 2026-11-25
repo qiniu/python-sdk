@@ -1,0 +1,198 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable release tag (for example, v7.20.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Select stable release tag
+        id: release
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Expected a stable release tag such as v7.20.0." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Verify backfill release
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if ! release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG")"; then
+            echo "::error::Could not look up GitHub Release $TAG. Backfill requires a published stable Release."
+            exit 1
+          fi
+          if ! jq -e --arg tag "$TAG" '
+            .tag_name == $tag and .draft == false and .prerelease == false and
+            (.published_at | type == "string" and length > 0)
+          ' <<< "$release" >/dev/null; then
+            echo "::error::GitHub Release $TAG must be published and marked as stable before backfill."
+            exit 1
+          fi
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: refs/tags/${{ steps.release.outputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.12'
+      - name: Verify source version
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          python - <<'PY'
+          import ast
+          import os
+          from pathlib import Path
+
+          source = ast.parse(Path("qiniu/__init__.py").read_text(encoding="utf-8"))
+          version, = (
+              ast.literal_eval(statement.value)
+              for statement in source.body
+              if isinstance(statement, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == "__version__"
+                      for target in statement.targets)
+          )
+          if "v{}".format(version) != os.environ["TAG"]:
+              raise SystemExit("Tag {} does not match qiniu version {}"
+                               .format(os.environ["TAG"], version))
+          PY
+      - name: Build and check distributions
+        run: |
+          python -m pip install "build==1.6.1" "twine==7.0.0" "setuptools==84.2.1" "wheel==0.45.1"
+          python -m build --no-isolation
+          python -m twine check dist/*
+      - name: Verify distribution contents and name
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          python - <<'PY'
+          import os
+          import tarfile
+          import zipfile
+          from email.parser import BytesParser
+          from pathlib import Path
+
+          wheel, = Path("dist").glob("*.whl")
+          sdist, = Path("dist").glob("*.tar.gz")
+          sandbox = "qiniu/services/sandbox/"
+          expected = {"Name": "qiniu", "Version": os.environ["TAG"][1:]}
+
+          with zipfile.ZipFile(wheel) as archive:
+              name, = (name for name in archive.namelist()
+                       if name.endswith(".dist-info/METADATA"))
+              wheel_metadata = BytesParser().parsebytes(archive.read(name))
+              archive.getinfo(sandbox + "__init__.py")
+          with tarfile.open(sdist) as archive:
+              prefix = sdist.name[:-len(".tar.gz")] + "/"
+              with archive.extractfile(prefix + "PKG-INFO") as info:
+                  sdist_metadata = BytesParser().parse(info)
+              archive.getmember(prefix + sandbox + "__init__.py")
+
+          for path, metadata in ((wheel, wheel_metadata), (sdist, sdist_metadata)):
+              for field, value in expected.items():
+                  if metadata[field] != value:
+                      raise SystemExit("{}: expected {} {}, got {}"
+                                       .format(path, field, value, metadata[field]))
+          PY
+      - name: Smoke test the installed wheel
+        run: |
+          wheel="$(realpath dist/*.whl)"
+          smoke_dir="$(mktemp -d "$RUNNER_TEMP/pypi-smoke.XXXXXX")"
+          python -m venv "$smoke_dir/venv"
+          cd "$smoke_dir"
+          venv/bin/python -m pip install "$wheel"
+          venv/bin/python -c 'from qiniu.services.sandbox import Sandbox, SandboxClient'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: python-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: python-distributions
+          path: dist/
+      - name: Select files missing from PyPI
+        id: pending
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+
+          version = os.environ["TAG"][1:]
+          files = sorted(Path("dist").iterdir())
+          if (len(files) != 2 or not all(path.is_file() for path in files)
+                  or sum(path.name.endswith(".whl") for path in files) != 1
+                  or sum(path.name.endswith(".tar.gz") for path in files) != 1):
+              raise SystemExit("Expected one wheel and one source distribution from the build job.")
+
+          request = Request(
+              f"https://pypi.org/pypi/qiniu/{version}/json",
+              headers={"Cache-Control": "no-cache"},
+          )
+          try:
+              with urlopen(request, timeout=30) as response:
+                  published = {entry["filename"]: entry["digests"]["sha256"]
+                               for entry in json.load(response)["urls"]}
+          except HTTPError as error:
+              if error.code != 404:
+                  raise
+              published = {}
+
+          already_uploaded = []
+          for path in files:
+              if path.name not in published:
+                  continue
+              with path.open("rb") as stream:
+                  digest = hashlib.sha256()
+                  for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                      digest.update(chunk)
+              if digest.hexdigest() != published[path.name]:
+                  raise SystemExit(f"PyPI already has {path.name} with a different SHA-256.")
+              already_uploaded.append(path)
+
+          for path in already_uploaded:
+              print(f"Skipping {path.name}: the identical file is already on PyPI.")
+              path.unlink()
+          upload = len(already_uploaded) != len(files)
+          if not upload:
+              print("::notice::Both distributions already exist on PyPI with matching SHA-256 hashes.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              print(f"upload={str(upload).lower()}", file=output)
+          PY
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3 (release/v1)
+        if: steps.pending.outputs.upload == 'true'
