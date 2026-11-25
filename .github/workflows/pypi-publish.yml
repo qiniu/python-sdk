@@ -17,6 +17,8 @@ jobs:
   build:
     if: github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Select stable release tag
         id: release
@@ -138,4 +140,59 @@ jobs:
         with:
           name: python-distributions
           path: dist/
+      - name: Select files missing from PyPI
+        id: pending
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+
+          version = os.environ["TAG"][1:]
+          files = sorted(Path("dist").iterdir())
+          if (len(files) != 2 or not all(path.is_file() for path in files)
+                  or sum(path.name.endswith(".whl") for path in files) != 1
+                  or sum(path.name.endswith(".tar.gz") for path in files) != 1):
+              raise SystemExit("Expected one wheel and one source distribution from the build job.")
+
+          request = Request(
+              f"https://pypi.org/pypi/qiniu/{version}/json",
+              headers={"Cache-Control": "no-cache"},
+          )
+          try:
+              with urlopen(request, timeout=30) as response:
+                  published = {entry["filename"]: entry["digests"]["sha256"]
+                               for entry in json.load(response)["urls"]}
+          except HTTPError as error:
+              if error.code != 404:
+                  raise
+              published = {}
+
+          already_uploaded = []
+          for path in files:
+              if path.name not in published:
+                  continue
+              with path.open("rb") as stream:
+                  digest = hashlib.sha256()
+                  for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                      digest.update(chunk)
+              if digest.hexdigest() != published[path.name]:
+                  raise SystemExit(f"PyPI already has {path.name} with a different SHA-256.")
+              already_uploaded.append(path)
+
+          for path in already_uploaded:
+              print(f"Skipping {path.name}: the identical file is already on PyPI.")
+              path.unlink()
+          upload = len(already_uploaded) != len(files)
+          if not upload:
+              print("::notice::Both distributions already exist on PyPI with matching SHA-256 hashes.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              print(f"upload={str(upload).lower()}", file=output)
+          PY
       - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3 (release/v1)
+        if: steps.pending.outputs.upload == 'true'

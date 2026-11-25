@@ -64,3 +64,5 @@ py.test
 ```bash
 gh workflow run pypi-publish.yml --repo qiniu/python-sdk --ref master -f tag=v7.20.0
 ```
+
+如果 PyPI 已接收部分文件但上传 job 失败，从原运行重跑失败的 job，复用同一次构建产物。工作流会按文件名和 SHA-256 核对 PyPI 上已有的文件，只上传缺失项。同名文件的摘要不一致时，任务会失败。
