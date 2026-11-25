@@ -1,6 +1,5 @@
 import logging
 import math
-import functools
 from collections import namedtuple
 from concurrent import futures
 from io import BytesIO
@@ -15,7 +14,7 @@ from qiniu.http import qn_http_client, ResponseInfo
 from qiniu.http.endpoint import Endpoint
 from qiniu.utils import b, io_crc32, urlsafe_base64_encode
 
-from ._default_retrier import ProgressRecord, get_default_retrier
+from ._default_retrier import ResumableUploadProgress, get_default_retrier, retry_resumable_upload
 from .abc import ResumeUploaderBase
 from .io_chunked import IOChunked
 
@@ -482,23 +481,9 @@ class ResumeUploaderV1(ResumeUploaderBase):
             ]
 
         progress_record = None
-        if all([
-            self.upload_progress_recorder,
-            file_name,
-            key
-        ]):
-            progress_record = ProgressRecord(
-                upload_api_version='v1',
-                exists=functools.partial(
-                    self.upload_progress_recorder.has_upload_record,
-                    file_name=file_name,
-                    key=key
-                ),
-                delete=functools.partial(
-                    self.upload_progress_recorder.delete_upload_record,
-                    file_name=file_name,
-                    key=key
-                )
+        if self.upload_progress_recorder and (file_name or key):
+            progress_record = ResumableUploadProgress(
+                self.upload_progress_recorder, file_name, key, 'v1'
             )
 
         retrier = get_default_retrier(
@@ -511,28 +496,7 @@ class ResumeUploaderV1(ResumeUploaderBase):
             accelerate_uploading=self.accelerate_uploading,
         )
 
-        data = upload_opts.get('data')
-        attempt = None
-        for attempt in retrier:
-            with attempt:
-                upload_opts['up_endpoint'] = attempt.context.get('endpoint')
-                attempt.result = self.__upload(
-                    **upload_opts
-                )
-                ret, resp = attempt.result
-                if resp.ok() and ret:
-                    return attempt.result
-                if (
-                    not is_seekable(data) or
-                    not resp.need_retry()
-                ):
-                    return attempt.result
-                data.seek(0)
-
-        if attempt is None:
-            raise RuntimeError('Retrier is not working. attempt is None')
-
-        return attempt.result
+        return retry_resumable_upload(retrier, self.__upload, upload_opts, progress_record)
 
     def __upload(
         self,

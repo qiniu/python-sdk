@@ -15,6 +15,40 @@ def mocked_regions_provider():
 
 
 class TestRegionsRetryPolicy:
+    @pytest.mark.parametrize('fallback', ['same-region', 'next-region', 'endpoint-only'])
+    def test_retry_notifies_final_endpoint(self, fallback):
+        first = Region('first', services={ServiceName.UP_ACC: [Endpoint('acc.invalid')]})
+        source = Endpoint('source.invalid')
+        if fallback == 'same-region':
+            first.services[ServiceName.UP] = [source]
+            target = first
+            regions = [first]
+        else:
+            target = Region('target', services={ServiceName.UP: [source]})
+            regions = [first, Region('empty'), Region('also-empty'), target]
+        calls = []
+
+        def on_region(context):
+            calls.append(('region', context['region'], context['endpoint']))
+
+        def on_endpoint(context):
+            calls.append(('endpoint', context['region'], context['endpoint']))
+
+        policy = RegionsRetryPolicy(
+            regions_provider=regions,
+            service_names=[ServiceName.UP_ACC, ServiceName.UP],
+            on_change_region=None if fallback == 'endpoint-only' else on_region,
+            on_change_endpoint=on_endpoint,
+        )
+        attempt = Attempt()
+        policy.init_context(attempt.context)
+        policy.prepare_retry(attempt)
+
+        expected = []
+        if fallback == 'next-region':
+            expected.extend(('region', region, first.services[ServiceName.UP_ACC][0]) for region in regions[1:])
+        assert calls == expected + [('endpoint', target, source)]
+
     def test_init(self, mocked_regions_provider):
         regions_retry_policy = RegionsRetryPolicy(
             regions_provider=mocked_regions_provider,

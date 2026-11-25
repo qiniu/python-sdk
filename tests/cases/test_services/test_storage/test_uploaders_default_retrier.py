@@ -49,6 +49,14 @@ class MockResponse:
         self.text_body = text_body
 
 
+def test_acc_unavailable_policy_preserves_instance_method():
+    class DelegatingPolicy(AccUnavailableRetryPolicy):
+        def should_retry(self, attempt):
+            return AccUnavailableRetryPolicy.should_retry(self, attempt)
+
+    assert not DelegatingPolicy().should_retry(Attempt())
+
+
 class TestTokenExpiredRetryPolicy:
     def test_should_retry(self, fake_progress_record):
         policy = TokenExpiredRetryPolicy(
